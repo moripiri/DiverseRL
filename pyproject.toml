@@ -10,7 +10,7 @@ python = "3.10.13"
 torch = "^2.1.0"
 torchvision = "^0.16.0"
 torchaudio = "^2.1.0"
-gymnasium = {extras = ["accept-rom-license"], version = "^0.29.1"}
+gymnasium = {extras = ["all"], version = "^0.29.1"}
 mujoco = "^2.3.7"
 swig = "^4.1.1"
 
