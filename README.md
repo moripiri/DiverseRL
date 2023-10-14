@@ -1,2 +1,2 @@
-# DiverseRL
-Personal Deep RL repo
+## DiverseRL
+
