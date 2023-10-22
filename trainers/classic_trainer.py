@@ -1,19 +1,16 @@
 from gymnasium.spaces import Discrete
 from gymnasium.spaces.utils import flatten, flatten_space, flatdim
 import numpy as np
+
+
 class ClassicTrainer:
-    def __init__(self, algo, env, test_env=None):
+    def __init__(self, algo, env, max_episode=1000):
 
         # assert observation and action space is discrete, or can be flattened to discrete space
-        assert isinstance(env.observation_space, Discrete)
-        assert isinstance(env.action_space, Discrete)
-
         self.algo = algo
         self.env = env
-        self.test_env = self.env if test_env is None else test_env
 
-        self.max_episode = 1000
-        self.render = False
+        self.max_episode = max_episode
 
     def run(self):
         """
@@ -31,8 +28,7 @@ class ClassicTrainer:
             local_step = 0
 
             while not (terminated or truncated):
-
-                action = self.algo.action(observation)
+                action = self.algo.get_action(observation)
                 next_observation, reward, terminated, truncated, info = self.env.step(action)
 
                 processed_reward = self.process_reward(observation, action, reward, next_observation, terminated,
@@ -57,43 +53,27 @@ class ClassicTrainer:
         Post-process reward for better training of gymnasium toy_text environment
         """
 
-        if env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1'] and r == 0:
+        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1'] and r == 0:
             r -= 0.001
 
-        if env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
+        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
             if s == ns:
                 r -= 1
 
-            if d and ns != flatdim(env.observation_space) - 1:
+            if d and ns != self.env.observation_space.n - 1:
                 r -= 1
 
         return r
 
     def distinguish_success(self, r, ns):
-        if env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
-            if ns == flatdim(self.env.observation_space) - 1:
+        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
+            if ns == self.env.observation_space.n - 1:
                 return True
 
-        elif env.spec.id in ['Blackjack-v1', 'Taxi-v3']:
+        elif self.env.spec.id in ['Blackjack-v1', 'Taxi-v3']:
             if r > 0:
                 return True
         else:
             return None
 
         return False
-
-if __name__ == '__main__':
-    import gymnasium as gym
-    from algos.classic_rl import SARSA
-    #env = gym.make(id="FrozenLake-v1", desc=None, map_name="4x4", is_slippery=False)
-    env = gym.make(id="CliffWalking-v0", max_episode_steps=100)
-    #env = gym.make("Blackjack-v1")
-
-    print(flatdim(env.observation_space), flatdim(env.action_space))
-    algo = SARSA(env)
-    trainer = ClassicTrainer(algo, env)
-    trainer.run()
-
-
-
-

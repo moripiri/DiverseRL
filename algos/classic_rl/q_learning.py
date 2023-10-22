@@ -3,7 +3,7 @@ from gymnasium import spaces
 from algos.classic_rl.base import ClassicRL
 
 
-class SARSA(ClassicRL):
+class QLearning(ClassicRL):
     def __init__(self, env, gamma=0.9, alpha=0.1, eps=0.1):
         super().__init__(env)
 
@@ -15,7 +15,7 @@ class SARSA(ClassicRL):
             else np.zeros([*self.state_dim, self.action_dim])
 
     def __repr__(self):
-        return "SARSA"
+        return "Q-learning"
 
     def get_action(self, observation):
         if np.random.random() < self.eps:
@@ -28,7 +28,5 @@ class SARSA(ClassicRL):
 
     def train(self, observation, action, reward, next_observation, terminated, truncated, info):
 
-        next_action = self.get_action(next_observation)
-
         self.q[observation, action] = self.q[observation, action] + self.alpha * (
-                reward + self.gamma * self.q[next_observation, next_action] - self.q[observation, action])
+                reward + self.gamma * np.max(self.q[next_observation]) - self.q[observation, action])

@@ -7,8 +7,6 @@ In this repo, the term '**Classic RL**' is used for these basic RL algorithms.
 * Model-free Monte Carlo
 * SARSA
 * Q-learning
-* REINFORCE(Monte-Carlo Policy Gradient)
-* Actor-Critic
 * Dyna-Q
 
 
