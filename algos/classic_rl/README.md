@@ -11,9 +11,6 @@ In this repo, the term '**Classic RL**' is used for these basic RL algorithms.
 * Actor-Critic
 * Dyna-Q
 
-For baseline, these two dynamic programming (DP) algorithms are available.
-* Policy iteration
-* Value iteration
 
 --- 
 ## Environments
