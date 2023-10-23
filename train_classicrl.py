@@ -1,5 +1,5 @@
-from algos.classic_rl import SARSA, QLearning, DynaQ, MonteCarlo
-from trainers import ClassicTrainer
+from diverserl.algos.classic_rl import MonteCarlo
+from diverserl.trainers import ClassicTrainer
 
 import gymnasium as gym
 

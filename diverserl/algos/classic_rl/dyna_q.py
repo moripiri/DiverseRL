@@ -1,10 +1,11 @@
 import numpy as np
 from gymnasium import spaces
-from algos.classic_rl.base import ClassicRL
+from diverserl.algos.classic_rl.base import ClassicRL
+import gymnasium as gym
 
 
 class DynaQ(ClassicRL):
-    def __init__(self, env, gamma=0.8, alpha=0.1, model_n=10, eps=0.1):
+    def __init__(self, env: gym.Env, gamma: float = 0.8, alpha:float = 0.1, model_n: int=10, eps:float=0.1):
         super().__init__(env)
         assert env.spec.id != 'Blackjack-v1', f"Currently {self.__repr__()} does not support {env.spec.id}."
 

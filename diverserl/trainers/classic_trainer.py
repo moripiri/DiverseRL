@@ -1,18 +1,20 @@
 from gymnasium.spaces import Discrete
 from gymnasium.spaces.utils import flatten, flatten_space, flatdim
 import numpy as np
+from diverserl.algos.classic_rl.base import ClassicRL
+import gymnasium as gym
+from typing import Union, Any
 
 
 class ClassicTrainer:
-    def __init__(self, algo, env, max_episode=1000):
+    def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000):
 
-        # assert observation and action space is discrete, or can be flattened to discrete space
         self.algo = algo
         self.env = env
 
         self.max_episode = max_episode
 
-    def run(self):
+    def run(self) -> None:
         """
         train algorithm
         """
@@ -48,7 +50,7 @@ class ClassicTrainer:
 
         print(success_num)
 
-    def process_reward(self, s, a, r, ns, d, t, info):
+    def process_reward(self, s, a, r, ns, d: bool, t: bool, info: dict[str, Any]):
         """
         Post-process reward for better training of gymnasium toy_text environment
         """
@@ -65,7 +67,7 @@ class ClassicTrainer:
 
         return r
 
-    def distinguish_success(self, r, ns):
+    def distinguish_success(self, r: Union[float, int], ns, ):
         if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
             if ns == self.env.observation_space.n - 1:
                 return True
