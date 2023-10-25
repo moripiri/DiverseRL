@@ -1,7 +1,6 @@
 from typing import Union
 
 import gymnasium as gym
-
 from diverserl.algos.classic_rl.base import ClassicRL
 
 
@@ -59,7 +58,7 @@ class ClassicTrainer:
                 total_step += 1
 
             success_num += int(success)
-            print(f"Episode: {episode} -> Step: {local_step}, Episode_reward: {episode_reward}, success: {success}")
+            print(f"Episode: {episode} -> Step: {local_step}, Episode_reward: {episode_reward}, success: {success}", "test")
 
         print(success_num)
 
