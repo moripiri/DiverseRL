@@ -1,7 +1,7 @@
-from diverserl.algos.classic_rl import MonteCarlo
-from diverserl.trainers import ClassicTrainer
-
 import gymnasium as gym
+
+from diverserl.algos.classic_rl import QLearning
+from diverserl.trainers import ClassicTrainer
 
 # toytext = ['Blackjack-v1', 'Taxi-v3', "CliffWalking-v0", "FrozenLake-v1"]
 
@@ -10,7 +10,7 @@ import gymnasium as gym
 #env = gym.make("Taxi-v3")
 env = gym.make("CliffWalking-v0", max_episode_steps=50)
 
-algo = MonteCarlo(env)
-#algo = QLearning(env)
+#algo = MonteCarlo(env)
+algo = QLearning(env)
 trainer = ClassicTrainer(algo, env, max_episode=10000)
 trainer.run()

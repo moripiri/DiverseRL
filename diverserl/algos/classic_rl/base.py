@@ -1,10 +1,11 @@
-from gymnasium import spaces
+from typing import Any, Union
+
 import gymnasium as gym
-from typing import Any
+from gymnasium import spaces
 
 
 class ClassicRL:
-    def __init__(self, env: gym.Env):
+    def __init__(self, env: gym.Env) -> None:
         assert isinstance(env.observation_space, (spaces.Discrete, spaces.Tuple))
         if isinstance(env.observation_space, spaces.Tuple):
             for item in env.observation_space:
@@ -17,12 +18,11 @@ class ClassicRL:
 
         self.action_dim = env.action_space.n
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "ClassicRLAlgorithm"
 
-    def get_action(self, observation):
+    def get_action(self, observation: Union[int, tuple[int]]):
         raise NotImplementedError
 
-    def train(self, observation, action, reward, next_observation,
-              terminated: bool, truncated: bool, info: dict[str, Any]):
+    def train(self, step_result: tuple):
         raise NotImplementedError

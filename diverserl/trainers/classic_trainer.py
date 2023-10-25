@@ -1,13 +1,16 @@
-from gymnasium.spaces import Discrete
-from gymnasium.spaces.utils import flatten, flatten_space, flatdim
-import numpy as np
-from diverserl.algos.classic_rl.base import ClassicRL
+from typing import Any, SupportsFloat, Union
+
 import gymnasium as gym
-from typing import Union, Any
+import numpy as np
+from gymnasium.core import ActType, ObsType
+from gymnasium.spaces import Discrete
+from gymnasium.spaces.utils import flatdim, flatten, flatten_space
+
+from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class ClassicTrainer:
-    def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000):
+    def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000) -> None:
 
         self.algo = algo
         self.env = env
@@ -31,17 +34,16 @@ class ClassicTrainer:
 
             while not (terminated or truncated):
                 action = self.algo.get_action(observation)
-                next_observation, reward, terminated, truncated, info = self.env.step(action)
+                next_observation, env_reward, terminated, truncated, info = self.env.step(action)
 
-                processed_reward = self.process_reward(observation, action, reward, next_observation, terminated,
-                                                       truncated, info)
+                step_result = self.process_reward((observation, action, env_reward, next_observation, terminated, truncated, info))
 
-                self.algo.train(observation, action, processed_reward, next_observation, terminated, truncated, info)
+                self.algo.train(step_result)
 
                 observation = next_observation
-                episode_reward += reward
+                episode_reward += env_reward
 
-                success = self.distinguish_success(reward, next_observation)
+                success = self.distinguish_success(float(env_reward), next_observation)
                 local_step += 1
                 total_step += 1
 
@@ -50,11 +52,11 @@ class ClassicTrainer:
 
         print(success_num)
 
-    def process_reward(self, s, a, r, ns, d: bool, t: bool, info: dict[str, Any]):
+    def process_reward(self, step_result: tuple) -> tuple:
         """
         Post-process reward for better training of gymnasium toy_text environment
         """
-
+        s, a, r, ns, d, t, info = step_result
         if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1'] and r == 0:
             r -= 0.001
 
@@ -62,18 +64,18 @@ class ClassicTrainer:
             if s == ns:
                 r -= 1
 
-            if d and ns != self.env.observation_space.n - 1:
+            if d and ns != self.algo.state_dim - 1:
                 r -= 1
+        step_result = (s, a, r, ns, d, t, info)
+        return step_result
 
-        return r
-
-    def distinguish_success(self, r: Union[float, int], ns, ):
+    def distinguish_success(self, r: float, ns: int) -> Union[bool, None]:
         if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
-            if ns == self.env.observation_space.n - 1:
+            if ns == self.algo.state_dim - 1:
                 return True
 
         elif self.env.spec.id in ['Blackjack-v1', 'Taxi-v3']:
-            if r > 0:
+            if r > 0.:
                 return True
         else:
             return None

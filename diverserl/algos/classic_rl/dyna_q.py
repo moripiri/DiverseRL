@@ -1,11 +1,14 @@
+from typing import Union
+
+import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
+
 from diverserl.algos.classic_rl.base import ClassicRL
-import gymnasium as gym
 
 
 class DynaQ(ClassicRL):
-    def __init__(self, env: gym.Env, gamma: float = 0.8, alpha:float = 0.1, model_n: int=10, eps:float=0.1):
+    def __init__(self, env: gym.Env, gamma: float = 0.8, alpha: float = 0.1, model_n: int = 10, eps: float = 0.1) -> None:
         super().__init__(env)
         assert env.spec.id != 'Blackjack-v1', f"Currently {self.__repr__()} does not support {env.spec.id}."
 
@@ -22,10 +25,10 @@ class DynaQ(ClassicRL):
         self.ob_traj = list()
         self.a_traj = list()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Dyna-Q"
 
-    def get_action(self, observation):
+    def get_action(self, observation: Union[int, tuple[int]]) -> int:
         if np.random.random() < self.eps:
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
@@ -34,27 +37,28 @@ class DynaQ(ClassicRL):
 
         return action
 
-    def train(self, observation, action, reward, next_observation, terminated, truncated, info):
+    def train(self, step_result: tuple) -> None:
+        s, a, r, ns, d, t, info = step_result
 
-        self.q[observation, action] = self.q[observation, action] + self.alpha * (
-                reward + self.gamma * np.max(self.q[next_observation]) - self.q[observation, action])
+        self.q[s, a] = self.q[s, a] + self.alpha * (r + self.gamma * np.max(self.q[ns]) - self.q[s, a])
 
-        self.model_r[observation, action] = reward
-        self.model_ns[observation, action] = next_observation
+        self.model_r[s, a] = r
+        self.model_ns[s, a] = ns
 
-        self.ob_traj.append(observation)
-        self.a_traj.append(action)
+        self.ob_traj.append(s)
+        self.a_traj.append(a)
 
-        if terminated or truncated:
+        if d or t:
             for _ in range(self.model_n):
                 sample = np.random.randint(low=0, high=len(self.ob_traj) - 1)
-                s = self.ob_traj[sample]
-                a = self.a_traj[sample]
+                sample_s = self.ob_traj[sample]
+                sample_a = self.a_traj[sample]
 
-                r = (self.model_r[s, a])
-                ns = int(self.model_ns[s, a])
+                sample_r = (self.model_r[sample_s, sample_a])
+                sample_ns = int(self.model_ns[sample_s, sample_a])
 
-                self.q[s, a] = self.q[s, a] + self.alpha * (r + self.gamma * np.max(self.q[ns]) - self.q[s, a])
+                self.q[sample_s, sample_a] = (self.q[sample_s, sample_a] + self.alpha * (
+                        sample_r + self.gamma * np.max(self.q[sample_ns]) - self.q[sample_s, sample_a]))
 
             self.ob_traj = list()
             self.a_traj = list()
