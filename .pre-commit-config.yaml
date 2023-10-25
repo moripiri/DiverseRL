@@ -13,3 +13,13 @@ repos:
     rev: 5.12.0
     hooks:
         - id: isort
+
+-   repo: https://github.com/ambv/black
+    rev: 23.10.1
+    hooks:
+    - id: black
+
+-   repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
