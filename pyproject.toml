@@ -17,14 +17,13 @@ rich = "^13.6.0"
 
 [tool.poetry.group.dev]
 optional = true
+
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.5.0"
 isort = "^5.12.0"
 black = "^23.10.1"
-flake8 = "^6.1.0"
-ruff = "^0.1.2"
 
-[tool.ruff]
+[tool.black]
 line-length = 120
 
 [build-system]
