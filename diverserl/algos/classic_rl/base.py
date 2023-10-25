@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Union
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -13,8 +13,11 @@ class ClassicRL:
 
         assert isinstance(env.action_space, spaces.Discrete)
 
-        self.state_dim = env.observation_space.n if isinstance(env.observation_space, spaces.Discrete) \
+        self.state_dim = (
+            env.observation_space.n
+            if isinstance(env.observation_space, spaces.Discrete)
             else tuple(map(lambda x: x.n, env.observation_space))
+        )
 
         self.action_dim = env.action_space.n
 

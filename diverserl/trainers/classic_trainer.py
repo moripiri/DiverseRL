@@ -1,17 +1,12 @@
-from typing import Any, SupportsFloat, Union
+from typing import Union
 
 import gymnasium as gym
-import numpy as np
-from gymnasium.core import ActType, ObsType
-from gymnasium.spaces import Discrete
-from gymnasium.spaces.utils import flatdim, flatten, flatten_space
 
 from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class ClassicTrainer:
     def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000) -> None:
-
         self.algo = algo
         self.env = env
 
@@ -34,9 +29,25 @@ class ClassicTrainer:
 
             while not (terminated or truncated):
                 action = self.algo.get_action(observation)
-                next_observation, env_reward, terminated, truncated, info = self.env.step(action)
+                (
+                    next_observation,
+                    env_reward,
+                    terminated,
+                    truncated,
+                    info,
+                ) = self.env.step(action)
 
-                step_result = self.process_reward((observation, action, env_reward, next_observation, terminated, truncated, info))
+                step_result = self.process_reward(
+                    (
+                        observation,
+                        action,
+                        env_reward,
+                        next_observation,
+                        terminated,
+                        truncated,
+                        info,
+                    )
+                )
 
                 self.algo.train(step_result)
 
@@ -57,10 +68,10 @@ class ClassicTrainer:
         Post-process reward for better training of gymnasium toy_text environment
         """
         s, a, r, ns, d, t, info = step_result
-        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1'] and r == 0:
+        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1"] and r == 0:
             r -= 0.001
 
-        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
+        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
             if s == ns:
                 r -= 1
 
@@ -70,12 +81,12 @@ class ClassicTrainer:
         return step_result
 
     def distinguish_success(self, r: float, ns: int) -> Union[bool, None]:
-        if self.env.spec.id in ['FrozenLake-v1', 'FrozenLake8x8-v1', 'CliffWalking-v0']:
+        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
             if ns == self.algo.state_dim - 1:
                 return True
 
-        elif self.env.spec.id in ['Blackjack-v1', 'Taxi-v3']:
-            if r > 0.:
+        elif self.env.spec.id in ["Blackjack-v1", "Taxi-v3"]:
+            if r > 0.0:
                 return True
         else:
             return None
