@@ -1,6 +1,8 @@
 from typing import Union
 
 import gymnasium as gym
+from rich.console import Console
+from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from diverserl.algos.classic_rl.base import ClassicRL
 
@@ -12,58 +14,72 @@ class ClassicTrainer:
 
         self.max_episode = max_episode
 
+        self.console = Console(style="bold black")
+        self.progress = Progress(
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            console=self.console,
+        )
+
     def run(self) -> None:
         """
         train algorithm
         """
-        total_step = 0
-        success_num = 0
+        with self.progress as progress:
+            total_step = 0
+            success_num = 0
+            task = self.progress.add_task(
+                description=f"[bold black]Training {self.algo} in {self.env.spec.id}...[/bold black]",
+                total=self.max_episode,
+            )
 
-        for episode in range(self.max_episode):
-            observation, info = self.env.reset()
+            for episode in range(self.max_episode):
+                progress.advance(task)
 
-            terminated, truncated = False, False
-            success = False
-            episode_reward = 0
-            local_step = 0
+                observation, info = self.env.reset()
+                terminated, truncated = False, False
+                success = False
+                episode_reward = 0
+                local_step = 0
 
-            while not (terminated or truncated):
-                action = self.algo.get_action(observation)
-                (
-                    next_observation,
-                    env_reward,
-                    terminated,
-                    truncated,
-                    info,
-                ) = self.env.step(action)
-
-                step_result = self.process_reward(
+                while not (terminated or truncated):
+                    action = self.algo.get_action(observation)
                     (
-                        observation,
-                        action,
-                        env_reward,
                         next_observation,
+                        env_reward,
                         terminated,
                         truncated,
                         info,
+                    ) = self.env.step(action)
+
+                    step_result = self.process_reward(
+                        (
+                            observation,
+                            action,
+                            env_reward,
+                            next_observation,
+                            terminated,
+                            truncated,
+                            info,
+                        )
                     )
+
+                    self.algo.train(step_result)
+
+                    observation = next_observation
+                    episode_reward += env_reward
+
+                    success = self.distinguish_success(float(env_reward), next_observation)
+                    local_step += 1
+                    total_step += 1
+
+                success_num += int(success)
+                progress.console.print(
+                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:4d}, success: {success}",
                 )
-
-                self.algo.train(step_result)
-
-                observation = next_observation
-                episode_reward += env_reward
-
-                success = self.distinguish_success(float(env_reward), next_observation)
-                local_step += 1
-                total_step += 1
-
-            success_num += int(success)
-            print(
-                f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:4d}, success: {success}",
-            )
-        print("=" * 100)
-        print(f"Success ratio: {success_num / self.max_episode:.3f}")
+            progress.console.print("=" * 100, style="bold")
+            progress.console.print(f"Success ratio: {success_num / self.max_episode:.3f}")
 
     def process_reward(self, step_result: tuple) -> tuple:
         """
