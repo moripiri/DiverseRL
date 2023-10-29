@@ -60,11 +60,10 @@ class ClassicTrainer:
 
             success_num += int(success)
             print(
-                f"Episode: {episode} -> Step: {local_step}, Episode_reward: {episode_reward}, success: {success}",
-                "test",
+                f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:4d}, success: {success}",
             )
-
-        print(success_num)
+        print("=" * 100)
+        print(f"Success ratio: {success_num / self.max_episode:.3f}")
 
     def process_reward(self, step_result: tuple) -> tuple:
         """
