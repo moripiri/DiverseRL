@@ -1,10 +1,14 @@
+from typing import Union
+
+import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from algos.classic_rl.base import ClassicRL
+
+from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class SARSA(ClassicRL):
-    def __init__(self, env, gamma=0.9, alpha=0.1, eps=0.1):
+    def __init__(self, env: gym.Env, gamma: float = 0.9, alpha: float = 0.1, eps: float = 0.1) -> None:
         super().__init__(env)
 
         self.alpha = alpha
@@ -14,10 +18,10 @@ class SARSA(ClassicRL):
         self.q = np.zeros([self.state_dim, self.action_dim]) if isinstance(env.observation_space, spaces.Discrete) \
             else np.zeros([*self.state_dim, self.action_dim])
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "SARSA"
 
-    def get_action(self, observation):
+    def get_action(self, observation: Union[int, tuple[int]]) -> int:
         if np.random.random() < self.eps:
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
@@ -26,9 +30,9 @@ class SARSA(ClassicRL):
 
         return action
 
-    def train(self, observation, action, reward, next_observation, terminated, truncated, info):
+    def train(self, step_result: tuple) -> None:
+        s, a, r, ns, d, t, info = step_result
 
-        next_action = self.get_action(next_observation)
+        na = self.get_action(ns)
 
-        self.q[observation, action] = self.q[observation, action] + self.alpha * (
-                reward + self.gamma * self.q[next_observation, next_action] - self.q[observation, action])
+        self.q[s, a] = self.q[s, a] + self.alpha * (r + self.gamma * self.q[ns, na] - self.q[s, a])

@@ -1,10 +1,13 @@
+from typing import Union
+
+import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
-from algos.classic_rl.base import ClassicRL
+
+from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class MonteCarlo(ClassicRL):
-    def __init__(self, env, gamma=0.9, eps=0.1):
+    def __init__(self, env: gym.Env, gamma: float = 0.9, eps: float = 0.1) -> None:
         super().__init__(env)
         assert env.spec.id != 'Blackjack-v1', f"Currently {self.__repr__()} does not support {env.spec.id}."
 
@@ -17,10 +20,10 @@ class MonteCarlo(ClassicRL):
         self.trajectory = []
         self.returns = [[[] for _ in range(self.action_dim)] for _ in range(self.state_dim)]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Monte-Carlo Control"
 
-    def get_action(self, observation):
+    def get_action(self, observation: Union[int, tuple[int]]) -> int:
         # epsilon-soft policy
         assert all(list(map(lambda x: x >= (self.eps / self.action_dim), self.pi[observation])))
 
@@ -28,10 +31,11 @@ class MonteCarlo(ClassicRL):
 
         return action
 
-    def train(self, observation, action, reward, next_observation, terminated, truncated, info):
-        self.trajectory.append({'s': observation, 'a': action, 'r': reward})
+    def train(self, step_result: tuple) -> None:
+        s, a, r, ns, d, t, info = step_result
+        self.trajectory.append({'s': s, 'a': a, 'r': r})
 
-        if terminated or truncated:
+        if d or t:
             self.trajectory.reverse()
             G = 0
             traj_sa_list = list(map(lambda x: [x['s'], x['a']], self.trajectory))
@@ -56,4 +60,3 @@ class MonteCarlo(ClassicRL):
                                 self.pi[i][j] = self.eps / self.action_dim
 
             self.trajectory = []
-
