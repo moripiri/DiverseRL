@@ -15,8 +15,11 @@ class SARSA(ClassicRL):
         self.gamma = gamma
         self.eps = eps
 
-        self.q = np.zeros([self.state_dim, self.action_dim]) if isinstance(env.observation_space, spaces.Discrete) \
+        self.q = (
+            np.zeros([self.state_dim, self.action_dim])
+            if isinstance(env.observation_space, spaces.Discrete)
             else np.zeros([*self.state_dim, self.action_dim])
+        )
 
     def __repr__(self) -> str:
         return "SARSA"
@@ -27,6 +30,11 @@ class SARSA(ClassicRL):
 
         else:
             action = np.argmax(self.q[observation])
+
+        return action
+
+    def eval_action(self, observation: Union[int, tuple[int]]) -> int:
+        action = np.argmax(self.q[observation])
 
         return action
 

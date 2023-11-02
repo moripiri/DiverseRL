@@ -27,5 +27,8 @@ class ClassicRL:
     def get_action(self, observation: Union[int, tuple[int]]):
         raise NotImplementedError
 
+    def eval_action(self, observation: Union[int, tuple[int]]):
+        raise NotImplementedError
+
     def train(self, step_result: tuple):
         raise NotImplementedError

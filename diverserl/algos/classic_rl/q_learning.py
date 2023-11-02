@@ -15,8 +15,11 @@ class QLearning(ClassicRL):
         self.gamma = gamma
         self.eps = eps
 
-        self.q = np.zeros([self.state_dim, self.action_dim]) if isinstance(env.observation_space, spaces.Discrete) \
+        self.q = (
+            np.zeros([self.state_dim, self.action_dim])
+            if isinstance(env.observation_space, spaces.Discrete)
             else np.zeros([*self.state_dim, self.action_dim])
+        )
 
     def __repr__(self) -> str:
         return "Q-learning"
@@ -30,8 +33,12 @@ class QLearning(ClassicRL):
 
         return action
 
+    def eval_action(self, observation: Union[int, tuple[int]]) -> int:
+        action = np.argmax(self.q[observation])
+
+        return action
+
     def train(self, step_result: tuple) -> None:
         s, a, r, ns, d, t, info = step_result
 
-        self.q[s, a] = self.q[s, a] + self.alpha * (
-                r + self.gamma * np.max(self.q[ns]) - self.q[s, a])
+        self.q[s, a] = self.q[s, a] + self.alpha * (r + self.gamma * np.max(self.q[ns]) - self.q[s, a])

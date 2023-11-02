@@ -30,7 +30,7 @@ class ClassicTrainer:
             total_step = 0
             success_num = 0
             task = self.progress.add_task(
-                description=f"[bold black]Training {self.algo} in {self.env.spec.id}...[/bold black]",
+                description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id}[/grey42]...[/bold]",
                 total=self.max_episode,
             )
 
