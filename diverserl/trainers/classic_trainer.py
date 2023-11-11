@@ -1,26 +1,16 @@
 from typing import Union
 
 import gymnasium as gym
-from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 from diverserl.algos.classic_rl.base import ClassicRL
+from diverserl.trainers.base import Trainer
 
 
-class ClassicTrainer:
+class ClassicTrainer(Trainer):
     def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000) -> None:
-        self.algo = algo
-        self.env = env
+        super().__init__(algo, env, max_episode)
 
         self.max_episode = max_episode
-
-        self.console = Console(style="bold black")
-        self.progress = Progress(
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            MofNCompleteColumn(),
-            console=self.console,
-        )
 
     def run(self) -> None:
         """
@@ -29,13 +19,9 @@ class ClassicTrainer:
         with self.progress as progress:
             total_step = 0
             success_num = 0
-            task = self.progress.add_task(
-                description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id}[/grey42]...[/bold]",
-                total=self.max_episode,
-            )
 
             for episode in range(self.max_episode):
-                progress.advance(task)
+                progress.advance(self.task)
 
                 observation, info = self.env.reset()
                 terminated, truncated = False, False

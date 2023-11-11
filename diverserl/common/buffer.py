@@ -1,0 +1,47 @@
+import numpy as np
+import torch
+from torch import Tensor
+
+
+class ReplayBuffer:
+    def __init__(self, state_dim, action_dim, max_size=10**6) -> None:
+        self.max_size = max_size
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+
+        self.s = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.a = np.empty((self.max_size, self.action_dim), dtype=np.float32)
+        self.r = np.empty((self.max_size, 1), dtype=np.float32)
+        self.ns = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.d = np.empty((self.max_size, 1), dtype=np.float32)
+        self.t = np.empty((self.max_size, 1), dtype=np.float32)
+
+        self.idx = 0
+        self.full = False
+
+    def __len__(self) -> int:
+        return self.idx
+
+    def add(self, s, a, r, ns, d, t) -> None:
+        np.copyto(self.s[self.idx], s)
+        np.copyto(self.a[self.idx], a)
+        np.copyto(self.r[self.idx], r)
+        np.copyto(self.ns[self.idx], ns)
+        np.copyto(self.d[self.idx], d)
+        np.copyto(self.t[self.idx], t)
+
+        self.idx = (self.idx + 1) % self.max_size
+        if self.idx == 0:
+            self.full = True
+
+    def sample(self, batch_size: int) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+        ids = np.random.randint(0, self.max_size if self.full else self.idx, size=batch_size)
+
+        states = torch.from_numpy(self.s[ids])
+        actions = torch.from_numpy(self.a[ids])
+        rewards = torch.from_numpy(self.r[ids])
+        next_states = torch.from_numpy(self.ns[ids])
+        dones = torch.from_numpy(self.d[ids])
+        terminates = torch.from_numpy(self.t[ids])
+
+        return (states, actions, rewards, next_states, dones, terminates)
