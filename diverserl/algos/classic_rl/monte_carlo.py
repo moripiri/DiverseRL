@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -8,6 +8,15 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 class MonteCarlo(ClassicRL):
     def __init__(self, env: gym.Env, gamma: float = 0.9, eps: float = 0.1) -> None:
+        """
+        Tabular Model-free Monte-Carlo control algorithm.
+
+        Reinforcement Learning: An Introduction Chapter 5, Richard S. Sutton and Andrew G. Barto
+
+        :param env: The environment for MC-control agent to learn from
+        :param gamma: The discount factor
+        :param eps: Probability to conduct random action during training.
+        """
         super().__init__(env)
         assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
 
@@ -23,7 +32,13 @@ class MonteCarlo(ClassicRL):
     def __repr__(self) -> str:
         return "Monte-Carlo Control"
 
-    def get_action(self, observation: Union[int, tuple[int]]) -> int:
+    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
+        """
+        Get the epsilon-soft Monte-Carlo action in from an observation (in training mode)
+
+        :param observation: The input observation
+        :return: The MC control agent's action
+        """
         # epsilon-soft policy
         assert all(list(map(lambda x: x >= (self.eps / self.action_dim), self.pi[observation])))
 
@@ -31,12 +46,23 @@ class MonteCarlo(ClassicRL):
 
         return action
 
-    def eval_action(self, observation: Union[int, tuple[int]]) -> int:
+    def eval_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
+        """
+        Get the Monte-Carlo action in from an observation (in evaluation mode)
+
+        :param observation: The input observation
+        :return: The MC control agent's action
+        """
         action = np.argmax(self.pi[observation])
 
         return action
 
-    def train(self, step_result: tuple) -> None:
+    def train(self, step_result: Tuple[Any, ...]) -> None:
+        """
+        Train the MC-control agent.
+
+        :param step_result: One-step tuple of (state, action, reward, next_state, done, truncated, info)
+        """
         s, a, r, ns, d, t, info = step_result
         self.trajectory.append({"s": s, "a": a, "r": r})
 

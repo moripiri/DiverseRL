@@ -1,6 +1,5 @@
-from typing import Optional, Type
+from typing import Any, Optional, Tuple, Type, Union
 
-import numpy as np
 import torch
 from torch import nn
 
@@ -10,14 +9,27 @@ class MLP(nn.Module):
         self,
         input_dim: int,
         output_dim: int,
-        hidden_units: tuple[int] = (256, 256),
-        mid_activation: Optional[str | Type[nn.Module]] = nn.ReLU,
-        last_activation: Optional[str | Type[nn.Module]] = None,
-        output_scale=1,
-        output_bias=0,
-        use_bias=True,
-        device=None,
+        hidden_units: Tuple[int, ...] = (256, 256),
+        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
+        output_scale: float = 1.0,
+        output_bias: float = 0.0,
+        use_bias: bool = True,
+        device: str = "cpu",
     ):
+        """
+        Multi layered perceptron (MLP), a collection of fully-connected layers each followed by an activation function.
+
+        :param input_dim: Dimension of the input
+        :param output_dim: Dimension of the output
+        :param hidden_units: Size of the hidden layers in MLP
+        :param mid_activation: Activation function of hidden layers
+        :param last_activation: Activation function of the last MLP layer
+        :param output_scale: How much to scale the output of the MLP
+        :param output_bias: How much to bias the output of the MLP
+        :param use_bias: Whether to use bias in linear layer
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__()
 
         self.input_dim = input_dim
@@ -47,7 +59,13 @@ class MLP(nn.Module):
 
         self.layers = nn.Sequential(*layers)
 
-    def forward(self, input: torch.Tensor | tuple) -> torch.Tensor:
+    def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
+        """
+        Return output of the MLP for the given input.
+
+        :param input: input(1~2 torch tensor)
+        :return: output (scaled and biased)
+        """
         if isinstance(input, tuple):
             input = torch.cat(input, dim=1)
 
@@ -58,4 +76,4 @@ if __name__ == "__main__":
     print(getattr(nn, "ReLU") == nn.ReLU)
     a = MLP(5, 2, mid_activation="ReLU6", last_activation=nn.Softmax)
     print(a)
-    print(a(torch.ones((1, 5))).argmax(1).item())
+    # print(a(torch.ones((1, 5))).argmax(1).item())

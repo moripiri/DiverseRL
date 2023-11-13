@@ -1,3 +1,6 @@
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Type, Union
+
 import gymnasium as gym
 import numpy as np
 import torch
@@ -6,6 +9,7 @@ from gymnasium import spaces
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
+from diverserl.common.utils import soft_update
 from diverserl.networks.basic_networks import MLP
 
 
@@ -19,9 +23,32 @@ class DDPG(DeepRL):
         batch_size: int = 256,
         buffer_size: int = 10**6,
         actor_lr: float = 0.001,
+        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         critic_lr: float = 0.001,
+        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         device="cpu",
-    ):
+    ) -> None:
+        """
+        DDPG(Deep Deterministic Policy Gradients)
+
+        Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al, 2015.
+
+        :param env: The environment for RL agent to learn from
+        :param gamma: The discount factor
+        :param tau: Interpolation factor in polyak averaging for target networks.
+        :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
+        :param batch_size: Minibatch size for optimizer.
+        :param buffer_size: Maximum length of replay buffer.
+        :param actor_lr: Learning rate for actor.
+        :param actor_optimizer: Optimizer class (or name) for actor.
+        :param actor_optimizer_kwargs: Parameter dict for actor optimizer.
+        :param critic_lr: Learning rate of the critic
+        :param critic_optimizer: Optimizer class (or str) for the critic
+        :param critic_optimizer_kwargs: Parameter dict for the critic optimizer
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(device)
 
         assert isinstance(env.observation_space, spaces.Box) and isinstance(
@@ -41,23 +68,25 @@ class DDPG(DeepRL):
             output_bias=self.action_bias,
             device=device,
         ).train()
-        self.target_actor = MLP(
-            self.state_dim,
-            self.action_dim,
-            last_activation="Tanh",
-            output_scale=self.action_scale,
-            output_bias=self.action_bias,
-            device=device,
-        ).eval()
-        self.critic = MLP(self.state_dim + self.action_dim, 1, device=device).train()
-        self.target_critic = MLP(self.state_dim + self.action_dim, 1, device=device).eval()
+        self.target_actor = deepcopy(self.actor).eval()
 
-        self.target_actor.load_state_dict(self.actor.state_dict())
-        self.target_critic.load_state_dict(self.critic.state_dict())
+        self.critic = MLP(self.state_dim + self.action_dim, 1, device=device).train()
+        self.target_critic = deepcopy(self.critic).eval()
 
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+
+        actor_optimizer = getattr(torch.optim, actor_optimizer) if isinstance(actor_optimizer, str) else actor_optimizer
+        if actor_optimizer_kwargs is None:
+            actor_optimizer_kwargs = {}
+
+        critic_optimizer = (
+            getattr(torch.optim, critic_optimizer) if isinstance(critic_optimizer, str) else critic_optimizer
+        )
+        if critic_optimizer_kwargs is None:
+            critic_optimizer_kwargs = {}
+
+        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
+        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
 
         self.gamma = gamma
         self.tau = tau
@@ -69,7 +98,13 @@ class DDPG(DeepRL):
     def __repr__(self):
         return "DDPG"
 
-    def get_action(self, observation: np.ndarray | torch.Tensor) -> list[float]:
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
+        """
+        Get the DDPG action from an observation (in training mode)
+
+        :param observation: The input observation
+        :return: The DDPG agent's action
+        """
         observation = super()._fix_ob_shape(observation)
 
         self.actor.train()
@@ -79,7 +114,13 @@ class DDPG(DeepRL):
 
         return np.clip(action + noise, -self.action_scale + self.action_bias, self.action_scale + self.action_bias)
 
-    def eval_action(self, observation: np.ndarray | torch.Tensor) -> list[float]:
+    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
+        """
+        Get the DDPG action from an observation (in evaluation mode)
+
+        :param observation: The input observation
+        :return: The DDPG agent's action (in evaluation mode)
+        """
         observation = super()._fix_ob_shape(observation)
 
         self.actor.eval()
@@ -88,7 +129,12 @@ class DDPG(DeepRL):
 
         return action
 
-    def train(self) -> dict:
+    def train(self) -> Dict[str, Any]:
+        """
+        Train the DDPG policy.
+
+        :return: Training result (actor_loss, critic_loss)
+        """
         self.training_step += 1
         self.actor.train()
 
@@ -109,10 +155,7 @@ class DDPG(DeepRL):
         actor_loss.backward()
         self.actor_optimizer.step()
 
-        for param, target_param in zip(self.actor.parameters(), self.target_actor.parameters()):
-            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
-
-        for param, target_param in zip(self.critic.parameters(), self.target_critic.parameters()):
-            target_param.data.copy_(self.tau * param.data + (1 - self.tau) * target_param.data)
+        soft_update(self.actor, self.target_actor, self.tau)
+        soft_update(self.critic, self.target_critic, self.tau)
 
         return {"actor_loss": actor_loss.detach().numpy(), "critic_loss": critic_loss.detach().numpy()}

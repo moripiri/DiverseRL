@@ -1,3 +1,6 @@
+from copy import deepcopy
+from typing import Any, Dict, List, Optional, Type, Union
+
 import gymnasium as gym
 import numpy as np
 import torch
@@ -13,14 +16,32 @@ class DQN(DeepRL):
     def __init__(
         self,
         env: gym.Env,
-        eps: float = 0.05,
+        eps: float = 0.1,
         gamma: float = 0.9,
         batch_size: int = 256,
         buffer_size: int = 10**6,
         learning_rate: float = 0.001,
+        optimizer: str | Type[torch.optim.Optimizer] = "Adam",
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
         target_copy_freq: int = 5,
         device: str = "cpu",
-    ):
+    ) -> None:
+        """
+        DQN(Deep-Q Network)
+
+        Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013.
+
+        :param env: The environment for RL agent to learn from
+        :param eps: Probability to conduct random action during training.
+        :param gamma: The discount factor
+        :param batch_size: Minibatch size for optimizer.
+        :param buffer_size: Maximum length of replay buffer.\
+        :param learning_rate: Learning rate of the Q-network
+        :param optimizer: Optimizer class (or str) for the Q-network
+        :param optimizer_kwargs: Parameter dict for the optimizer
+        :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(device)
 
         assert isinstance(env.observation_space, spaces.Box) and isinstance(
@@ -31,12 +52,15 @@ class DQN(DeepRL):
         self.action_dim = env.action_space.n
 
         self.q_network = MLP(self.state_dim, self.action_dim, device=device).train()
-        self.target_q_network = MLP(self.state_dim, self.action_dim, device=device).eval()
-
-        self.target_q_network.load_state_dict(self.q_network.state_dict())
+        self.target_q_network = deepcopy(self.q_network).eval()
 
         self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size)
-        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=learning_rate)
+
+        optimizer = getattr(torch.optim, optimizer) if isinstance(optimizer, str) else optimizer
+        if optimizer_kwargs is None:
+            optimizer_kwargs = {}
+
+        self.optimizer = optimizer(self.q_network.parameters(), lr=learning_rate, **optimizer_kwargs)
 
         self.training_step = 0
 
@@ -49,7 +73,13 @@ class DQN(DeepRL):
     def __repr__(self):
         return "DQN"
 
-    def get_action(self, observation: np.ndarray | torch.Tensor) -> int | list[int]:
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
+        """
+        Get the DQN action from an observation (in training mode)
+
+        :param observation: The input observation
+        :return: The DQN agent's action
+        """
         if np.random.rand() < self.eps:
             return np.random.randint(self.action_dim)
         else:
@@ -59,14 +89,25 @@ class DQN(DeepRL):
             with torch.no_grad():
                 return self.q_network(observation).argmax(1).numpy()[0]
 
-    def eval_action(self, observation: np.ndarray | torch.Tensor) -> int | list[int]:
+    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
+        """
+        Get the DQN action from an observation (in evaluation mode)
+
+        :param observation: The input observation
+        :return: The DQN agent's action (in evaluation mode)
+        """
         observation = super()._fix_ob_shape(observation)
         self.q_network.eval()
 
         with torch.no_grad():
             return self.q_network(observation).argmax(1).numpy()[0]
 
-    def train(self):
+    def train(self) -> Dict[str, Any]:
+        """
+        Train the DQN policy.
+
+        :return: Training result (train_loss)
+        """
         self.training_step += 1
         self.q_network.train()
 

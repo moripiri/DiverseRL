@@ -1,5 +1,5 @@
 """
-This contains commonly used networks in RL algorihtms.
+Network contains commonly used networks in RL algorihtms.
 """
 
 from diverserl.networks.basic_networks import MLP

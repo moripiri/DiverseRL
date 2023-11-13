@@ -1,10 +1,19 @@
+from typing import Tuple, Union
+
 import numpy as np
 import torch
 from torch import Tensor
 
 
 class ReplayBuffer:
-    def __init__(self, state_dim, action_dim, max_size=10**6) -> None:
+    def __init__(self, state_dim: int, action_dim: int, max_size=10**6) -> None:
+        """
+        Buffer to record and save the RL agent trajectories.
+
+        :param state_dim: Length of the state
+        :param action_dim: Length of the action
+        :param max_size: Maximum length of the ReplayBuffer
+        """
         self.max_size = max_size
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -22,7 +31,17 @@ class ReplayBuffer:
     def __len__(self) -> int:
         return self.idx
 
-    def add(self, s, a, r, ns, d, t) -> None:
+    def add(self, s: np.ndarray, a: Union[int, np.ndarray], r: float, ns: np.ndarray, d: bool, t: bool) -> None:
+        """
+        Add the one-step result to the buffer.
+
+        :param s: state
+        :param a: action
+        :param r: reward
+        :param ns: next state
+        :param d: done
+        :param t: truncated
+        """
         np.copyto(self.s[self.idx], s)
         np.copyto(self.a[self.idx], a)
         np.copyto(self.r[self.idx], r)
@@ -34,7 +53,13 @@ class ReplayBuffer:
         if self.idx == 0:
             self.full = True
 
-    def sample(self, batch_size: int) -> tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+    def sample(self, batch_size: int) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+        """
+        Randomly sample wanted size of mini batch from buffer.
+
+        :param batch_size: Length of the mini-batch
+        :return: Sampled mini batch
+        """
         ids = np.random.randint(0, self.max_size if self.full else self.idx, size=batch_size)
 
         states = torch.from_numpy(self.s[ids])

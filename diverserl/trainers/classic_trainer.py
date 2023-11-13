@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Any, Tuple, Union
 
 import gymnasium as gym
 
@@ -8,13 +8,20 @@ from diverserl.trainers.base import Trainer
 
 class ClassicTrainer(Trainer):
     def __init__(self, algo: ClassicRL, env: gym.Env, max_episode: int = 1000) -> None:
+        """
+        Trainer for Classic RL algorithms.
+
+        :param algo: RL algorithm
+        :param env: The environment for RL agent to learn from
+        :param max_episode: Maximum episode to train the classic RL algorithm.
+        """
         super().__init__(algo, env, max_episode)
 
         self.max_episode = max_episode
 
     def run(self) -> None:
         """
-        train algorithm
+        Train classic RL algorithm
         """
         with self.progress as progress:
             total_step = 0
@@ -67,10 +74,14 @@ class ClassicTrainer(Trainer):
             progress.console.print("=" * 100, style="bold")
             progress.console.print(f"Success ratio: {success_num / self.max_episode:.3f}")
 
-    def process_reward(self, step_result: tuple) -> tuple:
+    def process_reward(self, step_result: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """
         Post-process reward for better training of gymnasium toy_text environment
+
+        :param step_result: One-step tuple of (state, action, reward, next_state, done, truncated, info)
+        :return: Step_result with processed reward
         """
+
         s, a, r, ns, d, t, info = step_result
         if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1"] and r == 0:
             r -= 0.001
@@ -85,6 +96,13 @@ class ClassicTrainer(Trainer):
         return step_result
 
     def distinguish_success(self, r: float, ns: int) -> Union[bool, None]:
+        """
+        Determine whether the agent succeeded
+
+        :param r: Environment reward
+        :param ns: Next state
+        :return: Whether the agent succeeded
+        """
         if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
             if ns == self.algo.state_dim - 1:
                 return True
