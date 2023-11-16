@@ -24,4 +24,4 @@ repos:
     hooks:
         - id: pydocstyle
           args:
-              - --ignore=D100,D101,D105
+              - --ignore=D100,D101,D105,D212

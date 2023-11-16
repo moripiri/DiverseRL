@@ -21,13 +21,13 @@ class DQN(DeepRL):
         batch_size: int = 256,
         buffer_size: int = 10**6,
         learning_rate: float = 0.001,
-        optimizer: str | Type[torch.optim.Optimizer] = "Adam",
+        optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         target_copy_freq: int = 5,
         device: str = "cpu",
     ) -> None:
         """
-        DQN(Deep-Q Network)
+        DQN(Deep-Q Network).
 
         Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013.
 
@@ -75,7 +75,7 @@ class DQN(DeepRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
-        Get the DQN action from an observation (in training mode)
+        Get the DQN action from an observation (in training mode).
 
         :param observation: The input observation
         :return: The DQN agent's action
@@ -91,7 +91,7 @@ class DQN(DeepRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
-        Get the DQN action from an observation (in evaluation mode)
+        Get the DQN action from an observation (in evaluation mode).
 
         :param observation: The input observation
         :return: The DQN agent's action (in evaluation mode)
