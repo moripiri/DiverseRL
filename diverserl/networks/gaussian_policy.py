@@ -3,15 +3,16 @@ from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 import torch
 from torch import nn
 
-from diverserl.networks.base import Network
+from diverserl.networks import MLP
 
 
-class MLP(Network):
+class GaussianPolicy(MLP):
     def __init__(
         self,
         input_dim: int,
         output_dim: int,
         hidden_units: Tuple[int, ...] = (256, 256),
+        independent_std: bool = False,
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
         last_activation: Optional[Union[str, Type[nn.Module]]] = None,
@@ -25,25 +26,6 @@ class MLP(Network):
         use_bias: bool = True,
         device: str = "cpu",
     ):
-        """
-        Multi layered perceptron (MLP), a collection of fully-connected layers each followed by an activation function.
-
-        :param input_dim: Dimension of the input
-        :param output_dim: Dimension of the output
-        :param hidden_units: Size of the hidden layers in MLP
-        :param mid_activation: Activation function of hidden layers
-        :param mid_activation_kwargs: Parameters for middle activation
-        :param last_activation: Activation function of the last MLP layer
-        :param last_activation_kwargs: Parameters for last activation
-        :param kernel_initializer: Kernel initializer function for the network layers
-        :param kernel_initializer_kwargs: Parameters for the kernel initializer
-        :param bias_initializer: Bias initializer function for the network bias
-        :param bias_initializer_kwargs: Parameters for the bias initializer
-        :param output_scale: How much to scale the output of the MLP
-        :param output_bias: How much to bias the output of the MLP
-        :param use_bias: Whether to use bias in linear layer
-        :param device: Device (cpu, cuda, ...) on which the code should be run
-        """
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
@@ -56,14 +38,13 @@ class MLP(Network):
             kernel_initializer_kwargs=kernel_initializer_kwargs,
             bias_initializer=bias_initializer,
             bias_initializer_kwargs=bias_initializer_kwargs,
+            output_scale=output_scale,
+            output_bias=output_bias,
             use_bias=use_bias,
             device=device,
         )
 
-        self.output_scale = output_scale
-        self.output_bias = output_bias
-
-        self._make_layers()
+        self.independent_std = independent_std
 
     def _make_layers(self) -> None:
         """
@@ -77,7 +58,11 @@ class MLP(Network):
             if self.mid_activation is not None:
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        layers.append(nn.Linear(self.hidden_units[-1], self.output_dim, bias=self.use_bias, device=self.device))
+        if self.independent_std:
+            pass
+        else:
+            layers.append(nn.Linear(self.hidden_units[-1], 2 * self.output_dim, bias=self.use_bias, device=self.device))
+
         if self.last_activation is not None:
             layers.append(self.last_activation(**self.last_activation_kwargs))
 
@@ -95,21 +80,3 @@ class MLP(Network):
             self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
             if m.bias is not None:
                 self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
-
-    def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
-        """
-        Return output of the MLP for the given input.
-
-        :param input: input(1~2 torch tensor)
-        :return: output (scaled and biased)
-        """
-        if isinstance(input, tuple):
-            input = torch.cat(input, dim=1)
-
-        return self.output_scale * self.layers(input) + self.output_bias
-
-
-if __name__ == "__main__":
-    print(getattr(nn, "ReLU") == nn.ReLU)
-    a = MLP(5, 2, kernel_initializer="orthogonal_", bias_initializer="zeros_", bias_initializer_kwargs={})
-    print(a)

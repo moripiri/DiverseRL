@@ -9,10 +9,14 @@ class DeepRLTrainer(Trainer):
         self,
         algo: DeepRL,
         env: gym.Env,
+        eval_env: gym.Env,
         training_start: int = 256,
         training_num: int = 1,
         train_type: str = "online",
         max_step: int = 10000,
+        eval: bool = True,
+        eval_every: int = 1000,
+        eval_ep: int = 10,
     ) -> None:
         """
         Trainer for Deep RL algorithms.
@@ -24,7 +28,7 @@ class DeepRLTrainer(Trainer):
         :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
         """
-        super().__init__(algo, env, max_step)
+        super().__init__(algo, env, eval_env, max_step, eval, eval_every, eval_ep)
 
         self.training_start = training_start
         self.training_num = training_num
@@ -45,6 +49,47 @@ class DeepRLTrainer(Trainer):
             return episode_end
         else:
             return True
+
+    def evaluate(self) -> None:
+        """
+        Evaluate Deep RL algorithm.
+        """
+        ep_reward_list = []
+        local_step_list = []
+
+        for episode in range(self.eval_ep):
+            observation, info = self.eval_env.reset()
+            terminated, truncated = False, False
+            episode_reward = 0
+            local_step = 0
+
+            while not (terminated or truncated):
+                action = self.algo.eval_action(observation)
+
+                (
+                    next_observation,
+                    reward,
+                    terminated,
+                    truncated,
+                    info,
+                ) = self.eval_env.step(action)
+
+                observation = next_observation
+                episode_reward += reward
+
+                local_step += 1
+
+            ep_reward_list.append(episode_reward)
+            local_step_list.append(local_step)
+
+        avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
+        avg_local_step = sum(local_step_list) / len(local_step_list)
+
+        self.progress.console.print("=" * 100, style="bold")
+        self.progress.console.print(
+            f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
+        )
+        self.progress.console.print("=" * 100, style="bold")
 
     def run(self) -> None:
         """
@@ -88,6 +133,9 @@ class DeepRLTrainer(Trainer):
 
                     local_step += 1
                     total_step += 1
+
+                    if self.eval and total_step % self.eval_every == 0:
+                        self.evaluate()
 
                 episode += 1
 

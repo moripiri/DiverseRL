@@ -23,7 +23,7 @@ class DQN(DeepRL):
         learning_rate: float = 0.001,
         optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        target_copy_freq: int = 5,
+        target_copy_freq: int = 10,
         device: str = "cpu",
     ) -> None:
         """

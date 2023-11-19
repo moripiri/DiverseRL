@@ -69,4 +69,4 @@ class ReplayBuffer:
         dones = torch.from_numpy(self.d[ids])
         terminates = torch.from_numpy(self.t[ids])
 
-        return (states, actions, rewards, next_states, dones, terminates)
+        return states, actions, rewards, next_states, dones, terminates

@@ -8,9 +8,11 @@ from diverserl.trainers import ClassicTrainer
 # env = gym.make("FrozenLake-v1", map_name='8x8', is_slippery=False)
 # env = gym.make("Blackjack-v1")
 env = gym.make("Taxi-v3")
+eval_env = gym.make("Taxi-v3")
+
 # env = gym.make("CliffWalking-v0", max_episode_steps=50)
 
 # algo = MonteCarlo(env)
 algo = QLearning(env)
-trainer = ClassicTrainer(algo, env, max_episode=10000)
+trainer = ClassicTrainer(algo, env, eval_env, max_episode=10000, eval_every=100)
 trainer.run()
