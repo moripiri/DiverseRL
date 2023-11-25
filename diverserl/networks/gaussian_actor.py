@@ -1,18 +1,19 @@
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
+import numpy as np
 import torch
 from torch import nn
+from torch.distributions.normal import Normal
 
-from diverserl.networks import MLP
+from diverserl.networks.base import Network
 
 
-class GaussianPolicy(MLP):
+class GaussianActor(Network):
     def __init__(
         self,
         input_dim: int,
         output_dim: int,
         hidden_units: Tuple[int, ...] = (256, 256),
-        independent_std: bool = False,
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
         last_activation: Optional[Union[str, Type[nn.Module]]] = None,
@@ -38,13 +39,14 @@ class GaussianPolicy(MLP):
             kernel_initializer_kwargs=kernel_initializer_kwargs,
             bias_initializer=bias_initializer,
             bias_initializer_kwargs=bias_initializer_kwargs,
-            output_scale=output_scale,
-            output_bias=output_bias,
             use_bias=use_bias,
             device=device,
         )
 
-        self.independent_std = independent_std
+        self.output_scale = output_scale
+        self.output_bias = output_bias
+
+        self._make_layers()
 
     def _make_layers(self) -> None:
         """
@@ -58,25 +60,42 @@ class GaussianPolicy(MLP):
             if self.mid_activation is not None:
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        if self.independent_std:
-            pass
+        self.trunks = nn.Sequential(*layers)
+        self.mean_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
+        self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
+
+        self.trunks.apply(self._init_weights)
+        self.mean_layer.apply(self._init_weights)
+        torch.nn.init.constant_(self.logstd_layer.weight, val=0.0)
+
+    def forward(self, input: Union[torch.Tensor], deterministic=False) -> torch.tensor:
+        """
+        Return output of the Gaussian policy for the given input.
+
+        :param input: input(1~2 torch tensor)
+        :return: output (scaled and biased)
+        """
+        trunk_output = self.trunks(input)
+        output_mean = self.mean_layer(trunk_output)
+
+        output_std = torch.clamp(self.logstd_layer(trunk_output), -20.0, 2.0).exp()
+        self.dist = Normal(loc=output_mean, scale=output_std)
+
+        if deterministic:
+            sample = self.dist.mean
         else:
-            layers.append(nn.Linear(self.hidden_units[-1], 2 * self.output_dim, bias=self.use_bias, device=self.device))
+            sample = self.dist.rsample()
 
-        if self.last_activation is not None:
-            layers.append(self.last_activation(**self.last_activation_kwargs))
+        tanh_sample = torch.tanh(sample)
+        log_prob = self.dist.log_prob(sample)
+        log_prob -= torch.log(self.output_scale * (1 - tanh_sample.pow(2)) + 1e-10)
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
+        action = self.output_scale * tanh_sample + self.output_bias
 
-        self.layers = nn.Sequential(*layers)
-        self.layers.apply(self._init_weights)
+        return action, log_prob
 
-    def _init_weights(self, m: nn.Module) -> None:
-        """
-        Initialize layer weights and biases from wanted initializer specs.
 
-        :param m: a single torch layer
-        :return:
-        """
-        if isinstance(m, nn.Linear):
-            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
-            if m.bias is not None:
-                self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
+if __name__ == "__main__":
+    a = GaussianActor(5, 2)
+    print(a)
+    print(a(torch.ones((1, 5))))

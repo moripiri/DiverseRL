@@ -68,6 +68,14 @@ class Network(ABC, nn.Module):
     def _make_layers(self) -> None:
         pass
 
-    @abstractmethod
     def _init_weights(self, m: nn.Module) -> None:
-        pass
+        """
+        Initialize layer weights and biases from wanted initializer specs.
+
+        :param m: a single torch layer
+        :return:
+        """
+        if isinstance(m, nn.Linear):
+            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
+            if m.bias is not None:
+                self.bias_initializer(m.bias, **self.bias_initializer_kwargs)

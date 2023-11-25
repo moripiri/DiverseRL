@@ -84,18 +84,6 @@ class MLP(Network):
         self.layers = nn.Sequential(*layers)
         self.layers.apply(self._init_weights)
 
-    def _init_weights(self, m: nn.Module) -> None:
-        """
-        Initialize layer weights and biases from wanted initializer specs.
-
-        :param m: a single torch layer
-        :return:
-        """
-        if isinstance(m, nn.Linear):
-            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
-            if m.bias is not None:
-                self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
-
     def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
         """
         Return output of the MLP for the given input.
@@ -105,8 +93,9 @@ class MLP(Network):
         """
         if isinstance(input, tuple):
             input = torch.cat(input, dim=1)
+        output = self.layers(input)
 
-        return self.output_scale * self.layers(input) + self.output_bias
+        return self.output_scale * output + self.output_bias
 
 
 if __name__ == "__main__":

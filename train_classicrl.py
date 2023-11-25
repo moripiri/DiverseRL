@@ -14,5 +14,5 @@ eval_env = gym.make("Taxi-v3")
 
 # algo = MonteCarlo(env)
 algo = QLearning(env)
-trainer = ClassicTrainer(algo, env, eval_env, max_episode=10000, eval_every=100)
+trainer = ClassicTrainer(algo, env, eval_env, max_episode=1000, eval_every=100)
 trainer.run()

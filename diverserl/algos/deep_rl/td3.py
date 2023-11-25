@@ -28,7 +28,7 @@ class TD3(DDPG):
         critic_lr: float = 0.001,
         critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device="cpu",
+        device: str = "cpu",
     ) -> None:
         """
         TD3(Twin Delayed Deep Deterministic Policy Gradients)
