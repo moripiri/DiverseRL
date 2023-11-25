@@ -1,19 +1,20 @@
 from copy import deepcopy
 from typing import Any, Dict, Optional, Type, Union
 
-import gymnasium as gym
 import torch
 import torch.nn.functional as F
+from gymnasium import spaces
 
 from diverserl.algos.deep_rl import DDPG
-from diverserl.common.utils import soft_update
-from diverserl.networks.basic_networks import MLP
+from diverserl.common.utils import get_optimizer, soft_update
+from diverserl.networks.basic_networks import QNetwork
 
 
 class TD3(DDPG):
     def __init__(
         self,
-        env: gym.Env,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -54,33 +55,27 @@ class TD3(DDPG):
         """
 
         super().__init__(
-            env,
-            gamma,
-            tau,
-            noise_scale,
-            batch_size,
-            buffer_size,
-            actor_lr,
-            actor_optimizer,
-            actor_optimizer_kwargs,
-            critic_lr,
-            critic_optimizer,
-            critic_optimizer_kwargs,
-            device,
+            observation_space=observation_space,
+            action_space=action_space,
+            gamma=gamma,
+            tau=tau,
+            noise_scale=noise_scale,
+            batch_size=batch_size,
+            buffer_size=buffer_size,
+            actor_lr=actor_lr,
+            actor_optimizer=actor_optimizer,
+            actor_optimizer_kwargs=actor_optimizer_kwargs,
+            critic_lr=critic_lr,
+            critic_optimizer=critic_optimizer,
+            critic_optimizer_kwargs=critic_optimizer_kwargs,
+            device=device,
         )
 
-        self.critic2 = MLP(self.state_dim + self.action_dim, 1, device=device).train()
+        self.critic2 = QNetwork(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
         self.target_critic2 = deepcopy(self.critic2).eval()
 
-        critic2_optimizer = (
-            getattr(torch.optim, critic_optimizer) if isinstance(critic_optimizer, str) else critic_optimizer
-        )
-        if critic_optimizer_kwargs is None:
-            critic_optimizer_kwargs = {}
-
+        critic2_optimizer, critic2_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
         self.critic2_optimizer = critic2_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-
-        self.target_critic2.load_state_dict(self.critic2.state_dict())
 
         self.target_noise_scale = target_noise_scale
         self.policy_delay = policy_delay
@@ -135,8 +130,8 @@ class TD3(DDPG):
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
-            result_dict["actor_loss"] = actor_loss.detach().numpy()
-        result_dict["critic_loss"] = critic_loss.detach().numpy()
-        result_dict["critic2_loss"] = critic2_loss.detach().numpy()
+            result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
+        result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
+        result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
 
         return result_dict

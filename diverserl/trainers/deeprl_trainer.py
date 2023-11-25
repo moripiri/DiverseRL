@@ -14,7 +14,7 @@ class DeepRLTrainer(Trainer):
         training_num: int = 1,
         train_type: str = "online",
         max_step: int = 10000,
-        eval: bool = True,
+        do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
     ) -> None:
@@ -28,7 +28,7 @@ class DeepRLTrainer(Trainer):
         :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
         """
-        super().__init__(algo, env, eval_env, max_step, eval, eval_every, eval_ep)
+        super().__init__(algo, env, eval_env, max_step, do_eval, eval_every, eval_ep)
 
         self.training_start = training_start
         self.training_num = training_num
@@ -134,7 +134,7 @@ class DeepRLTrainer(Trainer):
                     local_step += 1
                     total_step += 1
 
-                    if self.eval and total_step % self.eval_every == 0:
+                    if self.do_eval and total_step % self.eval_every == 0:
                         self.evaluate()
 
                 episode += 1

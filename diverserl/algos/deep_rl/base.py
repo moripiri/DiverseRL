@@ -6,13 +6,11 @@ import torch
 
 
 class DeepRL(ABC):
-    def __init__(self, device="cpu") -> None:
+    def __init__(self) -> None:
         """
         The base of Deep RL algorithms
-
-        :param device: Device (cpu, cuda, ...) on which the code should be run.
         """
-        self.device = device
+        self.training_step = 0
 
     @abstractmethod
     def __repr__(self) -> str:

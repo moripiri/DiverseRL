@@ -11,8 +11,8 @@ from diverserl.networks.base import Network
 class GaussianActor(Network):
     def __init__(
         self,
-        input_dim: int,
-        output_dim: int,
+        state_dim: int,
+        action_dim: int,
         hidden_units: Tuple[int, ...] = (256, 256),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
@@ -28,8 +28,8 @@ class GaussianActor(Network):
         device: str = "cpu",
     ):
         super().__init__(
-            input_dim=input_dim,
-            output_dim=output_dim,
+            input_dim=state_dim,
+            output_dim=action_dim,
             hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,

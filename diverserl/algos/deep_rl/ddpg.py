@@ -1,7 +1,6 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Type, Union
 
-import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -9,14 +8,15 @@ from gymnasium import spaces
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import soft_update
-from diverserl.networks.basic_networks import MLP
+from diverserl.common.utils import get_optimizer, soft_update
+from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 
 
 class DDPG(DeepRL):
     def __init__(
         self,
-        env: gym.Env,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -28,7 +28,7 @@ class DDPG(DeepRL):
         critic_lr: float = 0.001,
         critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device="cpu",
+        device: str = "cpu",
     ) -> None:
         """
         DDPG(Deep Deterministic Policy Gradients)
@@ -49,18 +49,18 @@ class DDPG(DeepRL):
         :param critic_optimizer_kwargs: Parameter dict for the critic optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(device)
+        super().__init__()
 
-        assert isinstance(env.observation_space, spaces.Box) and isinstance(
-            env.action_space, spaces.Box
+        assert isinstance(observation_space, spaces.Box) and isinstance(
+            action_space, spaces.Box
         ), f"{self} supports only Box type observation space and action space."
 
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.shape[0]
-        self.action_scale = (env.action_space.high[0] - env.action_space.low[0]) / 2
-        self.action_bias = (env.action_space.high[0] + env.action_space.low[0]) / 2
+        self.state_dim = observation_space.shape[0]
+        self.action_dim = action_space.shape[0]
+        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
+        self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
-        self.actor = MLP(
+        self.actor = DeterministicActor(
             self.state_dim,
             self.action_dim,
             last_activation="Tanh",
@@ -70,20 +70,13 @@ class DDPG(DeepRL):
         ).train()
         self.target_actor = deepcopy(self.actor).eval()
 
-        self.critic = MLP(self.state_dim + self.action_dim, 1, device=device).train()
+        self.critic = QNetwork(self.state_dim, self.action_dim, device=device).train()
         self.target_critic = deepcopy(self.critic).eval()
 
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
 
-        actor_optimizer = getattr(torch.optim, actor_optimizer) if isinstance(actor_optimizer, str) else actor_optimizer
-        if actor_optimizer_kwargs is None:
-            actor_optimizer_kwargs = {}
-
-        critic_optimizer = (
-            getattr(torch.optim, critic_optimizer) if isinstance(critic_optimizer, str) else critic_optimizer
-        )
-        if critic_optimizer_kwargs is None:
-            critic_optimizer_kwargs = {}
+        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
+        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
 
         self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
         self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
@@ -92,8 +85,6 @@ class DDPG(DeepRL):
         self.tau = tau
         self.batch_size = batch_size
         self.noise_scale = noise_scale
-
-        self.training_step = 0
 
     def __repr__(self):
         return "DDPG"
@@ -158,4 +149,4 @@ class DDPG(DeepRL):
         soft_update(self.actor, self.target_actor, self.tau)
         soft_update(self.critic, self.target_critic, self.tau)
 
-        return {"actor_loss": actor_loss.detach().numpy(), "critic_loss": critic_loss.detach().numpy()}
+        return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}

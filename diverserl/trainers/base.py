@@ -6,14 +6,14 @@ from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
 
 class Trainer(ABC):
-    def __init__(self, algo, env: gym.Env, eval_env: gym.Env, total: int, eval: bool, eval_every: int, eval_ep: int):
+    def __init__(self, algo, env: gym.Env, eval_env: gym.Env, total: int, do_eval: bool, eval_every: int, eval_ep: int):
         """
         Base trainer for RL algorithms.
 
         :param algo: RL algorithm
         :param env: The environment for RL agent to learn from
         :param total: Ending point of the progress bar (max_episode or max_step)
-        :param eval: Whether to perform evaluation during training
+        :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode or steps
         :param eval_ep: How many episodes to run to perform evaluation
         """
@@ -21,7 +21,7 @@ class Trainer(ABC):
         self.env = env
         self.eval_env = eval_env
 
-        self.eval = eval
+        self.do_eval = do_eval
         self.eval_every = eval_every
         self.eval_ep = eval_ep
 

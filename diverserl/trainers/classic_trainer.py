@@ -15,7 +15,7 @@ class ClassicTrainer(Trainer):
         env: gym.Env,
         eval_env: gym.Env,
         max_episode: int = 1000,
-        eval: bool = True,
+        do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
     ) -> None:
@@ -25,11 +25,11 @@ class ClassicTrainer(Trainer):
         :param algo: RL algorithm
         :param env: The environment for RL agent to learn from
         :param max_episode: Maximum episode to train the classic RL algorithm
-        :param eval: Whether to perform evaluation during training
+        :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode
         :param eval_ep: How many episodes to run to perform evaluation
         """
-        super().__init__(algo, env, eval_env, max_episode, eval, eval_every, eval_ep)
+        super().__init__(algo, env, eval_env, max_episode, do_eval, eval_every, eval_ep)
 
         self.max_episode = max_episode
 
