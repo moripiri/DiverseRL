@@ -7,6 +7,8 @@ from torch.distributions.normal import Normal
 
 from diverserl.networks.base import Network
 
+LOG_STD_MIN = -20.0
+LOG_STD_MAX = 2.0
 
 class GaussianActor(Network):
     def __init__(
@@ -78,7 +80,7 @@ class GaussianActor(Network):
         trunk_output = self.trunks(input)
         output_mean = self.mean_layer(trunk_output)
 
-        output_std = torch.clamp(self.logstd_layer(trunk_output), -20.0, 2.0).exp()
+        output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
         self.dist = Normal(loc=output_mean, scale=output_std)
 
         if deterministic:

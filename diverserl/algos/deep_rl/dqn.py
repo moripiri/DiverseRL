@@ -17,6 +17,8 @@ class DQN(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
+        network_type: str = 'MLP',
+        network_config: Optional[Dict[str, Any]] = None,
         eps: float = 0.1,
         gamma: float = 0.9,
         batch_size: int = 256,
@@ -48,12 +50,11 @@ class DQN(DeepRL):
         assert isinstance(observation_space, spaces.Box) and isinstance(
             action_space, spaces.Discrete
         ), f"{self} supports only Box type observation space and Discrete type action space."
-
+        
         self.state_dim = observation_space.shape[0]
         self.action_dim = action_space.n
 
-        self.q_network = DeterministicActor(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
-        self.target_q_network = deepcopy(self.q_network).eval()
+        self._build_network(network_type, network_config, device)
 
         self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size)
 
@@ -70,6 +71,26 @@ class DQN(DeepRL):
 
     def __repr__(self):
         return "DQN"
+    
+    @staticmethod
+    def network_list():
+        return {'MLP': {'q_network': DeterministicActor}}
+    
+    def _build_network(self, network_type:str, network_config: Dict[str, Any], device: str = 'cpu'):
+        assert network_type in self.network_list().keys() 
+        if network_config is None:
+            network_config = dict()
+            
+        assert set(network_config.keys()).issubset(self.network_list()[network_type].keys())
+        for network in self.network_list()[network_type].keys():
+            if network not in network_config.keys():
+                network_config[network] = dict()
+    
+        q_network_class = self.network_list()[network_type]['q_network']
+        q_network_config = network_config['q_network']
+        self.q_network = q_network_class(state_dim=self.state_dim, action_dim=self.action_dim, device=device, **network_config[network]).train()
+        self.target_q_network = deepcopy(self.q_network).eval()
+    
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
