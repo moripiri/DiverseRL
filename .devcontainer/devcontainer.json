@@ -15,7 +15,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "pip3 install poetry; poetry lock; poetry install"
+	"postCreateCommand": "pip3 install poetry; poetry lock; poetry install; pip install rich; pip uninstall mujoco-py"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
