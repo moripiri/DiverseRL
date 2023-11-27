@@ -10,7 +10,7 @@ class DeepRL(ABC):
         """
         The base of Deep RL algorithms
         """
-        self.training_step = 0
+        self.training_count = 0
 
     @abstractmethod
     def __repr__(self) -> str:

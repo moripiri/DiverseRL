@@ -16,7 +16,9 @@ class DQN(DeepRL):
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Space,
+        action_space: spaces.Discrete,
+        network_type: str,
+        network_kwargs: Dict[str, Any],
         eps: float = 0.1,
         gamma: float = 0.9,
         batch_size: int = 256,
@@ -32,7 +34,8 @@ class DQN(DeepRL):
 
         Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013.
 
-        :param env: The environment for RL agent to learn from
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param eps: Probability to conduct random action during training.
         :param gamma: The discount factor
         :param batch_size: Minibatch size for optimizer.
@@ -44,10 +47,6 @@ class DQN(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__()
-
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Discrete
-        ), f"{self} supports only Box type observation space and Discrete type action space."
 
         self.state_dim = observation_space.shape[0]
         self.action_dim = action_space.n
@@ -70,6 +69,37 @@ class DQN(DeepRL):
 
     def __repr__(self):
         return "DQN"
+
+    @staticmethod
+    def network_list():
+        """
+        :return: List of networks that can be customized.
+        """
+        dqn_networks = {"MLP": {"q_network": DeterministicActor}}
+        return dqn_networks
+
+    @staticmethod
+    def env_support_check(observation_space: spaces.Space, action_space: spaces.Space):
+        assert isinstance(observation_space, spaces.Box) and isinstance(
+            action_space, spaces.Discrete
+        ), "DQN supports only Box type observation space and Discrete type action space."
+
+    def _build_networks(
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        network_type: str,
+        network_kwargs: Dict[str, Any],
+    ):
+        assert network_type in self.network_list().keys(), print(
+            f"{self} currently only supports {self.network_list().keys()}"
+        )
+        assert network_kwargs.keys() in self.network_list()[network_type].keys()
+
+        if len(observation_space.shape) == 1:
+            pass
+        else:
+            raise NotImplementedError
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
@@ -106,7 +136,7 @@ class DQN(DeepRL):
 
         :return: Training result (train_loss)
         """
-        self.training_step += 1
+        self.training_count += 1
         self.q_network.train()
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
@@ -121,7 +151,7 @@ class DQN(DeepRL):
         train_loss.backward()
         self.optimizer.step()
 
-        if self.training_step % self.target_copy_freq == 0:
+        if self.training_count % self.target_copy_freq == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
 
         return {"train_loss": train_loss.detach().cpu().numpy()}

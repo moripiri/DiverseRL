@@ -50,7 +50,7 @@ class GaussianActor(Network):
 
     def _make_layers(self) -> None:
         """
-        Make MLP layers from layer dimensions and activations and initialize its weights and biases.
+        Make Gaussian Actor layers from layer dimensions and activations and initialize its weights and biases.
         """
         layers = []
         layer_units = [self.input_dim, *self.hidden_units]

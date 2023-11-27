@@ -15,8 +15,8 @@ from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 class DDPG(DeepRL):
     def __init__(
         self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
+        observation_space: spaces.Box,
+        action_space: spaces.Box,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -35,7 +35,8 @@ class DDPG(DeepRL):
 
         Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al, 2015.
 
-        :param env: The environment for RL agent to learn from
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param gamma: The discount factor
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
@@ -126,7 +127,7 @@ class DDPG(DeepRL):
 
         :return: Training result (actor_loss, critic_loss)
         """
-        self.training_step += 1
+        self.training_count += 1
         self.actor.train()
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)

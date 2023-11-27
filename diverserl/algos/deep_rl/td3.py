@@ -13,8 +13,8 @@ from diverserl.networks.basic_networks import QNetwork
 class TD3(DDPG):
     def __init__(
         self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
+        observation_space: spaces.Box,
+        action_space: spaces.Box,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -36,7 +36,8 @@ class TD3(DDPG):
 
         Paper: Addressing Function Approximation Error in Actor-Critic Methods, Fujimoto et al, 2018
 
-        :param env: The environment for RL agent to learn from
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param gamma: Discount factor.
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
@@ -90,7 +91,7 @@ class TD3(DDPG):
 
         :return: Training result (actor_loss, critic_loss, critic2_loss)
         """
-        self.training_step += 1
+        self.training_count += 1
         self.actor.train()
 
         result_dict = dict()
@@ -119,7 +120,7 @@ class TD3(DDPG):
         critic2_loss.backward()
         self.critic2_optimizer.step()
 
-        if self.training_step % self.policy_delay == 0:
+        if self.training_count % self.policy_delay == 0:
             actor_loss = -self.critic((s, self.actor(s))).mean()
 
             self.actor_optimizer.zero_grad()
