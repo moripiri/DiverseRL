@@ -108,8 +108,8 @@ class DeterministicActor(MLP):
         kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        output_scale: float = 1.0,
-        output_bias: float = 0.0,
+        action_scale: float = 1.0,
+        action_bias: float = 0.0,
         use_bias: bool = True,
         device: str = "cpu",
     ):
@@ -129,13 +129,13 @@ class DeterministicActor(MLP):
             device=device,
         )
 
-        self.output_scale = output_scale
-        self.output_bias = output_bias
+        self.action_scale = action_scale
+        self.action_bias = action_bias
 
     def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
         output = super().forward(input)
 
-        return self.output_scale * output + self.output_bias
+        return self.action_scale * output + self.action_bias
 
 
 class QNetwork(MLP):

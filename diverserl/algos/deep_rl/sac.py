@@ -17,6 +17,8 @@ class SACv2(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
+        network_type: str = 'MLP',
+        network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         alpha: float = 0.1,
         train_alpha: bool = True,
@@ -62,7 +64,7 @@ class SACv2(DeepRL):
         :param alpha_optimizer_kwargs: Parameter dict for the alpha optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__()
+        super().__init__(network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device)
 
         assert isinstance(observation_space, spaces.Box) and isinstance(
             action_space, spaces.Box
@@ -73,26 +75,14 @@ class SACv2(DeepRL):
         self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
         self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
+        self._build_network()
+        
         self.log_alpha = torch.tensor(np.log(alpha), device=device, requires_grad=train_alpha)
         self.target_alpha = -self.action_dim if target_alpha is None else target_alpha
         self.train_alpha = train_alpha
 
         self.critic_update = critic_update
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
-
-        self.actor = GaussianActor(
-            state_dim=self.state_dim,
-            action_dim=self.action_dim,
-            output_scale=self.action_scale,
-            output_bias=self.action_bias,
-            device=device,
-        ).train()
-
-        self.critic = QNetwork(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
-        self.critic2 = QNetwork(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
-
-        self.target_critic = deepcopy(self.critic).eval()
-        self.target_critic2 = deepcopy(self.critic2).eval()
 
         actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
         critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
@@ -111,6 +101,28 @@ class SACv2(DeepRL):
 
     def __repr__(self):
         return "SACv2"
+    
+    @staticmethod
+    def network_list():
+        return {'MLP': {'actor': GaussianActor, 'critic': QNetwork}}
+    
+    def _build_network(self):
+        actor_class = self.network_list()[self.network_type]['actor']
+        critic_class = self.network_list()[self.network_type]['critic']
+        
+        actor_config = self.network_config['actor']
+        critic_config = self.network_config['critic']
+        
+        self.actor = actor_class(state_dim=self.state_dim, action_dim=self.action_dim,
+                                 action_scale = self.action_scale, action_bias=self.action_bias, device=self.device, **actor_config).train()
+        self.target_actor = deepcopy(self.actor).eval()
+        
+        self.critic = critic_class(state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config).train()
+        self.target_critic = deepcopy(self.critic).eval()
+        
+        self.critic2 = critic_class(state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config).train()
+        self.target_critic2 = deepcopy(self.critic).eval()
+
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
