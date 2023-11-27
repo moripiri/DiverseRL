@@ -11,7 +11,13 @@ class DeepRL(ABC):
     ) -> None:
         """
         The base of Deep RL algorithms
+
+        :param network_type: Type of DeepRL algorithm networks.
+        :param network_list: Dicts of required networks for the algorithm and its network class.
+        :param network_config: Configurations of the DeepRL algorithm networks.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
         """
+
         assert network_type in network_list.keys()
         if network_config is None:
             network_config = dict()
@@ -30,6 +36,22 @@ class DeepRL(ABC):
     @abstractmethod
     def __repr__(self) -> str:
         return "DeepRL"
+
+    @staticmethod
+    @abstractmethod
+    def network_list() -> Dict[str, Any]:
+        """
+        :return: Dicts of required networks for the algorithm and its network class.
+        """
+        pass
+
+    @abstractmethod
+    def _build_network(self) -> None:
+        """
+        Build neural networks required for the algorithm.
+        :return:
+        """
+        pass
 
     def _fix_ob_shape(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """

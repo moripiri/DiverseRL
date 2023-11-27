@@ -42,6 +42,8 @@ class TD3(DeepRL):
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from
+        :param network_type: Type of the TD3 networks to be used.
+        :param network_config: Configurations of the TD3 networks.
         :param gamma: Discount factor.
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
@@ -94,10 +96,10 @@ class TD3(DeepRL):
         return "TD3"
 
     @staticmethod
-    def network_list():
+    def network_list() -> Dict[str, Any]:
         return {"MLP": {"actor": DeterministicActor, "critic": QNetwork}}
 
-    def _build_network(self):
+    def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["actor"]
         critic_class = self.network_list()[self.network_type]["critic"]
 

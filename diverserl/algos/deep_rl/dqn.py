@@ -36,6 +36,8 @@ class DQN(DeepRL):
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from
+        :param network_type: Type of the DQN networks to be used.
+        :param network_config: Configurations of the DQN networks.
         :param eps: Probability to conduct random action during training.
         :param gamma: The discount factor
         :param batch_size: Minibatch size for optimizer.
@@ -70,14 +72,14 @@ class DQN(DeepRL):
         self.learning_rate = learning_rate
         self.target_copy_freq = target_copy_freq
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DQN"
 
     @staticmethod
-    def network_list():
+    def network_list() -> Dict[str, Any]:
         return {"MLP": {"q_network": DeterministicActor}}
 
-    def _build_network(self):
+    def _build_network(self) -> None:
         q_network_class = self.network_list()[self.network_type]["q_network"]
         q_network_config = self.network_config["q_network"]
 

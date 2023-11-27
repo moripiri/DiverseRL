@@ -7,6 +7,9 @@ from torch.distributions.normal import Normal
 
 from diverserl.networks.base import Network
 
+LOG_STD_MIN = -20.0
+LOG_STD_MAX = 2.0
+
 
 class GaussianActor(Network):
     def __init__(
@@ -22,8 +25,8 @@ class GaussianActor(Network):
         kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        output_scale: float = 1.0,
-        output_bias: float = 0.0,
+        action_scale: float = 1.0,
+        action_bias: float = 0.0,
         use_bias: bool = True,
         device: str = "cpu",
     ):
@@ -43,8 +46,8 @@ class GaussianActor(Network):
             device=device,
         )
 
-        self.output_scale = output_scale
-        self.output_bias = output_bias
+        self.action_scale = action_scale
+        self.action_bias = action_bias
 
         self._make_layers()
 
@@ -88,9 +91,9 @@ class GaussianActor(Network):
 
         tanh_sample = torch.tanh(sample)
         log_prob = self.dist.log_prob(sample)
-        log_prob -= torch.log(self.output_scale * (1 - tanh_sample.pow(2)) + 1e-10)
+        log_prob -= torch.log(self.action_scale * (1 - tanh_sample.pow(2)) + 1e-10)
         log_prob = log_prob.sum(dim=-1, keepdim=True)
-        action = self.output_scale * tanh_sample + self.output_bias
+        action = self.action_scale * tanh_sample + self.action_bias
 
         return action, log_prob
 

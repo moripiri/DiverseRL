@@ -15,8 +15,10 @@ from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 class DDPG(DeepRL):
     def __init__(
         self,
-        observation_space: spaces.Box,
-        action_space: spaces.Box,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        network_type: str = "MLP",
+        network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -35,9 +37,10 @@ class DDPG(DeepRL):
 
         Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al, 2015.
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
+        :param env: The environment for RL agent to learn from
         :param gamma: The discount factor
+        :param network_type: Type of the DDPG networks to be used.
+        :param network_config: Configurations of the DDPG networks.
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
         :param batch_size: Minibatch size for optimizer.
@@ -78,14 +81,14 @@ class DDPG(DeepRL):
         self.batch_size = batch_size
         self.noise_scale = noise_scale
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "DDPG"
 
     @staticmethod
-    def network_list():
+    def network_list() -> Dict[str, Any]:
         return {"MLP": {"actor": DeterministicActor, "critic": QNetwork}}
 
-    def _build_network(self):
+    def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["actor"]
         critic_class = self.network_list()[self.network_type]["critic"]
 
