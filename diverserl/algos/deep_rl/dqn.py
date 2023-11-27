@@ -16,9 +16,9 @@ class DQN(DeepRL):
     def __init__(
         self,
         observation_space: spaces.Space,
-        action_space: spaces.Discrete,
-        network_type: str,
-        network_kwargs: Dict[str, Any],
+        action_space: spaces.Space,
+        network_type: str = "MLP",
+        network_config: Optional[Dict[str, Any]] = None,
         eps: float = 0.1,
         gamma: float = 0.9,
         batch_size: int = 256,
@@ -46,13 +46,18 @@ class DQN(DeepRL):
         :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__()
+        super().__init__(
+            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+        )
+
+        assert isinstance(observation_space, spaces.Box) and isinstance(
+            action_space, spaces.Discrete
+        ), f"{self} supports only Box type observation space and Discrete type action space."
 
         self.state_dim = observation_space.shape[0]
         self.action_dim = action_space.n
 
-        self.q_network = DeterministicActor(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
-        self.target_q_network = deepcopy(self.q_network).eval()
+        self._build_network()
 
         self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size)
 
@@ -65,41 +70,21 @@ class DQN(DeepRL):
         self.learning_rate = learning_rate
         self.target_copy_freq = target_copy_freq
 
-        self.device = device
-
     def __repr__(self):
         return "DQN"
 
     @staticmethod
     def network_list():
-        """
-        :return: List of networks that can be customized.
-        """
-        dqn_networks = {"MLP": {"q_network": DeterministicActor}}
-        return dqn_networks
+        return {"MLP": {"q_network": DeterministicActor}}
 
-    @staticmethod
-    def env_support_check(observation_space: spaces.Space, action_space: spaces.Space):
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Discrete
-        ), "DQN supports only Box type observation space and Discrete type action space."
+    def _build_network(self):
+        q_network_class = self.network_list()[self.network_type]["q_network"]
+        q_network_config = self.network_config["q_network"]
 
-    def _build_networks(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str,
-        network_kwargs: Dict[str, Any],
-    ):
-        assert network_type in self.network_list().keys(), print(
-            f"{self} currently only supports {self.network_list().keys()}"
-        )
-        assert network_kwargs.keys() in self.network_list()[network_type].keys()
-
-        if len(observation_space.shape) == 1:
-            pass
-        else:
-            raise NotImplementedError
+        self.q_network = q_network_class(
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **q_network_config
+        ).train()
+        self.target_q_network = deepcopy(self.q_network).eval()
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """

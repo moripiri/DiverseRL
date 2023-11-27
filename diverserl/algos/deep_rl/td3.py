@@ -1,20 +1,24 @@
 from copy import deepcopy
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from gymnasium import spaces
 
-from diverserl.algos.deep_rl import DDPG
+from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, soft_update
-from diverserl.networks.basic_networks import QNetwork
+from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 
 
-class TD3(DDPG):
+class TD3(DeepRL):
     def __init__(
         self,
-        observation_space: spaces.Box,
-        action_space: spaces.Box,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        network_type: str = "MLP",
+        network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         tau: float = 0.05,
         noise_scale: float = 0.1,
@@ -54,36 +58,103 @@ class TD3(DDPG):
         :param critic_optimizer_kwargs: Parameter dict for critic optimizer.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
-            gamma=gamma,
-            tau=tau,
-            noise_scale=noise_scale,
-            batch_size=batch_size,
-            buffer_size=buffer_size,
-            actor_lr=actor_lr,
-            actor_optimizer=actor_optimizer,
-            actor_optimizer_kwargs=actor_optimizer_kwargs,
-            critic_lr=critic_lr,
-            critic_optimizer=critic_optimizer,
-            critic_optimizer_kwargs=critic_optimizer_kwargs,
-            device=device,
+            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
-        self.critic2 = QNetwork(state_dim=self.state_dim, action_dim=self.action_dim, device=device).train()
-        self.target_critic2 = deepcopy(self.critic2).eval()
+        assert isinstance(observation_space, spaces.Box) and isinstance(
+            action_space, spaces.Box
+        ), f"{self} supports only Box type observation space and action space."
 
-        critic2_optimizer, critic2_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-        self.critic2_optimizer = critic2_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.state_dim = observation_space.shape[0]
+        self.action_dim = action_space.shape[0]
+        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
+        self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
+        self._build_network()
+
+        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
+
+        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
+        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
+
+        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
+        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+
+        self.gamma = gamma
+        self.tau = tau
+        self.batch_size = batch_size
+        self.noise_scale = noise_scale
         self.target_noise_scale = target_noise_scale
-        self.policy_delay = policy_delay
         self.noise_clip = noise_clip
+        self.policy_delay = policy_delay
 
     def __repr__(self) -> str:
         return "TD3"
+
+    @staticmethod
+    def network_list():
+        return {"MLP": {"actor": DeterministicActor, "critic": QNetwork}}
+
+    def _build_network(self):
+        actor_class = self.network_list()[self.network_type]["actor"]
+        critic_class = self.network_list()[self.network_type]["critic"]
+
+        actor_config = self.network_config["actor"]
+        critic_config = self.network_config["critic"]
+
+        self.actor = actor_class(
+            state_dim=self.state_dim,
+            action_dim=self.action_dim,
+            last_activation="Tanh",
+            action_scale=self.action_scale,
+            action_bias=self.action_bias,
+            device=self.device,
+            **actor_config,
+        ).train()
+        self.target_actor = deepcopy(self.actor).eval()
+
+        self.critic = critic_class(
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
+        ).train()
+        self.target_critic = deepcopy(self.critic).eval()
+
+        self.critic2 = critic_class(
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
+        ).train()
+        self.target_critic2 = deepcopy(self.critic2).eval()
+
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
+        """
+        Get the DDPG action from an observation (in training mode)
+
+        :param observation: The input observation
+        :return: The DDPG agent's action
+        """
+        observation = super()._fix_ob_shape(observation)
+
+        self.actor.train()
+        with torch.no_grad():
+            action = self.actor(observation).numpy()[0]
+            noise = np.random.normal(loc=0, scale=self.noise_scale, size=self.action_dim)
+
+        return np.clip(action + noise, -self.action_scale + self.action_bias, self.action_scale + self.action_bias)
+
+    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
+        """
+        Get the DDPG action from an observation (in evaluation mode)
+
+        :param observation: The input observation
+        :return: The DDPG agent's action (in evaluation mode)
+        """
+        observation = super()._fix_ob_shape(observation)
+
+        self.actor.eval()
+        with torch.no_grad():
+            action = self.actor(observation).numpy()[0]
+
+        return action
 
     def train(self) -> Dict[str, Any]:
         """

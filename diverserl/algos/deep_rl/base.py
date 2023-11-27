@@ -6,10 +6,25 @@ import torch
 
 
 class DeepRL(ABC):
-    def __init__(self) -> None:
+    def __init__(
+        self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
+    ) -> None:
         """
         The base of Deep RL algorithms
         """
+        assert network_type in network_list.keys()
+        if network_config is None:
+            network_config = dict()
+
+        assert set(network_config.keys()).issubset(network_list[network_type].keys())
+        for network in network_list[network_type].keys():
+            if network not in network_config.keys():
+                network_config[network] = dict()
+
+        self.network_type = network_type
+        self.network_config = network_config
+
+        self.device = device
         self.training_count = 0
 
     @abstractmethod

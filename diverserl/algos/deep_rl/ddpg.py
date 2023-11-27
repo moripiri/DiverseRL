@@ -50,7 +50,9 @@ class DDPG(DeepRL):
         :param critic_optimizer_kwargs: Parameter dict for the critic optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__()
+        super().__init__(
+            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+        )
 
         assert isinstance(observation_space, spaces.Box) and isinstance(
             action_space, spaces.Box
@@ -61,18 +63,7 @@ class DDPG(DeepRL):
         self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
         self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
-        self.actor = DeterministicActor(
-            self.state_dim,
-            self.action_dim,
-            last_activation="Tanh",
-            output_scale=self.action_scale,
-            output_bias=self.action_bias,
-            device=device,
-        ).train()
-        self.target_actor = deepcopy(self.actor).eval()
-
-        self.critic = QNetwork(self.state_dim, self.action_dim, device=device).train()
-        self.target_critic = deepcopy(self.critic).eval()
+        self._build_network()
 
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
 
@@ -89,6 +80,33 @@ class DDPG(DeepRL):
 
     def __repr__(self):
         return "DDPG"
+
+    @staticmethod
+    def network_list():
+        return {"MLP": {"actor": DeterministicActor, "critic": QNetwork}}
+
+    def _build_network(self):
+        actor_class = self.network_list()[self.network_type]["actor"]
+        critic_class = self.network_list()[self.network_type]["critic"]
+
+        actor_config = self.network_config["actor"]
+        critic_config = self.network_config["critic"]
+
+        self.actor = actor_class(
+            state_dim=self.state_dim,
+            action_dim=self.action_dim,
+            last_activation="Tanh",
+            action_scale=self.action_scale,
+            action_bias=self.action_bias,
+            device=self.device,
+            **actor_config,
+        ).train()
+        self.target_actor = deepcopy(self.actor).eval()
+
+        self.critic = critic_class(
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
+        ).train()
+        self.target_critic = deepcopy(self.critic).eval()
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """

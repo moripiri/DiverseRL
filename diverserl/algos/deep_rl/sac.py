@@ -109,6 +109,10 @@ class SACv2(DeepRL):
             alpha_optimizer, alpha_optimizer_kwargs = get_optimizer(alpha_optimizer, alpha_optimizer_kwargs)
             self.alpha_optimizer = alpha_optimizer([self.log_alpha], lr=alpha_lr, **alpha_optimizer_kwargs)
 
+        self.gamma = gamma
+        self.tau = tau
+        self.batch_size = batch_size
+
     def __repr__(self):
         return "SACv2"
 
