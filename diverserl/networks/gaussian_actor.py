@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
-import numpy as np
 import torch
 from torch import nn
 from torch.distributions.normal import Normal
@@ -19,8 +18,6 @@ class GaussianActor(Network):
         hidden_units: Tuple[int, ...] = (256, 256),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
         kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
         kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
@@ -36,8 +33,6 @@ class GaussianActor(Network):
             hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,
-            last_activation=last_activation,
-            last_activation_kwargs=last_activation_kwargs,
             kernel_initializer=kernel_initializer,
             kernel_initializer_kwargs=kernel_initializer_kwargs,
             bias_initializer=bias_initializer,
@@ -73,7 +68,7 @@ class GaussianActor(Network):
 
     def forward(self, input: Union[torch.Tensor], deterministic=False) -> torch.tensor:
         """
-        Return output of the Gaussian policy for the given input.
+        Return output of the Gaussian actor for the given input.
 
         :param input: input(1~2 torch tensor)
         :return: output (scaled and biased)
