@@ -59,6 +59,7 @@ class MLP(Network):
         )
 
         self._make_layers()
+        self.to(torch.device(device))
 
     def _make_layers(self) -> None:
         """
@@ -89,6 +90,7 @@ class MLP(Network):
         if isinstance(input, tuple):
             input = torch.cat(input, dim=1)
 
+        input = input.to(self.device)
         output = self.layers(input)
 
         return output

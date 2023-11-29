@@ -75,7 +75,7 @@ class TD3(DeepRL):
 
         self._build_network()
 
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
+        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
         actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
         critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
@@ -138,7 +138,7 @@ class TD3(DeepRL):
 
         self.actor.train()
         with torch.no_grad():
-            action = self.actor(observation).numpy()[0]
+            action = self.actor(observation).cpu().numpy()[0]
             noise = np.random.normal(loc=0, scale=self.noise_scale, size=self.action_dim)
 
         return np.clip(action + noise, -self.action_scale + self.action_bias, self.action_scale + self.action_bias)
@@ -154,7 +154,7 @@ class TD3(DeepRL):
 
         self.actor.eval()
         with torch.no_grad():
-            action = self.actor(observation).numpy()[0]
+            action = self.actor(observation).cpu().numpy()[0]
 
         return action
 
@@ -176,7 +176,7 @@ class TD3(DeepRL):
                 self.target_actor(ns)
                 + torch.normal(0, self.target_noise_scale, (self.batch_size, self.action_dim)).clamp(
                     -self.noise_clip, self.noise_clip
-                )
+                ).to(self.device)
             ).clamp(-self.action_scale + self.action_bias, self.action_scale + self.action_bias)
             target_value = r + self.gamma * (1 - d) * torch.minimum(
                 self.target_critic((ns, target_action)), self.target_critic2((ns, target_action))

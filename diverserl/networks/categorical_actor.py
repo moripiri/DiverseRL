@@ -39,6 +39,7 @@ class CategoricalActor(Network):
         )
 
         self._make_layers()
+        self.to(torch.device(device))
 
     def _make_layers(self) -> None:
         """
@@ -65,9 +66,9 @@ class CategoricalActor(Network):
         :param input: input(1 torch tensor)
         :return: output
         """
+        input = input.to(self.device)
 
         probs = self.layers(input)
-
         self.dist = Categorical(probs)
 
         if deterministic:
@@ -81,6 +82,6 @@ class CategoricalActor(Network):
 
 
 if __name__ == "__main__":
-    a = CategoricalActor(5, 2)
+    a = CategoricalActor(5, 3, device='cuda')
     print(a)
-    print(a(torch.ones((1, 5))))
+    print(a(torch.ones((1, 5)), deterministic=True))

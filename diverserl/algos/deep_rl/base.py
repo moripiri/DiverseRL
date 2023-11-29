@@ -72,7 +72,7 @@ class DeepRL(ABC):
             else:
                 observation = torch.unsqueeze(observation, dim=0)
 
-        return observation
+        return observation.to(self.device)
 
     @abstractmethod
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:

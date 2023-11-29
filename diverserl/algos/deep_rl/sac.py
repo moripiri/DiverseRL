@@ -86,7 +86,7 @@ class SACv2(DeepRL):
         self.train_alpha = train_alpha
 
         self.critic_update = critic_update
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
+        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
         actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
         critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
@@ -150,7 +150,7 @@ class SACv2(DeepRL):
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.numpy()[0]
+        return action.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -165,7 +165,7 @@ class SACv2(DeepRL):
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.numpy()[0]
+        return action.cpu().numpy()[0]
 
     @property
     def alpha(self):
@@ -300,7 +300,7 @@ class SACv1(DeepRL):
         self.alpha = alpha
         self.tau = tau
 
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size)
+        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
         self.batch_size = batch_size
 
         self._build_network()
@@ -362,7 +362,7 @@ class SACv1(DeepRL):
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.numpy()[0]
+        return action.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -377,7 +377,7 @@ class SACv1(DeepRL):
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.numpy()[0]
+        return action.cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
         """

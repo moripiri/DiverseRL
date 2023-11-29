@@ -61,7 +61,7 @@ class DQN(DeepRL):
 
         self._build_network()
 
-        self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size)
+        self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size, device=self.device)
 
         optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
         self.optimizer = optimizer(self.q_network.parameters(), lr=learning_rate, **optimizer_kwargs)
@@ -102,7 +102,7 @@ class DQN(DeepRL):
 
             self.q_network.train()
             with torch.no_grad():
-                return self.q_network(observation).argmax(1).numpy()[0]
+                return self.q_network(observation).argmax(1).cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
@@ -115,7 +115,7 @@ class DQN(DeepRL):
         self.q_network.eval()
 
         with torch.no_grad():
-            return self.q_network(observation).argmax(1).numpy()[0]
+            return self.q_network(observation).argmax(1).cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
         """

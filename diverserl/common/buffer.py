@@ -6,7 +6,7 @@ from torch import Tensor
 
 
 class ReplayBuffer:
-    def __init__(self, state_dim: int, action_dim: int, max_size=10**6) -> None:
+    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, device='cpu') -> None:
         """
         Buffer to record and save the RL agent trajectories.
 
@@ -14,6 +14,7 @@ class ReplayBuffer:
         :param action_dim: Length of the action
         :param max_size: Maximum length of the ReplayBuffer
         """
+        self.device = device
         self.max_size = max_size
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -62,11 +63,11 @@ class ReplayBuffer:
         """
         ids = np.random.randint(0, self.max_size if self.full else self.idx, size=batch_size)
 
-        states = torch.from_numpy(self.s[ids])
-        actions = torch.from_numpy(self.a[ids])
-        rewards = torch.from_numpy(self.r[ids])
-        next_states = torch.from_numpy(self.ns[ids])
-        dones = torch.from_numpy(self.d[ids])
-        terminates = torch.from_numpy(self.t[ids])
+        states = torch.from_numpy(self.s[ids]).to(self.device)
+        actions = torch.from_numpy(self.a[ids]).to(self.device)
+        rewards = torch.from_numpy(self.r[ids]).to(self.device)
+        next_states = torch.from_numpy(self.ns[ids]).to(self.device)
+        dones = torch.from_numpy(self.d[ids]).to(self.device)
+        terminates = torch.from_numpy(self.t[ids]).to(self.device)
 
         return states, actions, rewards, next_states, dones, terminates

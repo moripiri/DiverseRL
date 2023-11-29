@@ -8,13 +8,13 @@ from diverserl.trainers import DeepRLTrainer
 # env = gym.make("CartPole-v1")
 
 # eval_env = gym.make("CartPole-v1")
-env = gym.make("InvertedDoublePendulum-v4")
+env = gym.make("InvertedPendulum-v4")
 eval_env = deepcopy(env)
 
 # algo = DQN(env.observation_space, env.action_space)
 # algo = DDPG(env)
 # algo = TD3(env)
-algo = SACv1(env.observation_space, env.action_space)
+algo = TD3(env.observation_space, env.action_space, device='cuda')
 
 trainer = DeepRLTrainer(algo, env, eval_env, training_start=1000, max_step=100000)
 trainer.run()
