@@ -67,14 +67,15 @@ class GaussianActor(Network):
         self.mean_layer.apply(self._init_weights)
         torch.nn.init.constant_(self.logstd_layer.weight, val=0.0)
 
-    def forward(self, input: Union[torch.Tensor], deterministic=False) -> torch.tensor:
+    def forward(self, state: Union[torch.Tensor], deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Return output of the Gaussian actor for the given input.
+        Return action and its log_probability of the Gaussian actor for the given state.
 
-        :param input: input(1~2 torch tensor)
-        :return: output (scaled and biased)
+        :param state: state(1~2 torch tensor)
+        :param deterministic: whether to sample action from the computed distribution.
+        :return: action (scaled and biased), log_prob
         """
-        dist = self.compute_dist(input)
+        dist = self.compute_dist(state)
 
         if deterministic:
             sample = dist.mean
@@ -89,21 +90,43 @@ class GaussianActor(Network):
 
         return action, log_prob
 
-    def compute_dist(self, input: Union[torch.Tensor]) -> torch.tensor:
+    def compute_dist(self, state: torch.Tensor) -> Normal:
         """
-        Return Normal distribution of the Gaussian actor for the given input.
+        Return Normal distribution of the Gaussian actor for the given state.
 
-        :param input: input(a torch tensor)
-        :return: output (scaled and biased)
+        :param state: state(a torch tensor)
+        :return: Normal distribution
         """
-        input = input.to(self.device)
-        trunk_output = self.trunks(input)
+        state = state.to(self.device)
+        trunk_output = self.trunks(state)
         output_mean = self.mean_layer(trunk_output)
 
         output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
         dist = Normal(loc=output_mean, scale=output_std)
 
         return dist
+
+    def log_prob(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        """
+        Return log_probability of the Gaussian actor for the given state.
+
+        :param state: state(a torch tensor)
+        :param action: wanted action to calculate its log_probability
+        :return: log_prob
+        """
+        dist = self.compute_dist(state)
+
+        return dist.log_prob(action)
+
+    def entropy(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Return entropy of the Gaussian actor for the given state.
+
+        :param state: state(a torch tensor)
+        :return: entropy
+        """
+        dist = self.compute_dist(state)
+        return dist.entropy()
 
 
 if __name__ == "__main__":

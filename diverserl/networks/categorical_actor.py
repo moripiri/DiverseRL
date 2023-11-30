@@ -59,29 +59,75 @@ class CategoricalActor(Network):
         self.layers = nn.Sequential(*layers)
         self.layers.apply(self._init_weights)
 
-    def forward(self, input: torch.Tensor, deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, state: torch.Tensor, deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Return output of the Categorical Actor for the given input.
+        Return output of the Categorical Actor for the given state.
 
-        :param input: input(1 torch tensor)
+        :param state: state (1 torch tensor)
+        :param deterministic: whether to sample action from the computed distribution.
         :return: output
         """
-        input = input.to(self.device)
-
-        probs = self.layers(input)
-        self.dist = Categorical(probs)
+        dist = self.compute_dist(state)
 
         if deterministic:
-            action = self.dist.logits.argmax(axis=-1)
+            action = dist.logits.argmax(axis=-1)
         else:
-            action = self.dist.sample()
+            action = dist.sample()
 
-        log_prob = self.dist.log_prob(action)
+        log_prob = dist.log_prob(action)
 
         return action, log_prob
 
+    def compute_dist(self, state: torch.Tensor) -> Categorical:
+        """
+        Return Categorical distribution of the Categorical actor for the given state.
+
+        :param state: state(a torch tensor)
+        :return: Categorical distribution
+        """
+
+        state = state.to(self.device)
+
+        probs = self.layers(state)
+        dist = Categorical(probs)
+
+        return dist
+
+    def prob(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Return probability of the Categorical actor for the given state.
+
+        :param state: state(a torch tensor)
+        :return: prob
+        """
+        dist = self.compute_dist(state)
+
+        return dist.logits
+
+    def log_prob(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        """
+        Return log_probability of the Categorical actor for the given state.
+
+        :param state: state(a torch tensor)
+        :param action: wanted action to calculate its log_probability
+        :return: log_prob
+        """
+        dist = self.compute_dist(state)
+
+        return dist.log_prob(action)
+
+    def entropy(self, state: torch.Tensor) -> torch.Tensor:
+        """
+        Return entropy of the Categorical actor for the given state.
+
+        :param state: state(a torch tensor)
+        :return: entropy
+        """
+        dist = self.compute_dist(state)
+        return dist.entropy()
+
 
 if __name__ == "__main__":
-    a = CategoricalActor(5, 3, device='cuda')
+    a = CategoricalActor(5, 3, device="cuda")
     print(a)
     print(a(torch.ones((1, 5)), deterministic=True))
