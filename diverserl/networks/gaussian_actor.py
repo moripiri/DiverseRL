@@ -15,6 +15,7 @@ class GaussianActor(Network):
         self,
         state_dim: int,
         action_dim: int,
+        squash: bool = True,
         hidden_units: Tuple[int, ...] = (256, 256),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
@@ -40,7 +41,7 @@ class GaussianActor(Network):
             use_bias=use_bias,
             device=device,
         )
-
+        self.squash = squash
         self.action_scale = action_scale
         self.action_bias = action_bias
 
@@ -84,8 +85,11 @@ class GaussianActor(Network):
 
         tanh_sample = torch.tanh(sample)
         log_prob = dist.log_prob(sample)
-        log_prob -= torch.log(self.action_scale * (1 - tanh_sample.pow(2)) + 1e-10)
-        log_prob = log_prob.sum(dim=-1, keepdim=True)
+
+        if self.squash:
+            log_prob -= torch.log(self.action_scale * (1 - tanh_sample.pow(2)) + 1e-10)
+            log_prob = log_prob.sum(dim=-1, keepdim=True)
+
         action = self.action_scale * tanh_sample + self.action_bias
 
         return action, log_prob
@@ -115,8 +119,9 @@ class GaussianActor(Network):
         :return: log_prob
         """
         dist = self.compute_dist(state)
+        action = (action - self.action_bias) / self.action_scale
 
-        return dist.log_prob(action)
+        return dist.log_prob(action).sum(dim=-1, keepdim=True)
 
     def entropy(self, state: torch.Tensor) -> torch.Tensor:
         """

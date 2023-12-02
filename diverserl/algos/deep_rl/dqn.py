@@ -61,7 +61,7 @@ class DQN(DeepRL):
 
         self._build_network()
 
-        self.buffer = ReplayBuffer(self.state_dim, 1, max_size=buffer_size, device=self.device)
+        self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1, max_size=buffer_size, device=self.device)
 
         optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
         self.optimizer = optimizer(self.q_network.parameters(), lr=learning_rate, **optimizer_kwargs)
@@ -121,7 +121,7 @@ class DQN(DeepRL):
         """
         Train the DQN policy.
 
-        :return: Training result (train_loss)
+        :return: Training result (loss)
         """
         self.training_count += 1
         self.q_network.train()
@@ -132,13 +132,13 @@ class DQN(DeepRL):
 
         selected_value = self.q_network(s).gather(1, a.to(torch.int64))
 
-        train_loss = F.huber_loss(selected_value, target_value)
+        loss = F.huber_loss(selected_value, target_value)
 
         self.optimizer.zero_grad()
-        train_loss.backward()
+        loss.backward()
         self.optimizer.step()
 
         if self.training_count % self.target_copy_freq == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
 
-        return {"train_loss": train_loss.detach().cpu().numpy()}
+        return {"loss": loss.detach().cpu().numpy()}

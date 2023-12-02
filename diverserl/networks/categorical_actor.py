@@ -112,9 +112,10 @@ class CategoricalActor(Network):
         :param action: wanted action to calculate its log_probability
         :return: log_prob
         """
+
         dist = self.compute_dist(state)
 
-        return dist.log_prob(action)
+        return dist.log_prob(torch.squeeze(action)).reshape(len(state), -1)
 
     def entropy(self, state: torch.Tensor) -> torch.Tensor:
         """

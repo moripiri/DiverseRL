@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 import numpy as np
 import torch
@@ -6,7 +6,7 @@ from torch import Tensor
 
 
 class ReplayBuffer:
-    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, device='cpu') -> None:
+    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, save_log_prob = False, device='cpu') -> None:
         """
         Buffer to record and save the RL agent trajectories.
 
@@ -19,6 +19,8 @@ class ReplayBuffer:
         self.state_dim = state_dim
         self.action_dim = action_dim
 
+        self.save_log_prob = save_log_prob
+
         self.s = np.empty((self.max_size, self.state_dim), dtype=np.float32)
         self.a = np.empty((self.max_size, self.action_dim), dtype=np.float32)
         self.r = np.empty((self.max_size, 1), dtype=np.float32)
@@ -26,13 +28,16 @@ class ReplayBuffer:
         self.d = np.empty((self.max_size, 1), dtype=np.float32)
         self.t = np.empty((self.max_size, 1), dtype=np.float32)
 
+        if save_log_prob:
+            self.log_prob = np.empty((self.max_size, 1), dtype=np.float32)
+
         self.idx = 0
         self.full = False
 
     def __len__(self) -> int:
         return self.idx
 
-    def add(self, s: np.ndarray, a: Union[int, np.ndarray], r: float, ns: np.ndarray, d: bool, t: bool) -> None:
+    def add(self, s: np.ndarray, a: Union[int, np.ndarray], r: float, ns: np.ndarray, d: bool, t: bool, log_prob: Optional[float] = None) -> None:
         """
         Add the one-step result to the buffer.
 
@@ -42,6 +47,7 @@ class ReplayBuffer:
         :param ns: next state
         :param d: done
         :param t: truncated
+        :param log_prob: log_probability
         """
         np.copyto(self.s[self.idx], s)
         np.copyto(self.a[self.idx], a)
@@ -50,11 +56,14 @@ class ReplayBuffer:
         np.copyto(self.d[self.idx], d)
         np.copyto(self.t[self.idx], t)
 
+        if self.save_log_prob:
+            np.copyto(self.log_prob[self.idx], log_prob)
+
         self.idx = (self.idx + 1) % self.max_size
         if self.idx == 0:
             self.full = True
 
-    def sample(self, batch_size: int) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor, Tensor]:
+    def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
         """
         Randomly sample wanted size of mini batch from buffer.
 
@@ -70,4 +79,45 @@ class ReplayBuffer:
         dones = torch.from_numpy(self.d[ids]).to(self.device)
         terminates = torch.from_numpy(self.t[ids]).to(self.device)
 
+        if self.save_log_prob:
+            log_probs = torch.from_numpy(self.log_prob[ids]).to(self.device)
+
+            return states, actions, rewards, next_states, dones, terminates, log_probs
+
         return states, actions, rewards, next_states, dones, terminates
+
+    def all_sample(self) -> Tuple[Tensor, ...]:
+        """
+        Return all records from buffer.
+
+        :return: Tuples of RL records
+        """
+        ids = np.arange(self.max_size if self.full else self.idx)
+
+        states = torch.from_numpy(self.s[ids]).to(self.device)
+        actions = torch.from_numpy(self.a[ids]).to(self.device)
+        rewards = torch.from_numpy(self.r[ids]).to(self.device)
+        next_states = torch.from_numpy(self.ns[ids]).to(self.device)
+        dones = torch.from_numpy(self.d[ids]).to(self.device)
+        terminates = torch.from_numpy(self.t[ids]).to(self.device)
+
+        if self.save_log_prob:
+            log_probs = torch.from_numpy(self.log_prob[ids]).to(self.device)
+
+            return states, actions, rewards, next_states, dones, terminates, log_probs
+
+        return states, actions, rewards, next_states, dones, terminates
+
+    def delete(self):
+        self.s = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.a = np.empty((self.max_size, self.action_dim), dtype=np.float32)
+        self.r = np.empty((self.max_size, 1), dtype=np.float32)
+        self.ns = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.d = np.empty((self.max_size, 1), dtype=np.float32)
+        self.t = np.empty((self.max_size, 1), dtype=np.float32)
+
+        if self.save_log_prob:
+            self.log_prob = np.empty((self.max_size, 1), dtype=np.float32)
+
+        self.idx = 0
+        self.full = False

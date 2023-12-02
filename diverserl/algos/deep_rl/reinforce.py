@@ -8,7 +8,7 @@ from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import GaussianActor, CategoricalActor
 
-from typing import Optional, Dict, Any, Union, Type
+from typing import Optional, Dict, Any, Union, Type, Tuple
 
 
 class REINFORCE(DeepRL):
@@ -18,6 +18,7 @@ class REINFORCE(DeepRL):
             action_space: spaces.Space,
             network_type: str = "MLP",
             network_config: Optional[Dict[str, Any]] = None,
+            buffer_size: int = 10**6,
             gamma: float = 0.99,
             learning_rate: float = 0.001,
             optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
@@ -27,8 +28,7 @@ class REINFORCE(DeepRL):
         super().__init__(network_type=network_type, network_list=self.network_list(), network_config=network_config,
                          device=device)
 
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-        ), f"{self} supports only Box type observation space."
+        assert isinstance(observation_space, spaces.Box), f"{self} supports only Box type observation space."
 
         self.state_dim = observation_space.shape[0]
 
@@ -42,11 +42,13 @@ class REINFORCE(DeepRL):
         else:
             raise TypeError
 
+        self._build_network()
+        self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1 if self.discrete else self.action_dim, max_size=buffer_size, device=self.device)
+
         optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
         self.optimizer = optimizer(self.network.parameters(), lr=learning_rate, **optimizer_kwargs)
 
         self.gamma = gamma
-
 
     def __repr__(self) -> str:
         return 'REINFORCE'
@@ -56,17 +58,61 @@ class REINFORCE(DeepRL):
         return {'MLP': {"Discrete": CategoricalActor, "Continuous": GaussianActor}}
 
     def _build_network(self) -> None:
-        network_class = self.network_list()[self.network_type][self.discrete]
-        network_config = self.network_config
+        network_class = self.network_list()[self.network_type]
+        network_class = network_class["Discrete" if self.discrete else "Continuous"]
+        network_config = self.network_config["Discrete" if self.discrete else "Continuous"]
 
         self.network = network_class(state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config).train()
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-        pass
+        observation = super()._fix_ob_shape(observation)
+
+        self.network.train()
+
+        with torch.no_grad():
+            action, _ = self.network(observation)
+
+        return action.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-        pass
+        observation = super()._fix_ob_shape(observation)
+
+        self.network.eval()
+
+        with torch.no_grad():
+            action, _  = self.network(observation, deterministic=True)
+
+        return action.cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
-        pass
+        """
+        Train the REINFORCE policy.
+
+        :return: Training result (loss)
+        """
+        s, a, r, ns, d, t = self.buffer.all_sample()
+
+        returns = torch.zeros_like(r)
+        running_return = 0.
+        for t in reversed(range(len(r))):
+            running_return = r[t] + self.gamma * running_return * (1 - d[t])
+            returns[t] = running_return
+
+        returns = (returns - returns.mean()) / (returns.std() + 1e-6)
+
+        log_prob = self.network.log_prob(s, a)
+        loss = -(returns * log_prob).sum()
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        self.buffer.delete()
+
+        return {"loss": loss.detach().cpu().numpy()}
+
+
+
+
+
 
