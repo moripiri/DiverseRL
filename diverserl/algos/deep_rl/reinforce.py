@@ -24,6 +24,22 @@ class REINFORCE(DeepRL):
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
             device: str = "cpu",
     ) -> None:
+        """
+        REINFORCE
+
+        Paper: Simple statistical gradient-following algorithms for connectionist reinforcement learning, Ronald J. Williams, 1992
+
+        :param observation_space: The observation space of the environment.
+        :param action_space: The action space of the environment.
+        :param network_type: Type of the REINFORCE networks to be used.
+        :param network_config: Configurations of the REINFORCE networks.
+        :param buffer_size: Maximum length of replay buffer.
+        :param gamma: The discount factor.
+        :param learning_rate: Learning rate of the network
+        :param optimizer: Optimizer class (or str) for the network
+        :param optimizer_kwargs: Parameter dict for the optimizer
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(network_type=network_type, network_list=self.network_list(), network_config=network_config,
                          device=device)
 

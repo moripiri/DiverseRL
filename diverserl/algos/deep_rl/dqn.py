@@ -41,7 +41,7 @@ class DQN(DeepRL):
         :param eps: Probability to conduct random action during training.
         :param gamma: The discount factor
         :param batch_size: Minibatch size for optimizer.
-        :param buffer_size: Maximum length of replay buffer.\
+        :param buffer_size: Maximum length of replay buffer.
         :param learning_rate: Learning rate of the Q-network
         :param optimizer: Optimizer class (or str) for the Q-network
         :param optimizer_kwargs: Parameter dict for the optimizer
