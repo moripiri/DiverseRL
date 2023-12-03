@@ -19,6 +19,8 @@ class PPO(DeepRL):
         network_config: Optional[Dict[str, Any]] = None,
         mode: str = "clip",
         clip: float = 0.2,
+        target_dist: float = 0.01,
+        beta: float = 3.0,
         gamma: float = 0.99,
         lambda_gae: float = 0.96,
         batch_size: int = 256,
@@ -34,7 +36,7 @@ class PPO(DeepRL):
         super().__init__(
             network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
-
+        assert mode.lower() in ["clip", "adaptive_kl", "kl"]
         assert isinstance(observation_space, spaces.Box), f"{self} supports only Box type observation space."
 
         self.state_dim = observation_space.shape[0]
@@ -63,9 +65,11 @@ class PPO(DeepRL):
         self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
         self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
 
-        self.mode = mode
+        self.mode = mode.lower()
 
         self.clip = clip
+        self.target_dist = target_dist
+        self.beta = beta
 
         self.gamma = gamma
         self.lambda_gae = lambda_gae
