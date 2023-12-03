@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional, Type, Union
+
 import numpy as np
 import torch
 from gymnasium import spaces
@@ -5,24 +7,22 @@ from gymnasium import spaces
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import GaussianActor, CategoricalActor
-
-from typing import Optional, Dict, Any, Union, Type
+from diverserl.networks import CategoricalActor, GaussianActor
 
 
 class REINFORCE(DeepRL):
     def __init__(
-            self,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
-            network_type: str = "MLP",
-            network_config: Optional[Dict[str, Any]] = None,
-            buffer_size: int = 10**6,
-            gamma: float = 0.99,
-            learning_rate: float = 0.001,
-            optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
-            optimizer_kwargs: Optional[Dict[str, Any]] = None,
-            device: str = "cpu",
+        self,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        network_type: str = "MLP",
+        network_config: Optional[Dict[str, Any]] = None,
+        buffer_size: int = 10**6,
+        gamma: float = 0.99,
+        learning_rate: float = 0.001,
+        optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
+        optimizer_kwargs: Optional[Dict[str, Any]] = None,
+        device: str = "cpu",
     ) -> None:
         """
         REINFORCE
@@ -40,8 +40,9 @@ class REINFORCE(DeepRL):
         :param optimizer_kwargs: Parameter dict for the optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(network_type=network_type, network_list=self.network_list(), network_config=network_config,
-                         device=device)
+        super().__init__(
+            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+        )
 
         assert isinstance(observation_space, spaces.Box), f"{self} supports only Box type observation space."
 
@@ -58,7 +59,12 @@ class REINFORCE(DeepRL):
             raise TypeError
 
         self._build_network()
-        self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1 if self.discrete else self.action_dim, max_size=buffer_size, device=self.device)
+        self.buffer = ReplayBuffer(
+            state_dim=self.state_dim,
+            action_dim=1 if self.discrete else self.action_dim,
+            max_size=buffer_size,
+            device=self.device,
+        )
 
         optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
         self.optimizer = optimizer(self.network.parameters(), lr=learning_rate, **optimizer_kwargs)
@@ -66,18 +72,20 @@ class REINFORCE(DeepRL):
         self.gamma = gamma
 
     def __repr__(self) -> str:
-        return 'REINFORCE'
+        return "REINFORCE"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {'MLP': {"Discrete": CategoricalActor, "Continuous": GaussianActor}}
+        return {"MLP": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}
 
     def _build_network(self) -> None:
         network_class = self.network_list()[self.network_type]
         network_class = network_class["Discrete" if self.discrete else "Continuous"]
         network_config = self.network_config["Discrete" if self.discrete else "Continuous"]
 
-        self.network = network_class(state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config).train()
+        self.network = network_class(
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config
+        ).train()
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
         observation = super()._fix_ob_shape(observation)
@@ -95,7 +103,7 @@ class REINFORCE(DeepRL):
         self.network.eval()
 
         with torch.no_grad():
-            action, _  = self.network(observation, deterministic=True)
+            action, _ = self.network(observation, deterministic=True)
 
         return action.cpu().numpy()[0]
 
@@ -108,7 +116,7 @@ class REINFORCE(DeepRL):
         s, a, r, ns, d, t = self.buffer.all_sample()
 
         returns = torch.zeros_like(r)
-        running_return = 0.
+        running_return = 0.0
         for t in reversed(range(len(r))):
             running_return = r[t] + self.gamma * running_return * (1 - d[t])
             returns[t] = running_return
@@ -125,9 +133,3 @@ class REINFORCE(DeepRL):
         self.buffer.delete()
 
         return {"loss": loss.detach().cpu().numpy()}
-
-
-
-
-
-

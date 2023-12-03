@@ -174,9 +174,9 @@ class TD3(DeepRL):
         with torch.no_grad():
             target_action = (
                 self.target_actor(ns)
-                + torch.normal(0, self.target_noise_scale, (self.batch_size, self.action_dim)).clamp(
-                    -self.noise_clip, self.noise_clip
-                ).to(self.device)
+                + torch.normal(0, self.target_noise_scale, (self.batch_size, self.action_dim))
+                .clamp(-self.noise_clip, self.noise_clip)
+                .to(self.device)
             ).clamp(-self.action_scale + self.action_bias, self.action_scale + self.action_bias)
             target_value = r + self.gamma * (1 - d) * torch.minimum(
                 self.target_critic((ns, target_action)), self.target_critic2((ns, target_action))

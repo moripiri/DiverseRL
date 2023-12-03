@@ -1,4 +1,4 @@
-from typing import Tuple, Union, Optional
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -6,7 +6,7 @@ from torch import Tensor
 
 
 class ReplayBuffer:
-    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, save_log_prob = False, device='cpu') -> None:
+    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, save_log_prob=False, device="cpu") -> None:
         """
         Buffer to record and save the RL agent trajectories.
 
@@ -37,7 +37,16 @@ class ReplayBuffer:
     def __len__(self) -> int:
         return self.idx
 
-    def add(self, s: np.ndarray, a: Union[int, np.ndarray], r: float, ns: np.ndarray, d: bool, t: bool, log_prob: Optional[float] = None) -> None:
+    def add(
+        self,
+        s: np.ndarray,
+        a: Union[int, np.ndarray],
+        r: float,
+        ns: np.ndarray,
+        d: bool,
+        t: bool,
+        log_prob: Optional[float] = None,
+    ) -> None:
         """
         Add the one-step result to the buffer.
 
