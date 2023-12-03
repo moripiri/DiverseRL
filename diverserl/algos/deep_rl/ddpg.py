@@ -86,14 +86,14 @@ class DDPG(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"actor": DeterministicActor, "critic": QNetwork}}
+        return {"MLP": {"Actor": DeterministicActor, "Critic": QNetwork}}
 
     def _build_network(self) -> None:
-        actor_class = self.network_list()[self.network_type]["actor"]
-        critic_class = self.network_list()[self.network_type]["critic"]
+        actor_class = self.network_list()[self.network_type]["Actor"]
+        critic_class = self.network_list()[self.network_type]["Critic"]
 
-        actor_config = self.network_config["actor"]
-        critic_config = self.network_config["critic"]
+        actor_config = self.network_config["Actor"]
+        critic_config = self.network_config["Critic"]
 
         self.actor = actor_class(
             state_dim=self.state_dim,

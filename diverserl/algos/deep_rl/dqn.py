@@ -77,11 +77,11 @@ class DQN(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"q_network": DeterministicActor}}
+        return {"MLP": {"Q_network": DeterministicActor}}
 
     def _build_network(self) -> None:
-        q_network_class = self.network_list()[self.network_type]["q_network"]
-        q_network_config = self.network_config["q_network"]
+        q_network_class = self.network_list()[self.network_type]["Q_network"]
+        q_network_config = self.network_config["Q_network"]
 
         self.q_network = q_network_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **q_network_config

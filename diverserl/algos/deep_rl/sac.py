@@ -108,14 +108,14 @@ class SACv2(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"actor": GaussianActor, "critic": QNetwork}}
+        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork}}
 
     def _build_network(self) -> None:
-        actor_class = self.network_list()[self.network_type]["actor"]
-        critic_class = self.network_list()[self.network_type]["critic"]
+        actor_class = self.network_list()[self.network_type]["Actor"]
+        critic_class = self.network_list()[self.network_type]["Critic"]
 
-        actor_config = self.network_config["actor"]
-        critic_config = self.network_config["critic"]
+        actor_config = self.network_config["Actor"]
+        critic_config = self.network_config["Critic"]
 
         self.actor = actor_class(
             state_dim=self.state_dim,
@@ -319,16 +319,16 @@ class SACv1(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"actor": GaussianActor, "critic": QNetwork, "v_network": VNetwork}}
+        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
 
     def _build_network(self) -> None:
-        actor_class = self.network_list()[self.network_type]["actor"]
-        critic_class = self.network_list()[self.network_type]["critic"]
-        v_class = self.network_list()[self.network_type]["v_network"]
+        actor_class = self.network_list()[self.network_type]["Actor"]
+        critic_class = self.network_list()[self.network_type]["Critic"]
+        v_class = self.network_list()[self.network_type]["V_network"]
 
-        actor_config = self.network_config["actor"]
-        critic_config = self.network_config["critic"]
-        v_config = self.network_config["v_network"]
+        actor_config = self.network_config["Actor"]
+        critic_config = self.network_config["Critic"]
+        v_config = self.network_config["V_network"]
 
         self.actor = actor_class(
             state_dim=self.state_dim,

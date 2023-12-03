@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
 from gymnasium import spaces
 
 from diverserl.algos.deep_rl.base import DeepRL
@@ -8,7 +7,7 @@ from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import GaussianActor, CategoricalActor
 
-from typing import Optional, Dict, Any, Union, Type, Tuple
+from typing import Optional, Dict, Any, Union, Type
 
 
 class REINFORCE(DeepRL):
