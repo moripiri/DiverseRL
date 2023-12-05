@@ -55,6 +55,7 @@ class PPO(DeepRL):
         self.buffer = ReplayBuffer(
             state_dim=self.state_dim,
             action_dim=1 if self.discrete else self.action_dim,
+            save_log_prob=True,
             max_size=buffer_size,
             device=self.device,
         )
@@ -118,4 +119,24 @@ class PPO(DeepRL):
         return action.cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
-        pass
+        s, a, r, ns, d, log_prob = self.buffer.all_sample()
+
+        old_values = self.critic(s).detach()
+        returns = torch.zeros_like(r)
+        advantages = torch.zeros_like(r)
+
+        running_return = torch.zeros(1)
+        previous_value = torch.zeros(1)
+        running_advantage = torch.zeros(1)
+
+        # GAE
+        for t in reversed(range(len(r))):
+            running_return = r[t] + self.gamma * running_return * (1 - d[t])
+            running_tderror = r[t] + self.gamma * previous_value * (1 - d[t]) - old_values[t]
+            running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - d[t])
+
+            returns[t] = running_return
+            previous_value = old_values[t]
+            advantages[t] = running_advantage
+
+        advantages = (advantages - advantages.mean()) / (advantages.std())
