@@ -81,7 +81,7 @@ class REINFORCE(DeepRL):
     def _build_network(self) -> None:
         network_class = self.network_list()[self.network_type]
         network_class = network_class["Discrete" if self.discrete else "Continuous"]
-        network_config = self.network_config["Discrete" if self.discrete else "Continuous"]
+        network_config = self.network_config
 
         self.network = network_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config

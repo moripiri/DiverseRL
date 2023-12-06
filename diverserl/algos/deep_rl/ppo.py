@@ -1,9 +1,9 @@
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 import numpy as np
 import torch
-from gymnasium import spaces
 import torch.nn.functional as F
+from gymnasium import spaces
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
@@ -24,7 +24,9 @@ class PPO(DeepRL):
         beta: float = 3.0,
         gamma: float = 0.99,
         lambda_gae: float = 0.96,
-        batch_size: int = 256,
+        horizon: int = 128,
+        num_epochs: int = 4,
+        batch_size: int = 64,
         buffer_size: int = 10**6,
         actor_lr: float = 0.001,
         actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
@@ -77,6 +79,9 @@ class PPO(DeepRL):
         self.lambda_gae = lambda_gae
         self.batch_size = batch_size
 
+        self.horizon = horizon
+        self.num_epochs = num_epochs
+
     def __repr__(self) -> str:
         return "PPO"
 
@@ -89,7 +94,7 @@ class PPO(DeepRL):
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
-        actor_config = self.network_config["Actor"]#["Discrete" if self.discrete else "Continuous"]
+        actor_config = self.network_config["Actor"]
 
         critic_class = self.network_list()[self.network_type]["Critic"]
         critic_config = self.network_config["Critic"]
@@ -99,7 +104,7 @@ class PPO(DeepRL):
         ).train()
         self.critic = critic_class(state_dim=self.state_dim, device=self.device, **critic_config).train()
 
-    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
         observation = super()._fix_ob_shape(observation)
 
         self.actor.train()
@@ -109,7 +114,7 @@ class PPO(DeepRL):
 
         return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
 
-    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
         observation = super()._fix_ob_shape(observation)
 
         self.actor.train()
@@ -145,19 +150,19 @@ class PPO(DeepRL):
 
         log_policy = self.actor.log_prob(s, a)
         ratio = (log_policy - log_prob).exp()
-        
+
         surrogate = ratio * advantages
         clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
-        
+
         actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
         critic_loss = F.mse_loss(self.critic(s), returns)
-        
+
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
-        
+
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
-        
+
         return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}
