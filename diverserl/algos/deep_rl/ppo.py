@@ -148,21 +148,24 @@ class PPO(DeepRL):
         advantages = (advantages - advantages.mean()) / (advantages.std())
         returns = (returns - returns.mean()) / (returns.std())
 
-        log_policy = self.actor.log_prob(s, a)
-        ratio = (log_policy - log_prob).exp()
+        for epoch in range(self.num_epochs):
+            log_policy = self.actor.log_prob(s, a)
+            ratio = (log_policy - log_prob).exp()
 
-        surrogate = ratio * advantages
-        clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+            surrogate = ratio * advantages
+            clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
 
-        actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
-        critic_loss = F.mse_loss(self.critic(s), returns)
+            actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
+            critic_loss = F.mse_loss(self.critic(s), returns)
 
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
 
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic_optimizer.step()
+
+        self.buffer.delete()
 
         return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}

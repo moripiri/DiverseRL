@@ -116,9 +116,9 @@ class DeepRLTrainer(Trainer):
 
                     else:
                         if self.algo.buffer.save_log_prob:
-                            action, log_prob = self.algo.eval_action(observation)
+                            action, log_prob = self.algo.get_action(observation)
                         else:
-                            action = self.algo.eval_action(observation)
+                            action = self.algo.get_action(observation)
                     (
                         next_observation,
                         reward,
@@ -128,7 +128,9 @@ class DeepRLTrainer(Trainer):
                     ) = self.env.step(action)
 
                     if self.algo.buffer.save_log_prob:
-                        self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
+                        self.algo.buffer.add(
+                            observation, action, reward, next_observation, terminated, truncated, log_prob
+                        )
 
                     else:
                         self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
