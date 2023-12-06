@@ -64,7 +64,10 @@ class DeepRLTrainer(Trainer):
             local_step = 0
 
             while not (terminated or truncated):
-                action = self.algo.eval_action(observation)
+                if self.algo.buffer.save_log_prob:
+                    action, _ = self.algo.eval_action(observation)
+                else:
+                    action = self.algo.eval_action(observation)
 
                 (
                     next_observation,
@@ -112,8 +115,10 @@ class DeepRLTrainer(Trainer):
                         action = self.env.action_space.sample()
 
                     else:
-                        action = self.algo.get_action(observation)
-
+                        if self.algo.buffer.save_log_prob:
+                            action, log_prob = self.algo.eval_action(observation)
+                        else:
+                            action = self.algo.eval_action(observation)
                     (
                         next_observation,
                         reward,
@@ -122,7 +127,11 @@ class DeepRLTrainer(Trainer):
                         info,
                     ) = self.env.step(action)
 
-                    self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
+                    if self.algo.buffer.save_log_prob:
+                        self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
+
+                    else:
+                        self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
                     if total_step >= self.training_start and self.check_train(terminated or truncated):
                         for _ in range(self.training_num):

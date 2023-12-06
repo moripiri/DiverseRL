@@ -2,6 +2,7 @@ import gymnasium as gym
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.trainers import DeepRLTrainer
+from diverserl.trainers.base import Trainer
 
 
 class OnPolicyTrainer(DeepRLTrainer):

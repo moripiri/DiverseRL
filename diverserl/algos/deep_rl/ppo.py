@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Type, Union
 import numpy as np
 import torch
 from gymnasium import spaces
+import torch.nn.functional as F
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
@@ -88,7 +89,7 @@ class PPO(DeepRL):
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
-        actor_config = self.network_config["Actor"]["Discrete" if self.discrete else "Continuous"]
+        actor_config = self.network_config["Actor"]#["Discrete" if self.discrete else "Continuous"]
 
         critic_class = self.network_list()[self.network_type]["Critic"]
         critic_config = self.network_config["Critic"]
@@ -104,9 +105,9 @@ class PPO(DeepRL):
         self.actor.train()
 
         with torch.no_grad():
-            action, _ = self.actor(observation)
+            action, log_prob = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
         observation = super()._fix_ob_shape(observation)
@@ -114,12 +115,12 @@ class PPO(DeepRL):
         self.actor.train()
 
         with torch.no_grad():
-            action, _ = self.actor(observation, deterministic=True)
+            action, log_prob = self.actor(observation, deterministic=True)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
-        s, a, r, ns, d, log_prob = self.buffer.all_sample()
+        s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
 
         old_values = self.critic(s).detach()
         returns = torch.zeros_like(r)
@@ -140,3 +141,23 @@ class PPO(DeepRL):
             advantages[t] = running_advantage
 
         advantages = (advantages - advantages.mean()) / (advantages.std())
+        returns = (returns - returns.mean()) / (returns.std())
+
+        log_policy = self.actor.log_prob(s, a)
+        ratio = (log_policy - log_prob).exp()
+        
+        surrogate = ratio * advantages
+        clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+        
+        actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
+        critic_loss = F.mse_loss(self.critic(s), returns)
+        
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+        
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+        
+        return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}
