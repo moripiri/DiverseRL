@@ -78,12 +78,14 @@ class OnPolicyTrainer(Trainer):
         """
 
         observation, info = self.env.reset()
+        episode = 1
+        episode_reward = 0
+        local_step = 0
 
         with self.progress as progress:
             total_step = 0
             while True:
                 for _ in range(self.horizon):
-                    total_step += 1
                     progress.advance(self.task)
 
                     action, log_prob = self.algo.get_action(observation)
@@ -99,12 +101,24 @@ class OnPolicyTrainer(Trainer):
                     self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
 
                     observation = next_observation
+                    episode_reward += reward
+
+                    local_step += 1
+                    total_step += 1
 
                     if self.do_eval and total_step % self.eval_every == 0:
                         self.evaluate()
 
                     if terminated or truncated:
                         observation, info = self.env.reset()
+
+                        # progress.console.print(
+                        #     f"Episode: {episode:06d} -> Local_step: {local_step:04d}, Total_step: {total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                        # )
+
+                        episode += 1
+                        episode_reward = 0
+                        local_step = 0
 
                 self.algo.train()
 

@@ -76,12 +76,12 @@ class PPO(DeepRL):
 
         self.gamma = gamma
         self.lambda_gae = lambda_gae
-        
+
         self.batch_size = batch_size
         self.horizon = horizon
-        
+
         assert horizon >= batch_size
-    
+
         self.num_epochs = int(horizon // batch_size)
 
     def __repr__(self) -> str:
@@ -130,7 +130,7 @@ class PPO(DeepRL):
         s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
 
         episode_idxes = (torch.logical_or(d, t) == 1).reshape(-1).nonzero().squeeze()
-        print(episode_idxes)
+
         old_values = self.critic(s).detach()
         returns = torch.zeros_like(r)
         advantages = torch.zeros_like(r)
@@ -145,7 +145,7 @@ class PPO(DeepRL):
                 running_return = torch.zeros(1)
                 previous_value = torch.zeros(1)
                 running_advantage = torch.zeros(1)
-                
+
             running_return = r[t] + self.gamma * running_return * (1 - d[t])
             running_tderror = r[t] + self.gamma * previous_value * (1 - d[t]) - old_values[t]
             running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - d[t])
@@ -155,12 +155,11 @@ class PPO(DeepRL):
             advantages[t] = running_advantage
 
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        #returns = (returns - returns.mean()) / (returns.std())
+        # returns = (returns - returns.mean()) / (returns.std())
         horizon_idxes = np.arange(self.horizon)
         np.random.shuffle(horizon_idxes)
 
         for epoch in range(self.num_epochs):
-
             epoch_idxes = horizon_idxes[epoch * self.batch_size : (epoch + 1) * self.batch_size]
 
             batch_s = s[epoch_idxes]

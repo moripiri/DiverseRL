@@ -16,6 +16,7 @@ class GaussianActor(Network):
         state_dim: int,
         action_dim: int,
         squash: bool = True,
+        independent_std: bool = False,
         hidden_units: Tuple[int, ...] = (256, 256),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
@@ -42,6 +43,8 @@ class GaussianActor(Network):
             device=device,
         )
         self.squash = squash
+        self.independent_std = independent_std
+
         self.action_scale = action_scale
         self.action_bias = action_bias
 
@@ -62,11 +65,13 @@ class GaussianActor(Network):
 
         self.trunks = nn.Sequential(*layers)
         self.mean_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
-        self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
+
+        if not self.independent_std:
+            self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
+            torch.nn.init.constant_(self.logstd_layer.weight, val=0.0)
 
         self.trunks.apply(self._init_weights)
         self.mean_layer.apply(self._init_weights)
-        torch.nn.init.constant_(self.logstd_layer.weight, val=0.0)
 
     def forward(self, state: Union[torch.Tensor], deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -105,7 +110,11 @@ class GaussianActor(Network):
         trunk_output = self.trunks(state)
         output_mean = self.mean_layer(trunk_output)
 
-        output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
+        if self.independent_std:
+            output_std = 1.0
+        else:
+            output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
+
         dist = Normal(loc=output_mean, scale=output_std)
 
         return dist
@@ -135,6 +144,6 @@ class GaussianActor(Network):
 
 
 if __name__ == "__main__":
-    a = GaussianActor(5, 2)
+    a = GaussianActor(5, 2, independent_std=True)
     print(a)
     print(a(torch.ones((1, 5))))
