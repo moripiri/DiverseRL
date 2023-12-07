@@ -10,7 +10,7 @@ class OnPolicyTrainer(Trainer):
         algo: DeepRL,
         env: gym.Env,
         eval_env: gym.Env,
-        max_step: int = 10000,
+        max_step: int = 1000000,
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
@@ -103,9 +103,8 @@ class OnPolicyTrainer(Trainer):
                     if self.do_eval and total_step % self.eval_every == 0:
                         self.evaluate()
 
-                    # if terminated or truncated:
-                    #     observation, info = self.env.reset()
-                    #     break
+                    if terminated or truncated:
+                        observation, info = self.env.reset()
 
                 self.algo.train()
 

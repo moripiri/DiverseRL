@@ -25,7 +25,6 @@ class PPO(DeepRL):
         gamma: float = 0.99,
         lambda_gae: float = 0.96,
         horizon: int = 128,
-        num_epochs: int = 4,
         batch_size: int = 64,
         buffer_size: int = 10**6,
         actor_lr: float = 0.001,
@@ -77,10 +76,13 @@ class PPO(DeepRL):
 
         self.gamma = gamma
         self.lambda_gae = lambda_gae
+        
         self.batch_size = batch_size
-
         self.horizon = horizon
-        self.num_epochs = num_epochs
+        
+        assert horizon >= batch_size
+    
+        self.num_epochs = int(horizon // batch_size)
 
     def __repr__(self) -> str:
         return "PPO"
@@ -117,7 +119,7 @@ class PPO(DeepRL):
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
         observation = super()._fix_ob_shape(observation)
 
-        self.actor.train()
+        self.actor.eval()
 
         with torch.no_grad():
             action, log_prob = self.actor(observation, deterministic=True)
@@ -127,6 +129,8 @@ class PPO(DeepRL):
     def train(self) -> Dict[str, Any]:
         s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
 
+        episode_idxes = (torch.logical_or(d, t) == 1).reshape(-1).nonzero().squeeze()
+        print(episode_idxes)
         old_values = self.critic(s).detach()
         returns = torch.zeros_like(r)
         advantages = torch.zeros_like(r)
@@ -137,6 +141,11 @@ class PPO(DeepRL):
 
         # GAE
         for t in reversed(range(len(r))):
+            if t in episode_idxes:
+                running_return = torch.zeros(1)
+                previous_value = torch.zeros(1)
+                running_advantage = torch.zeros(1)
+                
             running_return = r[t] + self.gamma * running_return * (1 - d[t])
             running_tderror = r[t] + self.gamma * previous_value * (1 - d[t]) - old_values[t]
             running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - d[t])
@@ -145,18 +154,29 @@ class PPO(DeepRL):
             previous_value = old_values[t]
             advantages[t] = running_advantage
 
-        advantages = (advantages - advantages.mean()) / (advantages.std())
-        returns = (returns - returns.mean()) / (returns.std())
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        #returns = (returns - returns.mean()) / (returns.std())
+        horizon_idxes = np.arange(self.horizon)
+        np.random.shuffle(horizon_idxes)
 
         for epoch in range(self.num_epochs):
-            log_policy = self.actor.log_prob(s, a)
-            ratio = (log_policy - log_prob).exp()
 
-            surrogate = ratio * advantages
-            clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * advantages
+            epoch_idxes = horizon_idxes[epoch * self.batch_size : (epoch + 1) * self.batch_size]
+
+            batch_s = s[epoch_idxes]
+            batch_a = a[epoch_idxes]
+            batch_log_prob = log_prob[epoch_idxes]
+            batch_advantages = advantages[epoch_idxes]
+            batch_returns = returns[epoch_idxes]
+
+            log_policy = self.actor.log_prob(batch_s, batch_a)
+            ratio = (log_policy - batch_log_prob).exp()
+
+            surrogate = ratio * batch_advantages
+            clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * batch_advantages
 
             actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
-            critic_loss = F.mse_loss(self.critic(s), returns)
+            critic_loss = F.mse_loss(self.critic(batch_s), batch_returns)
 
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
