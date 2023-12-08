@@ -8,6 +8,8 @@ Currently the following Deep RL algorithms are supported
 * DDPG
 * TD3
 * SAC
+* REINFORCE
+* PPO
 
 
 ---

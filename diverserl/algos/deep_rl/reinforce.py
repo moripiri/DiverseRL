@@ -121,7 +121,7 @@ class REINFORCE(DeepRL):
             running_return = r[t] + self.gamma * running_return * (1 - d[t])
             returns[t] = running_return
 
-        returns = (returns - returns.mean()) / (returns.std() + 1e-6)
+        returns = (returns - returns.mean()) / (returns.std() + 1e-8)
 
         log_prob = self.network.log_prob(s, a)
         loss = -(returns * log_prob).sum()

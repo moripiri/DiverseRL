@@ -17,6 +17,7 @@ class GaussianActor(Network):
         action_dim: int,
         squash: bool = True,
         independent_std: bool = False,
+        logstd_init: float = 0.0,
         hidden_units: Tuple[int, ...] = (256, 256),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
@@ -45,8 +46,13 @@ class GaussianActor(Network):
         self.squash = squash
         self.independent_std = independent_std
 
+        self.logstd_init = logstd_init
         self.action_scale = action_scale
         self.action_bias = action_bias
+
+        if self.independent_std:
+            # self.squash = False
+            self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
 
         self._make_layers()
         self.to(torch.device(device))
@@ -68,7 +74,7 @@ class GaussianActor(Network):
 
         if not self.independent_std:
             self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
-            torch.nn.init.constant_(self.logstd_layer.weight, val=0.0)
+            torch.nn.init.constant_(self.logstd_layer.weight, val=self.logstd_init)
 
         self.trunks.apply(self._init_weights)
         self.mean_layer.apply(self._init_weights)
@@ -93,7 +99,8 @@ class GaussianActor(Network):
 
         if self.squash:
             log_prob -= torch.log(self.action_scale * (1 - tanh_sample.pow(2)) + 1e-10)
-            log_prob = log_prob.sum(dim=-1, keepdim=True)
+
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
 
         action = self.action_scale * tanh_sample + self.action_bias
 
@@ -111,7 +118,7 @@ class GaussianActor(Network):
         output_mean = self.mean_layer(trunk_output)
 
         if self.independent_std:
-            output_std = 1.0
+            output_std = self.logstd_init
         else:
             output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
 
