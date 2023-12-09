@@ -1,16 +1,16 @@
-import gymnasium as gym
-from rich import pretty, print
-from rich.console import Console
+import time
 
-print("Hello, [bold red]World[/bold red]!", ":vampire:")
-pretty.install()
-print(locals())
-# print(gym.__version__)
-# # toytext = ['Blackjack-v1', 'Taxi-v3', "CliffWalking-v0", "FrozenLake-v1"]
-# # for toy in toytext:
-# #     env = gym.make(toy)
-# #     print(env.reset())
-console = Console()
-console.print(*gym.envs.registry.keys(), style="bold red")
+from rich.progress import Progress, SpinnerColumn, TimeElapsedColumn
 
-# print("Hello, [bold magenta]World[/bold magenta]!", ":vampire:", locals())
+progress1 = Progress(
+    SpinnerColumn(),
+    *Progress.get_default_columns(),
+    TimeElapsedColumn(),
+)
+
+with progress1 as progress:
+    task = progress.add_task("twiddling thumbs", total=10)
+    for job in range(10):
+        progress.console.print(f"Working on job #{job}")
+        time.sleep(1)
+        progress.advance(task)
