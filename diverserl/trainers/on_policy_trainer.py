@@ -77,7 +77,6 @@ class OnPolicyTrainer(Trainer):
         avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
         avg_local_step = sum(local_step_list) / len(local_step_list)
 
-        self.progress.console.print("=" * 100, style="bold")
         self.progress.console.print(
             f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
         )

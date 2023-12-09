@@ -70,10 +70,7 @@ class DeepRLTrainer(Trainer):
             local_step = 0
 
             while not (terminated or truncated):
-                if self.algo.buffer.save_log_prob:
-                    action, _ = self.algo.eval_action(observation)
-                else:
-                    action = self.algo.eval_action(observation)
+                action = self.algo.eval_action(observation)
 
                 (
                     next_observation,
