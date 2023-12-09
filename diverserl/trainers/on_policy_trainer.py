@@ -15,6 +15,17 @@ class OnPolicyTrainer(Trainer):
         eval_every: int = 1000,
         eval_ep: int = 10,
     ) -> None:
+        """
+        Trainer for Deep RL(On policy) algorithms.
+
+        :param algo: Deep RL algorithm (Off policy)
+        :param env: The environment for RL agent to learn from
+        :param eval_env: Then environment for RL agent to evaluate from
+        :param max_step: Maximum step to run the training
+        :param do_eval: Whether to perform the evaluation.
+        :param eval_every: Do evaluation every N step.
+        :param eval_ep: Number of episodes to run evaluation
+        """
         super().__init__(
             algo=algo,
             env=env,

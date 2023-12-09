@@ -19,16 +19,22 @@ class DeepRLTrainer(Trainer):
         eval_ep: int = 10,
     ) -> None:
         """
-        Trainer for Deep RL algorithms.
+        Trainer for Deep RL (Off policy) algorithms.
 
-        :param algo: Deep RL algorithm
+        :param algo: Deep RL algorithm (Off policy)
         :param env: The environment for RL agent to learn from
+        :param eval_env: Then environment for RL agent to evaluate from
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param training_num: How many times to run training function in the algorithm each time
         :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
+        :param do_eval: Whether to perform the evaluation.
+        :param eval_every: Do evaluation every N step.
+        :param eval_ep: Number of episodes to run evaluation
         """
         super().__init__(algo, env, eval_env, max_step, do_eval, eval_every, eval_ep)
+
+        assert not self.algo.buffer.save_log_prob
 
         self.training_start = training_start
         self.training_num = training_num
@@ -115,10 +121,7 @@ class DeepRLTrainer(Trainer):
                         action = self.env.action_space.sample()
 
                     else:
-                        if self.algo.buffer.save_log_prob:
-                            action, log_prob = self.algo.get_action(observation)
-                        else:
-                            action = self.algo.get_action(observation)
+                        action = self.algo.get_action(observation)
                     (
                         next_observation,
                         reward,
@@ -127,13 +130,7 @@ class DeepRLTrainer(Trainer):
                         info,
                     ) = self.env.step(action)
 
-                    if self.algo.buffer.save_log_prob:
-                        self.algo.buffer.add(
-                            observation, action, reward, next_observation, terminated, truncated, log_prob
-                        )
-
-                    else:
-                        self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
+                    self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
                     if total_step >= self.training_start and self.check_train(terminated or truncated):
                         for _ in range(self.training_num):
