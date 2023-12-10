@@ -125,7 +125,7 @@ class CategoricalActor(Network):
         :return: entropy
         """
         dist = self.compute_dist(state)
-        return dist.entropy()
+        return dist.entropy().sum(dim=-1)
 
 
 if __name__ == "__main__":

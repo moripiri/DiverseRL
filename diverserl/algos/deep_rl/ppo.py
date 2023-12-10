@@ -124,6 +124,10 @@ class PPO(DeepRL):
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
         actor_config = self.network_config["Actor"]
 
+        if not self.discrete:  # Fix GaussianActor setting for PPO.
+            actor_config["squash"] = False
+            actor_config["independent_std"] = True
+
         critic_class = self.network_list()[self.network_type]["Critic"]
         critic_config = self.network_config["Critic"]
 

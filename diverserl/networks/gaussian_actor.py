@@ -45,13 +45,13 @@ class GaussianActor(Network):
         )
         self.squash = squash
         self.independent_std = independent_std
+        assert not (self.independent_std and self.squash)
 
         self.logstd_init = logstd_init
         self.action_scale = action_scale
         self.action_bias = action_bias
 
         if self.independent_std:
-            # self.squash = False
             self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
 
         self._make_layers()
@@ -83,7 +83,7 @@ class GaussianActor(Network):
         """
         Return action and its log_probability of the Gaussian actor for the given state.
 
-        :param state: state(1~2 torch tensor)
+        :param state: state(1 torch tensor)
         :param deterministic: whether to sample action from the computed distribution.
         :return: action (scaled and biased), log_prob
         """
@@ -94,15 +94,17 @@ class GaussianActor(Network):
         else:
             sample = dist.rsample()
 
-        tanh_sample = torch.tanh(sample)
         log_prob = dist.log_prob(sample)
 
         if self.squash:
+            tanh_sample = torch.tanh(sample)
             log_prob -= torch.log(self.action_scale * (1 - tanh_sample.pow(2)) + 1e-10)
 
-        log_prob = log_prob.sum(dim=-1, keepdim=True)
+            action = self.action_scale * tanh_sample + self.action_bias
+        else:
+            action = self.action_scale * sample + self.action_bias
 
-        action = self.action_scale * tanh_sample + self.action_bias
+        log_prob = log_prob.sum(dim=-1, keepdim=True)
 
         return action, log_prob
 
@@ -137,6 +139,12 @@ class GaussianActor(Network):
         dist = self.compute_dist(state)
         action = (action - self.action_bias) / self.action_scale
 
+        if self.squash:
+            eps = torch.finfo(action.dtype).eps
+            action = torch.clamp(action, min=-1.0 + eps, max=1.0 - eps)
+
+            action = 0.5 * (action.log1p() - (-action).log1p())
+
         return dist.log_prob(action).sum(dim=-1, keepdim=True)
 
     def entropy(self, state: torch.Tensor) -> torch.Tensor:
@@ -147,7 +155,7 @@ class GaussianActor(Network):
         :return: entropy
         """
         dist = self.compute_dist(state)
-        return dist.entropy()
+        return dist.entropy().sum(dim=-1)
 
 
 if __name__ == "__main__":

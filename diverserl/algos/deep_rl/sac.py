@@ -117,6 +117,10 @@ class SACv2(DeepRL):
         actor_config = self.network_config["Actor"]
         critic_config = self.network_config["Critic"]
 
+        # Fix GaussianActor setting for SAC
+        actor_config["squash"] = True
+        actor_config["independent_std"] = False
+
         self.actor = actor_class(
             state_dim=self.state_dim,
             action_dim=self.action_dim,
@@ -329,6 +333,10 @@ class SACv1(DeepRL):
         actor_config = self.network_config["Actor"]
         critic_config = self.network_config["Critic"]
         v_config = self.network_config["V_network"]
+
+        # Fix GaussianActor setting for SAC
+        actor_config["squash"] = True
+        actor_config["independent_std"] = False
 
         self.actor = actor_class(
             state_dim=self.state_dim,
