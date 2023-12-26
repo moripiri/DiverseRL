@@ -17,6 +17,8 @@ class DeepRLTrainer(Trainer):
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
+        log_tensorboard: bool = False,
+        log_wandb: bool = False,
     ) -> None:
         """
         Trainer for Deep RL (Off policy) algorithms.
@@ -31,8 +33,20 @@ class DeepRLTrainer(Trainer):
         :param do_eval: Whether to perform the evaluation.
         :param eval_every: Do evaluation every N step.
         :param eval_ep: Number of episodes to run evaluation
+        :param log_tensorboard: Whether to log the training records in tensorboard
+        :param log_wandb: Whether to log the training records in Wandb
         """
-        super().__init__(algo, env, eval_env, max_step, do_eval, eval_every, eval_ep)
+        super().__init__(
+            algo=algo,
+            env=env,
+            eval_env=eval_env,
+            total=max_step,
+            do_eval=do_eval,
+            eval_every=eval_every,
+            eval_ep=eval_ep,
+            log_tensorboard=log_tensorboard,
+            log_wandb=log_wandb,
+        )
 
         assert not self.algo.buffer.save_log_prob
 
@@ -111,6 +125,8 @@ class DeepRLTrainer(Trainer):
                 episode_reward = 0
                 local_step = 0
 
+                train_results = []
+
                 while not (terminated or truncated):
                     progress.advance(self.task)
 
@@ -131,7 +147,9 @@ class DeepRLTrainer(Trainer):
 
                     if total_step >= self.training_start and self.check_train(terminated or truncated):
                         for _ in range(self.training_num):
-                            self.algo.train()
+                            result = self.algo.train()
+
+                            train_results.append(result)
 
                     observation = next_observation
                     episode_reward += reward
@@ -141,6 +159,10 @@ class DeepRLTrainer(Trainer):
 
                     if self.do_eval and total_step % self.eval_every == 0:
                         self.evaluate()
+
+                if self.log_tensorboard:
+                    for result in train_results:
+                        pass
 
                 episode += 1
 

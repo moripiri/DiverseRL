@@ -29,7 +29,15 @@ class ClassicTrainer(Trainer):
         :param eval_every: Perform evalaution every n episode
         :param eval_ep: How many episodes to run to perform evaluation
         """
-        super().__init__(algo, env, eval_env, max_episode, do_eval, eval_every, eval_ep)
+        super().__init__(
+            algo=algo,
+            env=env,
+            eval_env=eval_env,
+            total=max_episode,
+            do_eval=do_eval,
+            eval_every=eval_every,
+            eval_ep=eval_ep,
+        )
 
         self.max_episode = max_episode
 

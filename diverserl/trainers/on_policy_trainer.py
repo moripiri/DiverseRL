@@ -14,6 +14,8 @@ class OnPolicyTrainer(Trainer):
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
+        log_tensorboard: bool = False,
+        log_wandb: bool = False,
     ) -> None:
         """
         Trainer for Deep RL(On policy) algorithms.
@@ -25,6 +27,8 @@ class OnPolicyTrainer(Trainer):
         :param do_eval: Whether to perform the evaluation.
         :param eval_every: Do evaluation every N step.
         :param eval_ep: Number of episodes to run evaluation
+        :param log_tensorboard: Whether to log the training records in tensorboard
+        :param log_wandb: Whether to log the training records in Wandb
         """
         super().__init__(
             algo=algo,
@@ -34,6 +38,8 @@ class OnPolicyTrainer(Trainer):
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
+            log_tensorboard=log_tensorboard,
+            log_wandb=log_wandb,
         )
 
         assert self.algo.buffer.save_log_prob

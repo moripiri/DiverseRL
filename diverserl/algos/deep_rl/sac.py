@@ -235,6 +235,7 @@ class SACv2(DeepRL):
         result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
         result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
         result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
+        result_dict["alpha"] = self.alpha.cpu().numpy()
 
         return result_dict
 
