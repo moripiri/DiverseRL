@@ -204,8 +204,8 @@ class TD3(DeepRL):
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
-            result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
-        result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
+            result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
+        result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
+        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
 
         return result_dict

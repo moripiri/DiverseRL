@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Any, Dict, List
 
 import gymnasium as gym
 from rich.console import Console
@@ -73,3 +74,11 @@ class Trainer(ABC):
     @abstractmethod
     def run(self):
         pass
+
+    def log(self, result: Dict[str, Any], step: int) -> None:
+        if self.log_tensorboard:
+            for tag, value in result.items():
+                self.tensorboard.add_scalar(tag=tag, scalar_value=value, global_step=step)
+
+        if self.log_wandb:
+            pass

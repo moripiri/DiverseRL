@@ -83,6 +83,8 @@ class OnPolicyTrainer(Trainer):
         avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
         avg_local_step = sum(local_step_list) / len(local_step_list)
 
+        self.log({"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step)
+
         self.progress.console.print(
             f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
         )
@@ -94,12 +96,13 @@ class OnPolicyTrainer(Trainer):
         """
 
         observation, info = self.env.reset()
-        episode = 1
+        self.episode = 0
         episode_reward = 0
         local_step = 0
 
         with self.progress as progress:
-            total_step = 0
+            self.total_step = 0
+
             while True:
                 for _ in range(self.horizon):
                     progress.advance(self.task)
@@ -120,9 +123,9 @@ class OnPolicyTrainer(Trainer):
                     episode_reward += reward
 
                     local_step += 1
-                    total_step += 1
+                    self.total_step += 1
 
-                    if self.do_eval and total_step % self.eval_every == 0:
+                    if self.do_eval and self.total_step % self.eval_every == 0:
                         self.evaluate()
 
                     if terminated or truncated:
@@ -131,14 +134,23 @@ class OnPolicyTrainer(Trainer):
                         # progress.console.print(
                         #     f"Episode: {episode:06d} -> Local_step: {local_step:04d}, Total_step: {total_step:08d}, Episode_reward: {episode_reward:04.4f}",
                         # )
+                        self.log(
+                            {
+                                "train/episode_reward": episode_reward,
+                                "train/local_step": local_step,
+                                "train/total_step": self.total_step,
+                                "train/training_count": self.algo.training_count,
+                            },
+                            self.episode,
+                        )
 
-                        episode += 1
+                        self.episode += 1
                         episode_reward = 0
                         local_step = 0
 
                 self.algo.train()
 
-                if total_step >= self.max_step:
+                if self.total_step >= self.max_step:
                     break
 
             progress.console.print("=" * 100, style="bold")

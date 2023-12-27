@@ -225,17 +225,17 @@ class SACv2(DeepRL):
             alpha_loss.backward()
             self.alpha_optimizer.step()
 
-            result_dict["alpha_loss"] = alpha_loss.detach().cpu().numpy()
+            result_dict["loss/alpha_loss"] = alpha_loss.detach().cpu().numpy()
 
         # critic update
         if self.training_count % self.critic_update == 0:
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
-        result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
-        result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
-        result_dict["alpha"] = self.alpha.cpu().numpy()
+        result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
+        result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
+        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
+        result_dict["value/alpha"] = self.alpha.cpu().numpy()
 
         return result_dict
 
@@ -441,8 +441,8 @@ class SACv1(DeepRL):
         soft_update(self.v_network, self.target_v_network, self.tau)
 
         return {
-            "actor_loss": actor_loss.detach().cpu().numpy(),
-            "critic_loss": critic_loss.detach().cpu().numpy(),
-            "critic2_loss": critic2_loss.detach().cpu().numpy(),
-            "v_loss": v_loss.detach().cpu().numpy(),
+            "loss/actor_loss": actor_loss.detach().cpu().numpy(),
+            "loss/critic_loss": critic_loss.detach().cpu().numpy(),
+            "loss/critic2_loss": critic2_loss.detach().cpu().numpy(),
+            "loss/v_loss": v_loss.detach().cpu().numpy(),
         }
