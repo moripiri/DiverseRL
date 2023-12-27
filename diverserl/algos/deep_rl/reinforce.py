@@ -132,4 +132,4 @@ class REINFORCE(DeepRL):
 
         self.buffer.delete()
 
-        return {"loss": loss.detach().cpu().numpy()}
+        return {"loss/loss": loss.detach().cpu().numpy()}

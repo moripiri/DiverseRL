@@ -1,4 +1,5 @@
 import gymnasium as gym
+import numpy as np
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.trainers.base import Trainer
@@ -102,8 +103,10 @@ class DeepRLTrainer(Trainer):
             ep_reward_list.append(episode_reward)
             local_step_list.append(local_step)
 
-        avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
-        avg_local_step = sum(local_step_list) / len(local_step_list)
+        avg_ep_reward = np.mean(ep_reward_list)
+        avg_local_step = np.mean(local_step_list)
+
+        self.log({"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step)
 
         self.progress.console.print("=" * 100, style="bold")
         self.progress.console.print(
@@ -116,8 +119,8 @@ class DeepRLTrainer(Trainer):
         Train Deep RL algorithm.
         """
         with self.progress as progress:
-            episode = 0
-            total_step = 0
+            self.episode = 0
+            self.total_step = 0
 
             while True:
                 observation, info = self.env.reset()
@@ -125,12 +128,10 @@ class DeepRLTrainer(Trainer):
                 episode_reward = 0
                 local_step = 0
 
-                train_results = []
-
                 while not (terminated or truncated):
                     progress.advance(self.task)
 
-                    if total_step < self.training_start:
+                    if self.total_step < self.training_start:
                         action = self.env.action_space.sample()
 
                     else:
@@ -145,32 +146,39 @@ class DeepRLTrainer(Trainer):
 
                     self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
-                    if total_step >= self.training_start and self.check_train(terminated or truncated):
+                    if self.total_step >= self.training_start and self.check_train(terminated or truncated):
                         for _ in range(self.training_num):
                             result = self.algo.train()
-
-                            train_results.append(result)
+                            self.log(result, self.algo.training_count)
 
                     observation = next_observation
                     episode_reward += reward
 
                     local_step += 1
-                    total_step += 1
+                    self.total_step += 1
 
-                    if self.do_eval and total_step % self.eval_every == 0:
+                    if self.do_eval and self.total_step % self.eval_every == 0:
                         self.evaluate()
 
-                if self.log_tensorboard:
-                    for result in train_results:
-                        pass
-
-                episode += 1
+                self.episode += 1
 
                 progress.console.print(
-                    f"Episode: {episode:06d} -> Local_step: {local_step:04d}, Total_step: {total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                    f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
                 )
 
-                if total_step >= self.max_step:
+                self.log(
+                    {
+                        "train/episode_reward": episode_reward,
+                        "train/local_step": local_step,
+                        "train/total_step": self.total_step,
+                        "train/training_count": self.algo.training_count,
+                    },
+                    self.episode,
+                )
+
+                if self.total_step >= self.max_step:
+                    if self.log_tensorboard:
+                        self.tensorboard.close()
                     break
 
             progress.console.print("=" * 100, style="bold")

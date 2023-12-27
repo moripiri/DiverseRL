@@ -141,4 +141,4 @@ class DQN(DeepRL):
         if self.training_count % self.target_copy_freq == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
 
-        return {"loss": loss.detach().cpu().numpy()}
+        return {"loss/loss": loss.detach().cpu().numpy()}

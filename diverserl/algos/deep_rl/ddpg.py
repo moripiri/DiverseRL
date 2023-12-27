@@ -171,4 +171,7 @@ class DDPG(DeepRL):
         soft_update(self.actor, self.target_actor, self.tau)
         soft_update(self.critic, self.target_critic, self.tau)
 
-        return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}
+        return {
+            "loss/actor_loss": actor_loss.detach().cpu().numpy(),
+            "loss/critic_loss": critic_loss.detach().cpu().numpy(),
+        }

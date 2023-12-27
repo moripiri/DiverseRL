@@ -238,4 +238,4 @@ class PPO(DeepRL):
 
         self.buffer.delete()
 
-        return {"actor_loss": total_a_loss, "critic_loss": total_c_loss}
+        return {"loss/actor_loss": total_a_loss, "loss/critic_loss": total_c_loss}
