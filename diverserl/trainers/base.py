@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 import gymnasium as gym
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
-from torch.utils.tensorboard import SummaryWriter
 
 
 class Trainer(ABC):
@@ -19,6 +19,7 @@ class Trainer(ABC):
         eval_ep: int,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
+        wandb_group: Optional[str] = None,
     ):
         """
         Base trainer for RL algorithms.
@@ -31,6 +32,7 @@ class Trainer(ABC):
         :param eval_ep: How many episodes to run to perform evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
+        :param wandb_group: Group name of the wandb
         """
         self.algo = algo
         self.env = env
@@ -39,6 +41,9 @@ class Trainer(ABC):
         self.do_eval = do_eval
         self.eval_every = eval_every
         self.eval_ep = eval_ep
+
+        self.episode = 0
+        self.total_step = 0
 
         self.log_tensorboard = log_tensorboard
         self.log_wandb = log_wandb
@@ -56,16 +61,24 @@ class Trainer(ABC):
             description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id}[/grey42]...[/bold]",
             total=total,
         )
+        self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
 
         if self.log_tensorboard:
-            from datetime import datetime
+            from torch.utils.tensorboard import SummaryWriter
 
-            start_time = datetime.today().strftime("%Y-%m-%d_%H:%M:%S")
-
-            self.tensorboard = SummaryWriter(log_dir=f"runs/{start_time}_{self.algo}_{self.env.spec.id}")
+            self.tensorboard = SummaryWriter(log_dir=f"./tensorboard/{self.start_time}_{self.algo}_{self.env.spec.id}")
 
         if self.log_wandb:
-            raise NotImplementedError("Wandb not yet")
+            import wandb
+
+            self.wandb = wandb.init(
+                project=f"{self.algo}_{self.env.spec.id}",
+                group=wandb_group,
+                name=f"{self.start_time}",
+                id=f"{self.algo}_{self.env.spec.id}",
+                notes=f"{self.start_time}_{self.algo}_{self.env.spec.id}",
+                tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id}"],
+            )
 
     @abstractmethod
     def evaluate(self):
@@ -75,10 +88,16 @@ class Trainer(ABC):
     def run(self):
         pass
 
-    def log(self, result: Dict[str, Any], step: int) -> None:
+    def log_scalar(self, result: Dict[str, Any], step: int) -> None:
+        """
+        Log training result scalars to tensorboard or/and wandb.
+
+        :param result: Dict that contains scalars as its values and its names as keys.
+        :param step: global total step of the result.
+        """
         if self.log_tensorboard:
             for tag, value in result.items():
                 self.tensorboard.add_scalar(tag=tag, scalar_value=value, global_step=step)
 
         if self.log_wandb:
-            pass
+            self.wandb.log(result, step=step)

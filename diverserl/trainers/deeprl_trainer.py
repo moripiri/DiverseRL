@@ -106,7 +106,9 @@ class DeepRLTrainer(Trainer):
         avg_ep_reward = np.mean(ep_reward_list)
         avg_local_step = np.mean(local_step_list)
 
-        self.log({"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step)
+        self.log_scalar(
+            {"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step
+        )
 
         self.progress.console.print("=" * 100, style="bold")
         self.progress.console.print(
@@ -119,9 +121,6 @@ class DeepRLTrainer(Trainer):
         Train Deep RL algorithm.
         """
         with self.progress as progress:
-            self.episode = 0
-            self.total_step = 0
-
             while True:
                 observation, info = self.env.reset()
                 terminated, truncated = False, False
@@ -149,7 +148,7 @@ class DeepRLTrainer(Trainer):
                     if self.total_step >= self.training_start and self.check_train(terminated or truncated):
                         for _ in range(self.training_num):
                             result = self.algo.train()
-                            self.log(result, self.algo.training_count)
+                            self.log_scalar(result, self.total_step)
 
                     observation = next_observation
                     episode_reward += reward
@@ -166,19 +165,21 @@ class DeepRLTrainer(Trainer):
                     f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
                 )
 
-                self.log(
+                self.log_scalar(
                     {
                         "train/episode_reward": episode_reward,
                         "train/local_step": local_step,
                         "train/total_step": self.total_step,
                         "train/training_count": self.algo.training_count,
                     },
-                    self.episode,
+                    self.total_step,
                 )
 
                 if self.total_step >= self.max_step:
                     if self.log_tensorboard:
                         self.tensorboard.close()
+                    if self.log_wandb:
+                        self.wandb.finish(quiet=True)
                     break
 
             progress.console.print("=" * 100, style="bold")
