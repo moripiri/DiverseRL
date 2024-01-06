@@ -1,8 +1,26 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Union
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch
+from jedi.inference import param
+
+
+def get_optimizer(
+    optimizer_network: List[torch.Tensor],
+    optimizer_lr: float,
+    optimizer_class: Union[str, Type[torch.optim.Optimizer]],
+    optimizer_kwargs: Union[None, Dict[str, Any]],
+) -> torch.optim.Optimizer:
+    optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
+
+    if optimizer_kwargs is None:
+        optimizer_kwargs = {}
+
+    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
+
+    return optimizer
 
 
 class DeepRL(ABC):
@@ -99,6 +117,36 @@ class DeepRL(ABC):
         """
         Train the Deep RL policy.
 
-        :return: Training result (ex. loss, etc)
+        :return: Training result (ex. loss, etc.)
         """
         pass
+
+    def save(self, path: Optional[Union[str, Path]] = None) -> None:
+        """
+        Save the current algorithm's networks and optimizers as a pickle file.
+
+        :return: None
+        """
+        save_dict = dict()
+
+        for key, value in self.__dict__.items():
+            if isinstance(value, torch.nn.Module) or isinstance(value, torch.optim.Optimizer):
+                save_dict[key] = value.state_dict()
+
+        if path is not None:
+            torch.save(save_dict, f"{path}.pt")
+
+    def load(self, path: Union[str, Path]) -> None:
+        """
+        Load the saved model.
+
+        :param path: Path to the saved model.
+        :return:
+        """
+        if isinstance(path, str):
+            path = Path(path)
+
+        ckpt = torch.load(path)
+
+        for key, value in ckpt.items():
+            getattr(self, key).load_state_dict(value)

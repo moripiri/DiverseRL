@@ -86,18 +86,19 @@ class SACv2(DeepRL):
         self.train_alpha = train_alpha
 
         self.critic_update = critic_update
+
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.critic2_optimizer = get_optimizer(
+            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
 
         if self.train_alpha:
-            alpha_optimizer, alpha_optimizer_kwargs = get_optimizer(alpha_optimizer, alpha_optimizer_kwargs)
-            self.alpha_optimizer = alpha_optimizer([self.log_alpha], lr=alpha_lr, **alpha_optimizer_kwargs)
+            self.alpha_optimizer = get_optimizer([self.log_alpha], alpha_lr, alpha_optimizer, alpha_optimizer_kwargs)
 
         self.gamma = gamma
         self.tau = tau
@@ -129,6 +130,7 @@ class SACv2(DeepRL):
             device=self.device,
             **actor_config,
         ).train()
+
         self.target_actor = deepcopy(self.actor).eval()
 
         self.critic = critic_class(
@@ -310,14 +312,14 @@ class SACv1(DeepRL):
 
         self._build_network()
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-        v_optimizer, v_optimizer_kwargs = get_optimizer(v_optimizer, v_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.v_optimizer = v_optimizer(self.v_network.parameters(), lr=v_lr, **v_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.critic2_optimizer = get_optimizer(
+            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.v_optimizer = get_optimizer(self.v_network.parameters(), v_lr, v_optimizer, v_optimizer_kwargs)
 
     def __repr__(self) -> str:
         return "SACv1"

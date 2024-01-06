@@ -20,6 +20,8 @@ class Trainer(ABC):
         log_tensorboard: bool = False,
         log_wandb: bool = False,
         wandb_group: Optional[str] = None,
+        save_model: bool = False,
+        save_freq: int = 10**6,
     ):
         """
         Base trainer for RL algorithms.
@@ -79,6 +81,9 @@ class Trainer(ABC):
                 notes=f"{self.start_time}_{self.algo}_{self.env.spec.id}",
                 tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id}"],
             )
+
+        self.save_model = save_model
+        self.save_freq = save_freq
 
     @abstractmethod
     def evaluate(self):

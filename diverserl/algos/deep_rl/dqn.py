@@ -63,8 +63,7 @@ class DQN(DeepRL):
 
         self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1, max_size=buffer_size, device=self.device)
 
-        optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
-        self.optimizer = optimizer(self.q_network.parameters(), lr=learning_rate, **optimizer_kwargs)
+        self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
         self.eps = eps
         self.gamma = gamma

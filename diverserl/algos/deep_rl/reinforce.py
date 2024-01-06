@@ -66,8 +66,7 @@ class REINFORCE(DeepRL):
             device=self.device,
         )
 
-        optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
-        self.optimizer = optimizer(self.network.parameters(), lr=learning_rate, **optimizer_kwargs)
+        self.optimizer = get_optimizer(self.network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
         self.gamma = gamma
 

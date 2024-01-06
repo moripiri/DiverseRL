@@ -88,11 +88,10 @@ class PPO(DeepRL):
             device=self.device,
         )
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
 
         self.mode = mode.lower()
 
