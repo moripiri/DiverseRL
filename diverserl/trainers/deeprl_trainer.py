@@ -20,6 +20,8 @@ class DeepRLTrainer(Trainer):
         eval_ep: int = 10,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
+        save_model: bool = False,
+        save_freq: int = 10**6,
     ) -> None:
         """
         Trainer for Deep RL (Off policy) algorithms.
@@ -47,6 +49,8 @@ class DeepRLTrainer(Trainer):
             eval_ep=eval_ep,
             log_tensorboard=log_tensorboard,
             log_wandb=log_wandb,
+            save_model=save_model,
+            save_freq=save_freq,
         )
 
         assert not self.algo.buffer.save_log_prob
@@ -159,6 +163,9 @@ class DeepRLTrainer(Trainer):
                     if self.do_eval and self.total_step % self.eval_every == 0:
                         self.evaluate()
 
+                    if self.save_model and self.total_step % self.save_freq == 0:
+                        self.algo.save(f"{self.save_folder}/{self.total_step}")
+
                 self.episode += 1
 
                 progress.console.print(
@@ -179,6 +186,9 @@ class DeepRLTrainer(Trainer):
                     if self.log_tensorboard:
                         self.tensorboard.close()
                     if self.log_wandb:
+                        if self.save_model:
+                            self.wandb.save(f"{self.save_folder}/*.pt")
+
                         self.wandb.finish(quiet=True)
                     break
 

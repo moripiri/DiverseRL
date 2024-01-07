@@ -121,7 +121,7 @@ class DeepRL(ABC):
         """
         pass
 
-    def save(self, path: Optional[Union[str, Path]] = None) -> None:
+    def save(self, path: Union[str, Path]) -> None:
         """
         Save the current algorithm's networks and optimizers as a pickle file.
 
@@ -133,8 +133,7 @@ class DeepRL(ABC):
             if isinstance(value, torch.nn.Module) or isinstance(value, torch.optim.Optimizer):
                 save_dict[key] = value.state_dict()
 
-        if path is not None:
-            torch.save(save_dict, f"{path}.pt")
+        torch.save(save_dict, f"{path}.pt")
 
     def load(self, path: Union[str, Path]) -> None:
         """

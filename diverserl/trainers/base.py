@@ -1,3 +1,4 @@
+import os
 from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Optional
@@ -64,11 +65,12 @@ class Trainer(ABC):
             total=total,
         )
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+        self.run_name = f"{self.start_time}_{self.algo}_{self.env.spec.id}"
 
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
 
-            self.tensorboard = SummaryWriter(log_dir=f"./tensorboard/{self.start_time}_{self.algo}_{self.env.spec.id}")
+            self.tensorboard = SummaryWriter(log_dir=f"./logs/{self.run_name}/tensorboard")
 
         if self.log_wandb:
             import wandb
@@ -77,13 +79,17 @@ class Trainer(ABC):
                 project=f"{self.algo}_{self.env.spec.id}",
                 group=wandb_group,
                 name=f"{self.start_time}",
-                id=f"{self.algo}_{self.env.spec.id}",
-                notes=f"{self.start_time}_{self.algo}_{self.env.spec.id}",
+                id=self.run_name,
+                notes=self.run_name,
                 tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id}"],
             )
 
         self.save_model = save_model
-        self.save_freq = save_freq
+        self.save_freq = save_freq if save_freq < total else total
+
+        if self.save_model:
+            self.save_folder = f"./logs/{self.run_name}/ckpt"
+            os.makedirs(self.save_folder, exist_ok=True)
 
     @abstractmethod
     def evaluate(self):
