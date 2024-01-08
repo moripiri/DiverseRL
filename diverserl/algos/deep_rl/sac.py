@@ -41,10 +41,10 @@ class SACv2(DeepRL):
         """
         SAC (Soft Actor-Critic)
 
-        Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al, 2018
+        Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al., 2018
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the SACv2 networks to be used.
         :param network_config: Configurations of the SACv2 networks.
         :param gamma: The discount factor.
@@ -268,10 +268,10 @@ class SACv1(DeepRL):
         """
         SAC (Soft Actor-Critic)
 
-        Paper: Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor, Haarnoja et al, 2018.
+        Paper: Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor, Haarnoja et al., 2018.
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the SACv1 networks to be used.
         :param network_config: Configurations of the SACv1 networks.
         :param gamma: The discount factor.

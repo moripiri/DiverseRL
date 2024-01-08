@@ -38,7 +38,7 @@ class PPO(DeepRL):
         """
         PPO(Proximal Policy Gradients)
 
-        Paper: Proximal Policy Optimization Algorithm, Schulman et al, 2017
+        Paper: Proximal Policy Optimization Algorithm, Schulman et al., 2017
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from

@@ -32,7 +32,7 @@ class DQN(DeepRL):
         """
         DQN(Deep-Q Network).
 
-        Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013.
+        Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al., 2013.
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from

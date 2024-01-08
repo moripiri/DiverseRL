@@ -35,12 +35,13 @@ class DDPG(DeepRL):
         """
         DDPG(Deep Deterministic Policy Gradients)
 
-        Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al, 2015.
+        Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al., 2015.
 
-        :param env: The environment for RL agent to learn from
-        :param gamma: The discount factor
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the DDPG networks to be used.
         :param network_config: Configurations of the DDPG networks.
+        :param gamma: The discount factor
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
         :param batch_size: Minibatch size for optimizer.
@@ -103,6 +104,7 @@ class DDPG(DeepRL):
             device=self.device,
             **actor_config,
         ).train()
+
         self.target_actor = deepcopy(self.actor).eval()
 
         self.critic = critic_class(

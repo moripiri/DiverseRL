@@ -29,8 +29,8 @@ class REINFORCE(DeepRL):
 
         Paper: Simple statistical gradient-following algorithms for connectionist reinforcement learning, Ronald J. Williams, 1992
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the REINFORCE networks to be used.
         :param network_config: Configurations of the REINFORCE networks.
         :param buffer_size: Maximum length of replay buffer.
