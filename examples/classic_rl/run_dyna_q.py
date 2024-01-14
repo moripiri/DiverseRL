@@ -25,7 +25,7 @@ def get_args():
         "--env-option",
         default={},
         action=StoreDictKeyPair,
-        metavar="KEY1=VAL1,KEY2=VAL2...",
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
     # algorithm setting
@@ -34,7 +34,13 @@ def get_args():
     parser.add_argument(
         "--model-n", type=int, default=10, help="Number of times to train from simulated experiences for every train."
     )
-    parser.add_argument("--eps", type=float, default=0.1, help="Probability to conduct random action during training")
+    parser.add_argument(
+        "--eps",
+        type=float,
+        default=0.1,
+        choices=range(0, 1),
+        help="Probability to conduct random action during training",
+    )
     # trainer setting
     parser.add_argument("--max-episode", type=int, default=1000, help="Maximum number of episodes to run.")
     parser.add_argument("--seed", type=int, default=1, help="Random seed.")
@@ -52,6 +58,8 @@ if __name__ == "__main__":
 
     random.seed(args.seed)
     np.random.seed(args.seed)
+    if args.render:
+        args.env_option["render_mode"] = "human"
 
     env = gym.make(id=args.env_id, **args.env_option)
     env.action_space.seed(args.seed)

@@ -139,7 +139,7 @@ class ClassicTrainer(Trainer):
 
                 success_num += int(success)
                 progress.console.print(
-                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:4d}, success: {success}",
+                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward}, success: {success}",
                 )
 
                 if self.do_eval and episode % self.eval_every == 0:
