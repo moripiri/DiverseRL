@@ -1,4 +1,5 @@
 import gymnasium as gym
+import numpy as np
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.trainers.base import Trainer
@@ -14,6 +15,10 @@ class OnPolicyTrainer(Trainer):
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
+        log_tensorboard: bool = False,
+        log_wandb: bool = False,
+        save_model: bool = False,
+        save_freq: int = 10**6,
     ) -> None:
         """
         Trainer for Deep RL(On policy) algorithms.
@@ -25,6 +30,8 @@ class OnPolicyTrainer(Trainer):
         :param do_eval: Whether to perform the evaluation.
         :param eval_every: Do evaluation every N step.
         :param eval_ep: Number of episodes to run evaluation
+        :param log_tensorboard: Whether to log the training records in tensorboard
+        :param log_wandb: Whether to log the training records in Wandb
         """
         super().__init__(
             algo=algo,
@@ -34,6 +41,10 @@ class OnPolicyTrainer(Trainer):
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
+            log_tensorboard=log_tensorboard,
+            log_wandb=log_wandb,
+            save_model=save_model,
+            save_freq=save_freq,
         )
 
         assert self.algo.buffer.save_log_prob
@@ -74,8 +85,12 @@ class OnPolicyTrainer(Trainer):
             ep_reward_list.append(episode_reward)
             local_step_list.append(local_step)
 
-        avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
-        avg_local_step = sum(local_step_list) / len(local_step_list)
+        avg_ep_reward = np.mean(ep_reward_list)
+        avg_local_step = np.mean(local_step_list)
+
+        self.log_scalar(
+            {"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step
+        )
 
         self.progress.console.print(
             f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
@@ -88,12 +103,10 @@ class OnPolicyTrainer(Trainer):
         """
 
         observation, info = self.env.reset()
-        episode = 1
         episode_reward = 0
         local_step = 0
 
         with self.progress as progress:
-            total_step = 0
             while True:
                 for _ in range(self.horizon):
                     progress.advance(self.task)
@@ -114,10 +127,13 @@ class OnPolicyTrainer(Trainer):
                     episode_reward += reward
 
                     local_step += 1
-                    total_step += 1
+                    self.total_step += 1
 
-                    if self.do_eval and total_step % self.eval_every == 0:
+                    if self.do_eval and self.total_step % self.eval_every == 0:
                         self.evaluate()
+
+                    if self.save_model and self.total_step % self.save_freq == 0:
+                        self.algo.save(f"{self.save_folder}/{self.total_step}")
 
                     if terminated or truncated:
                         observation, info = self.env.reset()
@@ -125,14 +141,30 @@ class OnPolicyTrainer(Trainer):
                         # progress.console.print(
                         #     f"Episode: {episode:06d} -> Local_step: {local_step:04d}, Total_step: {total_step:08d}, Episode_reward: {episode_reward:04.4f}",
                         # )
+                        self.log_scalar(
+                            {
+                                "train/episode_reward": episode_reward,
+                                "train/local_step": local_step,
+                                "train/total_step": self.total_step,
+                                "train/training_count": self.algo.training_count,
+                            },
+                            self.total_step,
+                        )
 
-                        episode += 1
+                        self.episode += 1
                         episode_reward = 0
                         local_step = 0
 
                 self.algo.train()
 
-                if total_step >= self.max_step:
+                if self.total_step >= self.max_step:
+                    if self.log_tensorboard:
+                        self.tensorboard.close()
+                    if self.log_wandb:
+                        if self.save_model:
+                            self.wandb.save(f"{self.save_folder}/*.pt")
+
+                        self.wandb.finish(quiet=True)
                     break
 
             progress.console.print("=" * 100, style="bold")

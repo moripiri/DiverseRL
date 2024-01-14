@@ -77,13 +77,13 @@ class TD3(DeepRL):
 
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.critic2_optimizer = get_optimizer(
+            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
         self.gamma = gamma
         self.tau = tau
         self.batch_size = batch_size
@@ -204,8 +204,8 @@ class TD3(DeepRL):
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
-            result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
-        result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
+            result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
+        result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
+        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
 
         return result_dict

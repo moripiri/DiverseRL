@@ -29,8 +29,8 @@ class REINFORCE(DeepRL):
 
         Paper: Simple statistical gradient-following algorithms for connectionist reinforcement learning, Ronald J. Williams, 1992
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the REINFORCE networks to be used.
         :param network_config: Configurations of the REINFORCE networks.
         :param buffer_size: Maximum length of replay buffer.
@@ -66,8 +66,7 @@ class REINFORCE(DeepRL):
             device=self.device,
         )
 
-        optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
-        self.optimizer = optimizer(self.network.parameters(), lr=learning_rate, **optimizer_kwargs)
+        self.optimizer = get_optimizer(self.network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
         self.gamma = gamma
 
@@ -76,12 +75,12 @@ class REINFORCE(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}
+        return {"MLP": {"Network": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}}
 
     def _build_network(self) -> None:
-        network_class = self.network_list()[self.network_type]
-        network_class = network_class["Discrete" if self.discrete else "Continuous"]
-        network_config = self.network_config
+        network_class = self.network_list()[self.network_type]["Network"]["Discrete" if self.discrete else "Continuous"]
+
+        network_config = self.network_config["Network"]
 
         self.network = network_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config
@@ -132,4 +131,4 @@ class REINFORCE(DeepRL):
 
         self.buffer.delete()
 
-        return {"loss": loss.detach().cpu().numpy()}
+        return {"loss/loss": loss.detach().cpu().numpy()}

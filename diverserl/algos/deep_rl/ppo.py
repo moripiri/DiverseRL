@@ -38,7 +38,7 @@ class PPO(DeepRL):
         """
         PPO(Proximal Policy Gradients)
 
-        Paper: Proximal Policy Optimization Algorithm, Schulman et al, 2017
+        Paper: Proximal Policy Optimization Algorithm, Schulman et al., 2017
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from
@@ -88,11 +88,10 @@ class PPO(DeepRL):
             device=self.device,
         )
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
 
         self.mode = mode.lower()
 
@@ -238,4 +237,4 @@ class PPO(DeepRL):
 
         self.buffer.delete()
 
-        return {"actor_loss": total_a_loss, "critic_loss": total_c_loss}
+        return {"loss/actor_loss": total_a_loss, "loss/critic_loss": total_c_loss}

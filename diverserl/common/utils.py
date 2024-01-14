@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 import torch.optim
 from torch import nn
@@ -17,11 +17,16 @@ def soft_update(network: nn.Module, target_network: nn.Module, tau: float) -> No
 
 
 def get_optimizer(
-    optimizer_class: Union[str, Type[torch.optim.Optimizer]], optimizer_kwargs: Union[None, Dict[str, Any]]
-) -> Tuple[Type[torch.optim.Optimizer], Dict[str, Any]]:
+    optimizer_network: List[torch.Tensor],
+    optimizer_lr: float,
+    optimizer_class: Union[str, Type[torch.optim.Optimizer]],
+    optimizer_kwargs: Union[None, Dict[str, Any]],
+) -> torch.optim.Optimizer:
     optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
 
     if optimizer_kwargs is None:
         optimizer_kwargs = {}
 
-    return optimizer_class, optimizer_kwargs
+    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
+
+    return optimizer

@@ -2,7 +2,7 @@
 
 ---
 ## Overview
-Currently the following Deep RL algorithms are supported
+Currently, the following Deep RL algorithms are supported
 
 * DQN
 * DDPG

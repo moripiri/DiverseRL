@@ -1,8 +1,7 @@
 from typing import Any, Tuple, Union
 
 import gymnasium as gym
-from rich.console import Console
-from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
+import numpy as np
 
 from diverserl.algos.classic_rl.base import ClassicRL
 from diverserl.trainers.base import Trainer
@@ -14,6 +13,7 @@ class ClassicTrainer(Trainer):
         algo: ClassicRL,
         env: gym.Env,
         eval_env: gym.Env,
+        seed: int = 1234,
         max_episode: int = 1000,
         do_eval: bool = True,
         eval_every: int = 1000,
@@ -24,13 +24,23 @@ class ClassicTrainer(Trainer):
 
         :param algo: RL algorithm
         :param env: The environment for RL agent to learn from
+        :param eval_env: The environment for RL agent to evaluate from
+        :param seed: The random seed
         :param max_episode: Maximum episode to train the classic RL algorithm
         :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode
         :param eval_ep: How many episodes to run to perform evaluation
         """
-        super().__init__(algo, env, eval_env, max_episode, do_eval, eval_every, eval_ep)
-
+        super().__init__(
+            algo=algo,
+            env=env,
+            eval_env=eval_env,
+            total=max_episode,
+            do_eval=do_eval,
+            eval_every=eval_every,
+            eval_ep=eval_ep,
+        )
+        self.seed = seed
         self.max_episode = max_episode
 
     def evaluate(self) -> None:
@@ -42,7 +52,7 @@ class ClassicTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset()
+            observation, info = self.eval_env.reset(seed=self.seed)
             terminated, truncated = False, False
             success = False
             episode_reward = 0
@@ -69,9 +79,9 @@ class ClassicTrainer(Trainer):
             ep_reward_list.append(episode_reward)
             local_step_list.append(local_step)
 
-        success_rate = sum(success_list) / len(success_list)
-        avg_ep_reward = sum(ep_reward_list) / len(ep_reward_list)
-        avg_local_step = sum(local_step_list) / len(local_step_list)
+        success_rate = np.mean(success_list)
+        avg_ep_reward = np.mean(ep_reward_list)
+        avg_local_step = np.mean(local_step_list)
 
         self.progress.console.print("=" * 100, style="bold")
         self.progress.console.print(
@@ -90,7 +100,7 @@ class ClassicTrainer(Trainer):
             for episode in range(self.max_episode):
                 progress.advance(self.task)
 
-                observation, info = self.env.reset()
+                observation, info = self.env.reset(seed=self.seed)
                 terminated, truncated = False, False
                 success = False
                 episode_reward = 0
@@ -129,10 +139,10 @@ class ClassicTrainer(Trainer):
 
                 success_num += int(success)
                 progress.console.print(
-                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:4d}, success: {success}",
+                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward}, success: {success}",
                 )
 
-                if self.eval and episode % self.eval_every == 0:
+                if self.do_eval and episode % self.eval_every == 0:
                     self.evaluate()
 
             progress.console.print("=" * 100, style="bold")

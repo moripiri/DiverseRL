@@ -32,7 +32,7 @@ class DQN(DeepRL):
         """
         DQN(Deep-Q Network).
 
-        Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al, 2013.
+        Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al., 2013.
 
         :param observation_space: Observation space of the environment for RL agent to learn from
         :param action_space: Action space of the environment for RL agent to learn from
@@ -63,8 +63,7 @@ class DQN(DeepRL):
 
         self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1, max_size=buffer_size, device=self.device)
 
-        optimizer, optimizer_kwargs = get_optimizer(optimizer, optimizer_kwargs)
-        self.optimizer = optimizer(self.q_network.parameters(), lr=learning_rate, **optimizer_kwargs)
+        self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
         self.eps = eps
         self.gamma = gamma
@@ -141,4 +140,4 @@ class DQN(DeepRL):
         if self.training_count % self.target_copy_freq == 0:
             self.target_q_network.load_state_dict(self.q_network.state_dict())
 
-        return {"loss": loss.detach().cpu().numpy()}
+        return {"loss/loss": loss.detach().cpu().numpy()}

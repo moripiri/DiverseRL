@@ -41,10 +41,10 @@ class SACv2(DeepRL):
         """
         SAC (Soft Actor-Critic)
 
-        Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al, 2018
+        Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al., 2018
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the SACv2 networks to be used.
         :param network_config: Configurations of the SACv2 networks.
         :param gamma: The discount factor.
@@ -86,18 +86,19 @@ class SACv2(DeepRL):
         self.train_alpha = train_alpha
 
         self.critic_update = critic_update
+
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.critic2_optimizer = get_optimizer(
+            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
 
         if self.train_alpha:
-            alpha_optimizer, alpha_optimizer_kwargs = get_optimizer(alpha_optimizer, alpha_optimizer_kwargs)
-            self.alpha_optimizer = alpha_optimizer([self.log_alpha], lr=alpha_lr, **alpha_optimizer_kwargs)
+            self.alpha_optimizer = get_optimizer([self.log_alpha], alpha_lr, alpha_optimizer, alpha_optimizer_kwargs)
 
         self.gamma = gamma
         self.tau = tau
@@ -129,6 +130,7 @@ class SACv2(DeepRL):
             device=self.device,
             **actor_config,
         ).train()
+
         self.target_actor = deepcopy(self.actor).eval()
 
         self.critic = critic_class(
@@ -225,16 +227,17 @@ class SACv2(DeepRL):
             alpha_loss.backward()
             self.alpha_optimizer.step()
 
-            result_dict["alpha_loss"] = alpha_loss.detach().cpu().numpy()
+            result_dict["loss/alpha_loss"] = alpha_loss.detach().cpu().numpy()
 
         # critic update
         if self.training_count % self.critic_update == 0:
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
-        result_dict["actor_loss"] = actor_loss.detach().cpu().numpy()
-        result_dict["critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["critic2_loss"] = critic2_loss.detach().cpu().numpy()
+        result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
+        result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
+        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
+        result_dict["value/alpha"] = self.alpha.cpu().numpy()
 
         return result_dict
 
@@ -265,10 +268,10 @@ class SACv1(DeepRL):
         """
         SAC (Soft Actor-Critic)
 
-        Paper: Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor, Haarnoja et al, 2018.
+        Paper: Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor, Haarnoja et al., 2018.
 
-        :param observation_space: The observation space of the environment.
-        :param action_space: The action space of the environment.
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the SACv1 networks to be used.
         :param network_config: Configurations of the SACv1 networks.
         :param gamma: The discount factor.
@@ -309,14 +312,14 @@ class SACv1(DeepRL):
 
         self._build_network()
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-        v_optimizer, v_optimizer_kwargs = get_optimizer(v_optimizer, v_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.critic2_optimizer = critic_optimizer(self.critic2.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
-        self.v_optimizer = v_optimizer(self.v_network.parameters(), lr=v_lr, **v_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.critic2_optimizer = get_optimizer(
+            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
+        self.v_optimizer = get_optimizer(self.v_network.parameters(), v_lr, v_optimizer, v_optimizer_kwargs)
 
     def __repr__(self) -> str:
         return "SACv1"
@@ -440,8 +443,8 @@ class SACv1(DeepRL):
         soft_update(self.v_network, self.target_v_network, self.tau)
 
         return {
-            "actor_loss": actor_loss.detach().cpu().numpy(),
-            "critic_loss": critic_loss.detach().cpu().numpy(),
-            "critic2_loss": critic2_loss.detach().cpu().numpy(),
-            "v_loss": v_loss.detach().cpu().numpy(),
+            "loss/actor_loss": actor_loss.detach().cpu().numpy(),
+            "loss/critic_loss": critic_loss.detach().cpu().numpy(),
+            "loss/critic2_loss": critic2_loss.detach().cpu().numpy(),
+            "loss/v_loss": v_loss.detach().cpu().numpy(),
         }

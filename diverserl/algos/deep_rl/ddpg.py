@@ -35,12 +35,13 @@ class DDPG(DeepRL):
         """
         DDPG(Deep Deterministic Policy Gradients)
 
-        Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al, 2015.
+        Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al., 2015.
 
-        :param env: The environment for RL agent to learn from
-        :param gamma: The discount factor
+        :param observation_space: Observation space of the environment for RL agent to learn from
+        :param action_space: Action space of the environment for RL agent to learn from
         :param network_type: Type of the DDPG networks to be used.
         :param network_config: Configurations of the DDPG networks.
+        :param gamma: The discount factor
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
         :param batch_size: Minibatch size for optimizer.
@@ -70,11 +71,10 @@ class DDPG(DeepRL):
 
         self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
-        actor_optimizer, actor_optimizer_kwargs = get_optimizer(actor_optimizer, actor_optimizer_kwargs)
-        critic_optimizer, critic_optimizer_kwargs = get_optimizer(critic_optimizer, critic_optimizer_kwargs)
-
-        self.actor_optimizer = actor_optimizer(self.actor.parameters(), lr=actor_lr, **actor_optimizer_kwargs)
-        self.critic_optimizer = critic_optimizer(self.critic.parameters(), lr=critic_lr, **critic_optimizer_kwargs)
+        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
+        self.critic_optimizer = get_optimizer(
+            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+        )
 
         self.gamma = gamma
         self.tau = tau
@@ -104,6 +104,7 @@ class DDPG(DeepRL):
             device=self.device,
             **actor_config,
         ).train()
+
         self.target_actor = deepcopy(self.actor).eval()
 
         self.critic = critic_class(
@@ -171,4 +172,7 @@ class DDPG(DeepRL):
         soft_update(self.actor, self.target_actor, self.tau)
         soft_update(self.critic, self.target_critic, self.tau)
 
-        return {"actor_loss": actor_loss.detach().cpu().numpy(), "critic_loss": critic_loss.detach().cpu().numpy()}
+        return {
+            "loss/actor_loss": actor_loss.detach().cpu().numpy(),
+            "loss/critic_loss": critic_loss.detach().cpu().numpy(),
+        }
