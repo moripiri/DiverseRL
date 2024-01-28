@@ -1,12 +1,7 @@
 import argparse
-import random
-from copy import deepcopy
-
-import gymnasium as gym
-import numpy as np
-import torch
 
 from diverserl.algos.deep_rl import DQN
+from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -91,17 +86,12 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
 
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    set_seed(args.seed)
 
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env = gym.make(id=args.env_id, **args.env_option)
-    env.action_space.seed(args.seed)
-
-    eval_env = deepcopy(env)
+    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
 
     algo = DQN(
         observation_space=env.observation_space,
@@ -123,6 +113,7 @@ if __name__ == "__main__":
         algo=algo,
         env=env,
         eval_env=eval_env,
+        seed=args.seed,
         training_start=args.training_start,
         training_num=args.training_num,
         train_type=args.train_type,

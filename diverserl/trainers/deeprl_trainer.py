@@ -11,6 +11,7 @@ class DeepRLTrainer(Trainer):
         algo: DeepRL,
         env: gym.Env,
         eval_env: gym.Env,
+        seed: int,
         training_start: int = 1000,
         training_num: int = 1,
         train_type: str = "online",
@@ -54,6 +55,7 @@ class DeepRLTrainer(Trainer):
         )
 
         assert not self.algo.buffer.save_log_prob
+        self.seed = seed
 
         self.training_start = training_start
         self.training_num = training_num
@@ -83,7 +85,7 @@ class DeepRLTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset()
+            observation, info = self.eval_env.reset(seed=self.seed - 1)
             terminated, truncated = False, False
             episode_reward = 0
             local_step = 0
@@ -126,7 +128,7 @@ class DeepRLTrainer(Trainer):
         """
         with self.progress as progress:
             while True:
-                observation, info = self.env.reset()
+                observation, info = self.env.reset(seed=self.seed)
                 terminated, truncated = False, False
                 episode_reward = 0
                 local_step = 0

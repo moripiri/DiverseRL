@@ -52,7 +52,7 @@ class ClassicTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset(seed=self.seed)
+            observation, info = self.eval_env.reset(seed=self.seed - 1)
             terminated, truncated = False, False
             success = False
             episode_reward = 0

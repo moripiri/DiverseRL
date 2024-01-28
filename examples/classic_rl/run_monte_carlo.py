@@ -1,11 +1,7 @@
 import argparse
-import random
-from copy import deepcopy
-
-import gymnasium as gym
-import numpy as np
 
 from diverserl.algos.classic_rl import MonteCarlo
+from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import ClassicTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -52,21 +48,19 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
 
-    random.seed(args.seed)
-    np.random.seed(args.seed)
+    set_seed(args.seed)
+
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env = gym.make(id=args.env_id, **args.env_option)
-    env.action_space.seed(args.seed)
-
-    eval_env = deepcopy(env)
+    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
 
     algo = MonteCarlo(env=env, gamma=args.gamma, eps=args.eps)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
+        seed=args.seed,
         max_episode=args.max_episode,
         do_eval=args.do_eval,
         eval_every=args.eval_every,

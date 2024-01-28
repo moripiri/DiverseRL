@@ -11,6 +11,7 @@ class OnPolicyTrainer(Trainer):
         algo: DeepRL,
         env: gym.Env,
         eval_env: gym.Env,
+        seed: int,
         max_step: int = 1000000,
         do_eval: bool = True,
         eval_every: int = 1000,
@@ -48,6 +49,7 @@ class OnPolicyTrainer(Trainer):
         )
 
         assert self.algo.buffer.save_log_prob
+        self.seed = seed
         self.max_step = max_step
 
         self.horizon = self.algo.horizon
@@ -61,7 +63,7 @@ class OnPolicyTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset()
+            observation, info = self.eval_env.reset(seed=self.seed - 1)
             terminated, truncated = False, False
             episode_reward = 0
             local_step = 0
@@ -102,7 +104,7 @@ class OnPolicyTrainer(Trainer):
         Train On policy RL algorithm.
         """
 
-        observation, info = self.env.reset()
+        observation, info = self.env.reset(seed=self.seed)
         episode_reward = 0
         local_step = 0
 
