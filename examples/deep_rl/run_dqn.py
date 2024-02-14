@@ -1,5 +1,7 @@
 import argparse
 
+from gymnasium.wrappers import AtariPreprocessing, FrameStack
+
 from diverserl.algos.deep_rl import DQN
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
@@ -10,7 +12,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="DQN Learning Example")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="CartPole-v1", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -32,8 +34,8 @@ def get_args():
         choices=range(0, 1),
         help="Probability to conduct random action during training",
     )
-    parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor")
-    parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size for optimizer.")
+    parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
+    parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
     parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate of the Q-network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) for the Q-network")
@@ -45,7 +47,7 @@ def get_args():
         help="Parameter dict for the optimizer",
     )
     parser.add_argument(
-        "--target-copy-freq", type=int, default=5, help="N step to pass to copy Q-network to target Q-network"
+        "--target-copy-freq", type=int, default=1000, help="N step to pass to copy Q-network to target Q-network"
     )
     parser.add_argument(
         "--device", type=str, default="cpu", help="Device (cpu, cuda, ...) on which the code should be run"
@@ -55,7 +57,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
 
     parser.add_argument(
-        "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
+        "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
@@ -69,8 +71,8 @@ def get_args():
     )
     parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
-    parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
+    parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
@@ -79,7 +81,6 @@ def get_args():
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
     args = parser.parse_args()
-
     return args
 
 
@@ -90,8 +91,13 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
+    from copy import deepcopy
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    import gymnasium as gym
+
+    # env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    env = FrameStack(AtariPreprocessing(gym.make("ALE/Pong-v5", repeat_action_probability=0.0, frameskip=1)), 3)
+    eval_env = deepcopy(env)
 
     algo = DQN(
         observation_space=env.observation_space,
