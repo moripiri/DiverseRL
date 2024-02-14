@@ -9,7 +9,7 @@ from gymnasium import spaces
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import DeterministicActor
+from diverserl.networks import DeterministicActor, PixelEncoder
 
 
 class DQN(DeepRL):
@@ -54,9 +54,9 @@ class DQN(DeepRL):
 
         assert isinstance(observation_space, spaces.Box) and isinstance(
             action_space, spaces.Discrete
-        ), f"{self} supports only Box type observation space and Discrete type action space."
+        ), f"{self} supports only Box type state observation space and Discrete type action space."
 
-        self.state_dim = observation_space.shape[0]
+        self.state_dim = observation_space.shape[0] if len(observation_space.shape) == 1 else observation_space.shape
         self.action_dim = action_space.n
 
         self._build_network()
@@ -76,17 +76,34 @@ class DQN(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Q_network": DeterministicActor}}
+        return {"MLP": {"Q_network": DeterministicActor, "Encoder": PixelEncoder}}
 
     def _build_network(self) -> None:
+        if len(self.state_dim) != 1:
+            encoder_class = self.network_list()[self.network_type]["Encoder"]
+            encoder_config = self.network_config["Encoder"]
+            self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
+
+            q_input_dim = self.encoder.feature_dim
+
+        else:
+            self.encoder = None
+            q_input_dim = self.state_dim
+
         q_network_class = self.network_list()[self.network_type]["Q_network"]
         q_network_config = self.network_config["Q_network"]
 
         self.q_network = q_network_class(
-            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **q_network_config
+            state_dim=q_input_dim,
+            action_dim=self.action_dim,
+            device=self.device,
+            feature_encoder=self.encoder,
+            **q_network_config,
         ).train()
+
         self.target_q_network = deepcopy(self.q_network).eval()
 
+    @torch.no_grad
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
         Get the DQN action from an observation (in training mode).
@@ -100,9 +117,9 @@ class DQN(DeepRL):
             observation = super()._fix_ob_shape(observation)
 
             self.q_network.train()
-            with torch.no_grad():
-                return self.q_network(observation).argmax(1).cpu().numpy()[0]
+            return self.q_network(observation).argmax(1).cpu().numpy()[0]
 
+    @torch.no_grad
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
         Get the DQN action from an observation (in evaluation mode).
@@ -113,8 +130,7 @@ class DQN(DeepRL):
         observation = super()._fix_ob_shape(observation)
         self.q_network.eval()
 
-        with torch.no_grad():
-            return self.q_network(observation).argmax(1).cpu().numpy()[0]
+        return self.q_network(observation).argmax(1).cpu().numpy()[0]
 
     def train(self) -> Dict[str, Any]:
         """

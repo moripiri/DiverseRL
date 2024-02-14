@@ -78,19 +78,19 @@ class DeepRL(ABC):
         :param observation: The input observation
         :return: The input observation in the form of two dimension tensor
         """
-        if isinstance(observation, np.ndarray):
-            observation = observation.astype(np.float32)
-        else:
+
+        if isinstance(observation, torch.Tensor):
             observation = observation.to(dtype=torch.float32)
+            observation = torch.unsqueeze(observation, dim=0)
 
-        if observation.ndim == 1:
-            if isinstance(observation, np.ndarray):
-                observation = np.expand_dims(observation, axis=0)
-                observation = torch.from_numpy(observation)
-            else:
-                observation = torch.unsqueeze(observation, dim=0)
+        else:
+            observation = np.asarray(observation, dtype=np.float32)
+            observation = np.expand_dims(observation, axis=0)
+            observation = torch.from_numpy(observation)
 
-        return observation.to(self.device)
+        observation = observation.to(self.device)
+
+        return observation
 
     @abstractmethod
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:

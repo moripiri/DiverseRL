@@ -25,7 +25,6 @@ class CategoricalActor(Network):
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
-            hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,
             last_activation=nn.Softmax,
@@ -37,6 +36,7 @@ class CategoricalActor(Network):
             use_bias=use_bias,
             device=device,
         )
+        self.hidden_units = hidden_units
 
         self._make_layers()
         self.to(torch.device(device))

@@ -45,7 +45,6 @@ class MLP(Network):
         super().__init__(
             input_dim=input_dim,
             output_dim=output_dim,
-            hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,
             last_activation=last_activation,
@@ -57,6 +56,7 @@ class MLP(Network):
             use_bias=use_bias,
             device=device,
         )
+        self.hidden_units = hidden_units
 
         self._make_layers()
         self.to(torch.device(device))
@@ -113,6 +113,7 @@ class DeterministicActor(MLP):
         action_scale: float = 1.0,
         action_bias: float = 0.0,
         use_bias: bool = True,
+        feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
         super().__init__(
@@ -130,11 +131,15 @@ class DeterministicActor(MLP):
             use_bias=use_bias,
             device=device,
         )
+        self.feature_encoder = feature_encoder
 
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.feature_encoder is not None:
+            input = self.feature_encoder(input.to(self.device))
+
         output = super().forward(input)
 
         return self.action_scale * output + self.action_bias
@@ -153,6 +158,7 @@ class QNetwork(MLP):
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
         use_bias: bool = True,
+        feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
         super().__init__(
@@ -168,6 +174,13 @@ class QNetwork(MLP):
             use_bias=use_bias,
             device=device,
         )
+        self.feature_encoder = feature_encoder
+
+    def forward(self, input: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+        if self.feature_encoder is not None:
+            input = (self.feature_encoder(input[0].to(self.device)), input[1])
+
+        return super().forward(input)
 
 
 class VNetwork(MLP):
@@ -182,6 +195,7 @@ class VNetwork(MLP):
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
         use_bias: bool = True,
+        feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
         super().__init__(
@@ -197,6 +211,15 @@ class VNetwork(MLP):
             use_bias=use_bias,
             device=device,
         )
+        self.feature_encoder = feature_encoder
+
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
+        if self.feature_encoder is not None:
+            input = self.feature_encoder(input.to(self.device))
+
+        output = super().forward(input)
+
+        return output
 
 
 if __name__ == "__main__":
