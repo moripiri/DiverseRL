@@ -84,7 +84,8 @@ class DeepRL(ABC):
             observation = torch.unsqueeze(observation, dim=0)
 
         else:
-            observation = np.asarray(observation, dtype=np.float32)
+            observation = np.asarray(observation).astype(np.float32)
+
             observation = np.expand_dims(observation, axis=0)
             observation = torch.from_numpy(observation)
 

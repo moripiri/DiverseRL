@@ -61,11 +61,11 @@ class Trainer(ABC):
         )
 
         self.task = self.progress.add_task(
-            description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id}[/grey42]...[/bold]",
+            description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id.replace('ALE/', '')}[/grey42]...[/bold]",
             total=total,
         )
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-        self.run_name = f"{self.start_time}_{self.algo}_{self.env.spec.id}"
+        self.run_name = f"{self.start_time}_{self.algo}_{self.env.spec.id.replace('ALE/', '')}"
 
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
@@ -76,12 +76,12 @@ class Trainer(ABC):
             import wandb
 
             self.wandb = wandb.init(
-                project=f"{self.algo}_{self.env.spec.id}",
+                project=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
                 group=wandb_group,
                 name=f"{self.start_time}",
                 id=self.run_name,
                 notes=self.run_name,
-                tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id}"],
+                tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id.replace('ALE/', '')}"],
             )
 
         self.save_model = save_model

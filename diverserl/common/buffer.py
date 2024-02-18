@@ -66,6 +66,7 @@ class ReplayBuffer:
         :param t: truncated
         :param log_prob: log_probability
         """
+
         np.copyto(self.s[self.idx], s)
         np.copyto(self.a[self.idx], a)
         np.copyto(self.r[self.idx], r)

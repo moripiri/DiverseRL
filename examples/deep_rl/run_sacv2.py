@@ -10,7 +10,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="SACv2 Learning Example")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="Pendulum-v1", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="BipedalWalker-v3", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -80,6 +80,9 @@ def get_args():
         "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
+        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
+    )
+    parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
     )
     parser.add_argument(
@@ -91,7 +94,7 @@ def get_args():
     )
     parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
@@ -146,6 +149,7 @@ if __name__ == "__main__":
         eval_env=eval_env,
         seed=args.seed,
         training_start=args.training_start,
+        training_freq=args.training_freq,
         training_num=args.training_num,
         train_type=args.train_type,
         max_step=args.max_step,

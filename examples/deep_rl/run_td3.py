@@ -81,6 +81,9 @@ def get_args():
         "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
+        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
+    )
+    parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
     )
     parser.add_argument(
@@ -144,6 +147,7 @@ if __name__ == "__main__":
         eval_env=eval_env,
         seed=args.seed,
         training_start=args.training_start,
+        training_freq=args.training_freq,
         training_num=args.training_num,
         train_type=args.train_type,
         max_step=args.max_step,
