@@ -13,6 +13,7 @@ class DeepRLTrainer(Trainer):
         eval_env: gym.Env,
         seed: int,
         training_start: int = 1000,
+        training_freq: int = 1,
         training_num: int = 1,
         train_type: str = "online",
         max_step: int = 100000,
@@ -31,6 +32,7 @@ class DeepRLTrainer(Trainer):
         :param env: The environment for RL agent to learn from
         :param eval_env: Then environment for RL agent to evaluate from
         :param training_start: In which total_step to start the training of the Deep RL algorithm
+        :param training_freq: How frequently train the algorithm (in total_step)
         :param training_num: How many times to run training function in the algorithm each time
         :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
@@ -58,6 +60,7 @@ class DeepRLTrainer(Trainer):
         self.seed = seed
 
         self.training_start = training_start
+        self.training_freq = training_freq
         self.training_num = training_num
         self.train_type = train_type
 
@@ -71,11 +74,11 @@ class DeepRLTrainer(Trainer):
         :return: Whether to conduct training by train_type
         """
         if self.train_type == "online":
-            return True
+            return self.total_step % self.training_freq == 0
         elif self.train_type == "offline":
             return episode_end
         else:
-            return True
+            return False
 
     def evaluate(self) -> None:
         """
@@ -152,7 +155,7 @@ class DeepRLTrainer(Trainer):
                     self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
                     if self.total_step >= self.training_start and self.check_train(terminated or truncated):
-                        for _ in range(self.training_num):
+                        for _ in range(int(self.training_num)):
                             result = self.algo.train()
                             self.log_scalar(result, self.total_step)
 

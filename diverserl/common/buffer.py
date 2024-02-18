@@ -6,7 +6,14 @@ from torch import Tensor
 
 
 class ReplayBuffer:
-    def __init__(self, state_dim: int, action_dim: int, max_size=10**6, save_log_prob=False, device="cpu") -> None:
+    def __init__(
+        self,
+        state_dim: Union[int, Tuple[int, ...]],
+        action_dim: int,
+        max_size=10**6,
+        save_log_prob=False,
+        device="cpu",
+    ) -> None:
         """
         Buffer to record and save the RL agent trajectories.
 
@@ -16,15 +23,16 @@ class ReplayBuffer:
         """
         self.device = device
         self.max_size = max_size
-        self.state_dim = state_dim
-        self.action_dim = action_dim
+
+        self.s_size = (self.max_size, state_dim) if isinstance(state_dim, int) else (self.max_size, *state_dim)
+        self.a_size = (self.max_size, action_dim)
 
         self.save_log_prob = save_log_prob
 
-        self.s = np.empty((self.max_size, self.state_dim), dtype=np.float32)
-        self.a = np.empty((self.max_size, self.action_dim), dtype=np.float32)
+        self.s = np.empty(self.s_size, dtype=np.float32)
+        self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, 1), dtype=np.float32)
-        self.ns = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.ns = np.empty(self.s_size, dtype=np.float32)
         self.d = np.empty((self.max_size, 1), dtype=np.float32)
         self.t = np.empty((self.max_size, 1), dtype=np.float32)
 
@@ -58,6 +66,7 @@ class ReplayBuffer:
         :param t: truncated
         :param log_prob: log_probability
         """
+
         np.copyto(self.s[self.idx], s)
         np.copyto(self.a[self.idx], a)
         np.copyto(self.r[self.idx], r)
@@ -118,10 +127,10 @@ class ReplayBuffer:
         return states, actions, rewards, next_states, dones, terminates
 
     def delete(self):
-        self.s = np.empty((self.max_size, self.state_dim), dtype=np.float32)
-        self.a = np.empty((self.max_size, self.action_dim), dtype=np.float32)
+        self.s = np.empty(self.s_size, dtype=np.float32)
+        self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, 1), dtype=np.float32)
-        self.ns = np.empty((self.max_size, self.state_dim), dtype=np.float32)
+        self.ns = np.empty(self.s_size, dtype=np.float32)
         self.d = np.empty((self.max_size, 1), dtype=np.float32)
         self.t = np.empty((self.max_size, 1), dtype=np.float32)
 

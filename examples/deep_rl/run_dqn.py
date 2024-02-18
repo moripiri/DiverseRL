@@ -10,7 +10,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="DQN Learning Example")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="CartPole-v1", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -19,6 +19,14 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
+    # atari env hyperparameters
+    parser.add_argument("--image-size", type=int, default=84)
+    parser.add_argument("--noop-max", type=int, default=30)
+    parser.add_argument("--frame-skip", type=int, default=4)
+    parser.add_argument("--frame-stack", type=int, default=4)
+    parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
+    parser.add_argument("--grayscale-obs", type=bool, default=True)
+    parser.add_argument("--repeat-action-probability", type=float, default=0.)
 
     # dqn hyperparameters
     parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
@@ -32,10 +40,10 @@ def get_args():
         choices=range(0, 1),
         help="Probability to conduct random action during training",
     )
-    parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor")
-    parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size for optimizer.")
+    parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
+    parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
     parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
-    parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate of the Q-network")
+    parser.add_argument("--learning-rate", type=float, default=0.0001, help="Learning rate of the Q-network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) for the Q-network")
     parser.add_argument(
         "--optimizer-kwargs",
@@ -45,7 +53,7 @@ def get_args():
         help="Parameter dict for the optimizer",
     )
     parser.add_argument(
-        "--target-copy-freq", type=int, default=5, help="N step to pass to copy Q-network to target Q-network"
+        "--target-copy-freq", type=int, default=1000, help="N step to pass to copy Q-network to target Q-network"
     )
     parser.add_argument(
         "--device", type=str, default="cpu", help="Device (cpu, cuda, ...) on which the code should be run"
@@ -55,10 +63,13 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
 
     parser.add_argument(
-        "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
+        "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
-        "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
+        "--training-freq", type=int, default=4, help="How often in total_step to perform training"
+    )
+    parser.add_argument(
+        "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"
     )
     parser.add_argument(
         "--train-type",
@@ -67,10 +78,10 @@ def get_args():
         choices=["online", "offline"],
         help="Type of algorithm training strategy (online, offline)",
     )
-    parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
+    parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
-    parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
+    parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
@@ -79,7 +90,6 @@ def get_args():
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
     args = parser.parse_args()
-
     return args
 
 
@@ -91,7 +101,9 @@ if __name__ == "__main__":
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option, image_size=args.image_size,
+                             noop_max=args.noop_max, frame_skip=args.frame_skip, frame_stack=args.frame_stack, terminal_on_life_loss=args.terminal_on_life_loss,
+                             grayscale_obs=args.grayscale_obs, repeat_action_probability=args.repeat_action_probability)
 
     algo = DQN(
         observation_space=env.observation_space,
@@ -115,6 +127,7 @@ if __name__ == "__main__":
         eval_env=eval_env,
         seed=args.seed,
         training_start=args.training_start,
+        training_freq=args.training_freq,
         training_num=args.training_num,
         train_type=args.train_type,
         max_step=args.max_step,

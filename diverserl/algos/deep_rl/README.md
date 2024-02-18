@@ -14,3 +14,8 @@ Currently, the following Deep RL algorithms are supported
 
 ---
 ## Environments
+
+### Gymnasium
+
+Gymnasium contains different types of many RL environments.
+-

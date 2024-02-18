@@ -33,7 +33,6 @@ class GaussianActor(Network):
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
-            hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,
             kernel_initializer=kernel_initializer,
@@ -43,6 +42,8 @@ class GaussianActor(Network):
             use_bias=use_bias,
             device=device,
         )
+        self.hidden_units = hidden_units
+
         self.squash = squash
         self.independent_std = independent_std
         assert not (self.independent_std and self.squash)
