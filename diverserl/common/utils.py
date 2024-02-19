@@ -16,12 +16,22 @@ def soft_update(network: nn.Module, target_network: nn.Module, tau: float) -> No
     """
     Polyak averaging for target networks.
 
-    :param network: Network to be updated
+    :param network: Network for update
     :param target_network: Target network to be updated
     :param tau: Interpolation factor in polyak averaging for target networks.
     """
     for param, target_param in zip(network.parameters(), target_network.parameters(), strict=True):
         target_param.data.copy_(tau * param.data + (1 - tau) * target_param.data)
+
+
+def hard_update(network: nn.Module, target_network: nn.Module) -> None:
+    """
+    Update target network to network parameters with hard updates.
+
+    :param network: Network for update
+    :param target_network: Target network to be updated
+    """
+    soft_update(network, target_network, 1)
 
 
 def get_optimizer(
@@ -80,7 +90,8 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
 
 def make_env(env_id: str, env_option: Dict[str, Any], seed: int = 0,
              image_size: int = 84, noop_max: int = 30, frame_skip: int = 4, frame_stack: int = 4,
-             terminal_on_life_loss: bool = True, grayscale_obs: bool = True, repeat_action_probability: float = 0.) -> Tuple[Env, Env]:
+             terminal_on_life_loss: bool = True, grayscale_obs: bool = True, repeat_action_probability: float = 0.) -> \
+Tuple[Env, Env]:
     """
     Creates gym environments for deep RL training.
 
@@ -103,9 +114,11 @@ def make_env(env_id: str, env_option: Dict[str, Any], seed: int = 0,
         env_option[
             'repeat_action_probability'] = repeat_action_probability  # add repeat_action_probability in env_option
 
-        if '-ram-' in env_id:
+        if '-ram' in env_id:
             env_option['frameskip'] = frame_skip
-            env = TransformObservation(FlattenObservation(FrameStack(gym.make(env_id, **env_option), num_stack=frame_stack)), lambda obs: obs / 255.)
+            env = TransformObservation(
+                FlattenObservation(FrameStack(gym.make(env_id, **env_option), num_stack=frame_stack)),
+                lambda obs: obs / 255.)
         else:
             env_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
             env = gym.make(env_id, **env_option)

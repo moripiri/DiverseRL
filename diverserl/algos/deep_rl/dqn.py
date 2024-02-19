@@ -8,7 +8,7 @@ from gymnasium import spaces
 
 from diverserl.algos.deep_rl.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import get_optimizer, soft_update
+from diverserl.common.utils import get_optimizer, hard_update
 from diverserl.networks import DeterministicActor, PixelEncoder
 
 
@@ -103,6 +103,10 @@ class DQN(DeepRL):
 
         self.target_q_network = deepcopy(self.q_network).eval()
 
+    def update_eps(self):
+        #Todo: implement epsilon decay
+        pass
+
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
         Get the DQN action from an observation (in training mode).
@@ -110,6 +114,7 @@ class DQN(DeepRL):
         :param observation: The input observation
         :return: The DQN agent's action
         """
+        self.update_eps()
 
         if np.random.rand() < self.eps:
             return np.random.randint(self.action_dim)
@@ -159,6 +164,6 @@ class DQN(DeepRL):
         self.optimizer.step()
 
         if self.training_count % self.target_copy_freq == 0:
-            soft_update(self.q_network, self.target_q_network, 1)
+            hard_update(self.q_network, self.target_q_network)
 
         return {"loss/loss": loss.detach().cpu().numpy()}
