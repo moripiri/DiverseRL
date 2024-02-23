@@ -100,44 +100,21 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
+    config = vars(args)
+    env, eval_env = make_env(**config)
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option, image_size=args.image_size,
-                             noop_max=args.noop_max, frame_skip=args.frame_skip, frame_stack=args.frame_stack, terminal_on_life_loss=args.terminal_on_life_loss,
-                             grayscale_obs=args.grayscale_obs, repeat_action_probability=args.repeat_action_probability)
 
     algo = DQN(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        network_type=args.network_type,
-        network_config=args.network_config,
-        eps=args.eps,
-        gamma=args.gamma,
-        batch_size=args.batch_size,
-        buffer_size=args.buffer_size,
-        learning_rate=args.learning_rate,
-        optimizer=args.optimizer,
-        optimizer_kwargs=args.optimizer_kwargs,
-        target_copy_freq=args.target_copy_freq,
-        device=args.device,
+        **config
     )
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        training_start=args.training_start,
-        training_freq=args.training_freq,
-        training_num=args.training_num,
-        train_type=args.train_type,
-        max_step=args.max_step,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
-        log_tensorboard=args.log_tensorboard,
-        log_wandb=args.log_wandb,
-        save_model=args.save_model,
-        save_freq=args.save_freq,
+        **config
     )
 
     trainer.run()

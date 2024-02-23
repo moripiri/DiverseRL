@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import gymnasium as gym
+import yaml
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
@@ -23,7 +24,9 @@ class Trainer(ABC):
         wandb_group: Optional[str] = None,
         save_model: bool = False,
         save_freq: int = 10**6,
+        **kwargs: Optional[Dict[str, Any]]
     ):
+
         """
         Base trainer for RL algorithms.
 
@@ -51,6 +54,14 @@ class Trainer(ABC):
         self.log_tensorboard = log_tensorboard
         self.log_wandb = log_wandb
 
+        self.config = locals()
+        for key in ['self', 'algo', 'env', 'eval_env']:
+            del self.config[key]
+        for key, value in self.config['kwargs'].items():
+            self.config[key] = value
+
+        del self.config['kwargs']
+
         self.console = Console(style="bold black")
 
         self.progress = Progress(
@@ -71,12 +82,15 @@ class Trainer(ABC):
             from torch.utils.tensorboard import SummaryWriter
 
             self.tensorboard = SummaryWriter(log_dir=f"./logs/{self.run_name}/tensorboard")
+            with open(f"./logs/{self.run_name}/config.yaml", 'w') as file:
+                yaml.dump(self.config, file, sort_keys=False)
 
         if self.log_wandb:
             import wandb
 
             self.wandb = wandb.init(
                 project=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
+                config=self.config,
                 group=wandb_group,
                 name=f"{self.start_time}",
                 id=self.run_name,

@@ -53,19 +53,15 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
+    config = vars(args)
+    env, eval_env = make_env(**config)
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
-
-    algo = QLearning(env=env, gamma=args.gamma, alpha=args.alpha, eps=args.eps)
+    algo = QLearning(env=env, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        max_episode=args.max_episode,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
+        **config
     )
 
     trainer.run()

@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -18,6 +18,7 @@ class ClassicTrainer(Trainer):
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
+        **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Trainer for Classic RL algorithms.
@@ -39,6 +40,7 @@ class ClassicTrainer(Trainer):
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
+            **kwargs
         )
         self.seed = seed
         self.max_episode = max_episode

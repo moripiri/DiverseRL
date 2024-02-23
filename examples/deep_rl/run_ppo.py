@@ -104,44 +104,23 @@ if __name__ == "__main__":
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    config = vars(args)
+    env, eval_env = make_env(        **config
+)
 
     algo = PPO(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        network_type=args.network_type,
-        network_config=args.network_config,
-        mode=args.mode,
-        clip=args.clip,
-        target_dist=args.target_dist,
-        beta=args.beta,
-        gamma=args.gamma,
-        lambda_gae=args.lambda_gae,
-        horizon=args.horizon,
-        batch_size=args.batch_size,
-        buffer_size=args.buffer_size,
-        actor_lr=args.actor_lr,
-        actor_optimizer=args.actor_optimizer,
-        actor_optimizer_kwargs=args.actor_optimizer_kwargs,
-        critic_lr=args.critic_lr,
-        critic_optimizer=args.critic_optimizer,
-        critic_optimizer_kwargs=args.critic_optimizer_kwargs,
-        device=args.device,
+        **config
+
     )
 
     trainer = OnPolicyTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        max_step=args.max_step,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
-        log_tensorboard=args.log_tensorboard,
-        log_wandb=args.log_wandb,
-        save_model=args.save_model,
-        save_freq=args.save_freq,
+        **config
+
     )
 
     trainer.run()

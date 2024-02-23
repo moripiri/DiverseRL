@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -9,7 +9,7 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 class DynaQ(ClassicRL):
     def __init__(
-        self, env: gym.Env, gamma: float = 0.8, alpha: float = 0.1, model_n: int = 10, eps: float = 0.1
+        self, env: gym.Env, gamma: float = 0.8, alpha: float = 0.1, model_n: int = 10, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Tabular Dyna-Q algorithm.

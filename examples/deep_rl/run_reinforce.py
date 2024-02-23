@@ -77,38 +77,23 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
-
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    config = vars(args)
+    env, eval_env = make_env(        **config
+)
 
     algo = REINFORCE(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        network_type=args.network_type,
-        network_config=args.network_config,
-        buffer_size=args.buffer_size,
-        gamma=args.gamma,
-        learning_rate=args.learning_rate,
-        optimizer=args.optimizer,
-        optimizer_kwargs=args.optimizer_kwargs,
-        device=args.device,
+        **config
+
     )
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        training_start=args.training_start,
-        training_num=args.training_num,
-        train_type="offline",
-        max_step=args.max_step,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
-        log_tensorboard=args.log_tensorboard,
-        log_wandb=args.log_wandb,
-        save_model=args.save_model,
-        save_freq=args.save_freq,
+        **config
+
     )
 
     trainer.run()

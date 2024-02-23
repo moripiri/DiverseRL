@@ -28,6 +28,7 @@ class DQN(DeepRL):
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         target_copy_freq: int = 10,
         device: str = "cpu",
+        **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         DQN(Deep-Q Network).
