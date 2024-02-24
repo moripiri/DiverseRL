@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -37,11 +37,25 @@ def get_args():
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )
     parser.add_argument(
-        "--eps",
+        "--eps-initial",
         type=float,
-        default=0.1,
+        default=1.0,
         choices=range(0, 1),
-        help="Probability to conduct random action during training",
+        help="Initial probability to conduct random action during training",
+    )
+    parser.add_argument(
+        "--eps-final",
+        type=float,
+        default=0.05,
+        choices=range(0, 1),
+        help="Final probability to conduct random action during training",
+    )
+    parser.add_argument(
+        "--decay-fraction",
+        type=float,
+        default=0.5,
+        choices=range(0, 1),
+        help="Fraction of max_step to perform epsilon decay during training.",
     )
     parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
@@ -69,7 +83,7 @@ def get_args():
         "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
-        "--training-freq", type=int, default=4, help="How often in total_step to perform training"
+        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
     )
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"

@@ -19,7 +19,9 @@ class DQN(DeepRL):
         action_space: spaces.Space,
         network_type: str = "MLP",
         network_config: Optional[Dict[str, Any]] = None,
-        eps: float = 0.1,
+        eps_initial: float = 1.0,
+        eps_final: float = 0.05,
+        decay_fraction: float = 0.5,
         gamma: float = 0.9,
         batch_size: int = 256,
         buffer_size: int = 10**6,
@@ -27,6 +29,8 @@ class DQN(DeepRL):
         optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
         optimizer_kwargs: Optional[Dict[str, Any]] = None,
         target_copy_freq: int = 10,
+        training_start: int = 1000,
+        max_step: int = 1000000,
         device: str = "cpu",
         **kwargs: Optional[Dict[str, Any]]
     ) -> None:
@@ -40,6 +44,9 @@ class DQN(DeepRL):
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param eps: Probability to conduct random action during training.
+        :param eps_initial: Initial probability to conduct random action during training
+        :param eps_final: Final probability to conduct random action during training
+        :param decay_fraction: Fraction of max_step to perform epsilon linear decay during training.
         :param gamma: The discount factor
         :param batch_size: Minibatch size for optimizer.
         :param buffer_size: Maximum length of replay buffer.
@@ -47,6 +54,8 @@ class DQN(DeepRL):
         :param optimizer: Optimizer class (or str) for the Q-network
         :param optimizer_kwargs: Parameter dict for the optimizer
         :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
+        :param training_start: In which total_step to start the training of the Deep RL algorithm
+        :param max_step: Maximum step to run the training
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
@@ -66,11 +75,18 @@ class DQN(DeepRL):
 
         self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
-        self.eps = eps
         self.gamma = gamma
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.target_copy_freq = target_copy_freq
+
+        self.eps_initial = eps_initial
+        self.eps_final = eps_final
+        self.decay_fraction = decay_fraction
+        self.training_start = training_start
+
+        self.max_step = max_step
+        self.action_count = 0
 
     def __repr__(self) -> str:
         return "DQN"
@@ -105,8 +121,14 @@ class DQN(DeepRL):
         self.target_q_network = deepcopy(self.q_network).eval()
 
     def update_eps(self):
-        #Todo: implement epsilon decay
-        pass
+        """
+        linearly update the dqn exploration parameter.
+        :return:
+        """
+        slope = (self.eps_final - self.eps_initial) / int(self.decay_fraction * self.max_step)
+        self.eps = max(slope * (self.training_start + self.action_count) + self.eps_initial, self.eps_final)
+
+        self.action_count += 1
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
         """
@@ -148,6 +170,7 @@ class DQN(DeepRL):
 
         :return: Training result (loss)
         """
+
         self.training_count += 1
         self.q_network.train()
 
@@ -167,4 +190,4 @@ class DQN(DeepRL):
         if self.training_count % self.target_copy_freq == 0:
             hard_update(self.q_network, self.target_q_network)
 
-        return {"loss/loss": loss.detach().cpu().numpy()}
+        return {"loss/loss": loss.detach().cpu().numpy(), "eps": self.eps}
