@@ -1,5 +1,7 @@
 import argparse
 
+import yaml
+
 from diverserl.algos.deep_rl import REINFORCE
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
@@ -8,6 +10,7 @@ from examples.utils import StoreDictKeyPair
 
 def get_args():
     parser = argparse.ArgumentParser(description="REINFORCE Learning Example")
+    parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
     parser.add_argument("--env-id", type=str, default="Pendulum-v1", help="Name of the gymnasium environment to run.")
@@ -29,7 +32,7 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Configurations of the REINFORCE networks.",
     )
-    parser.add_argument("--buffer-size", type=int, default=int(10**6), help="Maximum length of replay buffer.")
+    parser.add_argument("--buffer-size", type=int, default=int(10 ** 6), help="Maximum length of replay buffer.")
     parser.add_argument("--gamma", type=float, default=0.99, help="The discount factor.")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate of the network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) of the network")
@@ -78,37 +81,28 @@ if __name__ == "__main__":
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    if args.config_path is not None:
+        with open(args.config_path, "r") as f:
+            config = yaml.safe_load(f)
+            config['config_path'] = args.config_path
+    else:
+        config = vars(args)
+
+    env, eval_env = make_env(**config)
 
     algo = REINFORCE(
         observation_space=env.observation_space,
         action_space=env.action_space,
-        network_type=args.network_type,
-        network_config=args.network_config,
-        buffer_size=args.buffer_size,
-        gamma=args.gamma,
-        learning_rate=args.learning_rate,
-        optimizer=args.optimizer,
-        optimizer_kwargs=args.optimizer_kwargs,
-        device=args.device,
+        **config
+
     )
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        training_start=args.training_start,
-        training_num=args.training_num,
-        train_type="offline",
-        max_step=args.max_step,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
-        log_tensorboard=args.log_tensorboard,
-        log_wandb=args.log_wandb,
-        save_model=args.save_model,
-        save_freq=args.save_freq,
+        **config
+
     )
 
     trainer.run()

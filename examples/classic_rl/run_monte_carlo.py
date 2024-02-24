@@ -1,5 +1,7 @@
 import argparse
 
+import yaml
+
 from diverserl.algos.classic_rl import MonteCarlo
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import ClassicTrainer
@@ -8,6 +10,8 @@ from examples.utils import StoreDictKeyPair
 
 def get_args():
     parser = argparse.ArgumentParser(description="Monte-Carlo Learning Example")
+    parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
+
     # env setting
     parser.add_argument(
         "--env-id",
@@ -53,18 +57,21 @@ if __name__ == "__main__":
     if args.render:
         args.env_option["render_mode"] = "human"
 
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+    if args.config_path is not None:
+        with open(args.config_path, "r") as f:
+            config = yaml.safe_load(f)
+            config['config_path'] = args.config_path
+    else:
+        config = vars(args)
 
-    algo = MonteCarlo(env=env, gamma=args.gamma, eps=args.eps)
+    env, eval_env = make_env(**config)
+
+    algo = MonteCarlo(env=env, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
         eval_env=eval_env,
-        seed=args.seed,
-        max_episode=args.max_episode,
-        do_eval=args.do_eval,
-        eval_every=args.eval_every,
-        eval_ep=args.eval_ep,
+        **config
     )
 
     trainer.run()

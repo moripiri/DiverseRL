@@ -1,3 +1,5 @@
+from typing import Any, Dict, Optional
+
 import gymnasium as gym
 import numpy as np
 
@@ -20,6 +22,8 @@ class OnPolicyTrainer(Trainer):
         log_wandb: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
+        **kwargs: Optional[Dict[str, Any]],
+
     ) -> None:
         """
         Trainer for Deep RL(On policy) algorithms.
@@ -34,6 +38,14 @@ class OnPolicyTrainer(Trainer):
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
         """
+
+        config = locals()
+        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+            del config[key]
+        for key, value in config['kwargs'].items():
+            config[key] = value
+        del config['kwargs']
+
         super().__init__(
             algo=algo,
             env=env,
@@ -46,6 +58,7 @@ class OnPolicyTrainer(Trainer):
             log_wandb=log_wandb,
             save_model=save_model,
             save_freq=save_freq,
+            config=config
         )
 
         assert self.algo.buffer.save_log_prob

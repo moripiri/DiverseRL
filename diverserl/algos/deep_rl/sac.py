@@ -37,6 +37,8 @@ class SACv2(DeepRL):
         alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
+
     ) -> None:
         """
         SAC (Soft Actor-Critic)
@@ -264,6 +266,8 @@ class SACv1(DeepRL):
         v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
+
     ) -> None:
         """
         SAC (Soft Actor-Critic)

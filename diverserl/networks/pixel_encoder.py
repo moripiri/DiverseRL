@@ -28,6 +28,9 @@ class PixelEncoder(Network):
         use_bias: bool = True,
         device: str = "cpu",
     ):
+        # Todo: add padding and other conv2d settings
+        assert last_activation is not None
+
         super().__init__(
             input_dim=state_dim,
             output_dim=feature_dim,
