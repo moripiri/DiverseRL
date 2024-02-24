@@ -1,5 +1,7 @@
 import argparse
 
+import yaml
+
 from diverserl.algos.deep_rl import DQN
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
@@ -8,9 +10,10 @@ from examples.utils import StoreDictKeyPair
 
 def get_args():
     parser = argparse.ArgumentParser(description="DQN Learning Example")
+    parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -90,19 +93,25 @@ def get_args():
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
     args = parser.parse_args()
+
     return args
 
 
 if __name__ == "__main__":
     args = get_args()
-
     set_seed(args.seed)
 
     if args.render:
         args.env_option["render_mode"] = "human"
-    config = vars(args)
-    env, eval_env = make_env(**config)
 
+    if args.config_path is not None:
+        with open(args.config_path, "r") as f:
+            config = yaml.safe_load(f)
+            config['config_path'] = args.config_path
+    else:
+        config = vars(args)
+
+    env, eval_env = make_env(**config)
 
     algo = DQN(
         observation_space=env.observation_space,

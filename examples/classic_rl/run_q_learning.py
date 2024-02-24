@@ -8,6 +8,8 @@ from examples.utils import StoreDictKeyPair
 
 def get_args():
     parser = argparse.ArgumentParser(description="Q-Learning Learning Example")
+    parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
+
     # env setting
     parser.add_argument(
         "--env-id",

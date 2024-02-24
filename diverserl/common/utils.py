@@ -111,25 +111,27 @@ Tuple[Env, Env]:
     """
 
     namespace = env_namespace(gym.make(env_id).spec)
+    overall_option = deepcopy(env_option)
+
     if namespace == 'atari_env':
-        env_option[
+        overall_option[
             'repeat_action_probability'] = repeat_action_probability  # add repeat_action_probability in env_option
 
         if '-ram' in env_id:
-            env_option['frameskip'] = frame_skip
+            overall_option['frameskip'] = frame_skip
             env = TransformObservation(
-                FlattenObservation(FrameStack(gym.make(env_id, **env_option), num_stack=frame_stack)),
+                FlattenObservation(FrameStack(gym.make(env_id, **overall_option), num_stack=frame_stack)),
                 lambda obs: obs / 255.)
         else:
-            env_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
-            env = gym.make(env_id, **env_option)
+            overall_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
+            env = gym.make(env_id, **overall_option)
 
             env = FrameStack(AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
                                                 terminal_on_life_loss=terminal_on_life_loss,
                                                 grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
 
     else:
-        env = gym.make(env_id, **env_option)
+        env = gym.make(env_id, **overall_option)
 
     env.action_space.seed(seed)
 

@@ -45,6 +45,12 @@ class DeepRLTrainer(Trainer):
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
         """
+        config = locals()
+        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+            del config[key]
+        for key, value in config['kwargs'].items():
+            config[key] = value
+        del config['kwargs']
 
         super().__init__(
             algo=algo,
@@ -58,7 +64,7 @@ class DeepRLTrainer(Trainer):
             log_wandb=log_wandb,
             save_model=save_model,
             save_freq=save_freq,
-            **kwargs
+            config=config
         )
 
         assert not self.algo.buffer.save_log_prob

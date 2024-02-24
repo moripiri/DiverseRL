@@ -1,5 +1,7 @@
 import argparse
 
+import yaml
+
 from diverserl.algos.deep_rl import SACv2
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
@@ -8,6 +10,7 @@ from examples.utils import StoreDictKeyPair
 
 def get_args():
     parser = argparse.ArgumentParser(description="SACv2 Learning Example")
+    parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
     parser.add_argument("--env-id", type=str, default="BipedalWalker-v3", help="Name of the gymnasium environment to run.")
@@ -115,7 +118,14 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
-    config = vars(args)
+
+    if args.config_path is not None:
+        with open(args.config_path, "r") as f:
+            config = yaml.safe_load(f)
+            config['config_path'] = args.config_path
+    else:
+        config = vars(args)
+
     env, eval_env = make_env(**config)
 
     algo = SACv2(

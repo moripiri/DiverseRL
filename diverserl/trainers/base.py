@@ -24,7 +24,7 @@ class Trainer(ABC):
         wandb_group: Optional[str] = None,
         save_model: bool = False,
         save_freq: int = 10**6,
-        **kwargs: Optional[Dict[str, Any]]
+        config: Dict[str, Any] = None,
     ):
 
         """
@@ -39,6 +39,9 @@ class Trainer(ABC):
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
         :param wandb_group: Group name of the wandb
+        :param save_model: Whether to save the RL model
+        :param save_freq: How frequently save the RL model
+        :param configs: Configuration of the run.
         """
         self.algo = algo
         self.env = env
@@ -54,13 +57,7 @@ class Trainer(ABC):
         self.log_tensorboard = log_tensorboard
         self.log_wandb = log_wandb
 
-        self.config = locals()
-        for key in ['self', 'algo', 'env', 'eval_env']:
-            del self.config[key]
-        for key, value in self.config['kwargs'].items():
-            self.config[key] = value
-
-        del self.config['kwargs']
+        self.config = config
 
         self.console = Console(style="bold black")
 
