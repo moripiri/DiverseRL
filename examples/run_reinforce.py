@@ -2,14 +2,14 @@ import argparse
 
 import yaml
 
-from diverserl.algos.deep_rl import SACv1
+from diverserl.algos import REINFORCE
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="SACv1 Learning Example")
+    parser = argparse.ArgumentParser(description="REINFORCE Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
@@ -24,49 +24,24 @@ def get_args():
     )
 
     # deep rl hyperparameters
-    parser.add_argument(
-        "--network-type", type=str, default="MLP", choices=["MLP"], help="Type of the SACv1 networks to be used."
-    )
+    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
     parser.add_argument(
         "--network-config",
         default={},
         action=StoreDictKeyPair,
-        metavar="KEY1=VAL1 KEY2=VAL2...",
-        help="Configurations of the SACv1 networks.",
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Configurations of the REINFORCE networks.",
     )
-    parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
-    parser.add_argument("--alpha", type=float, default=0.1, help="The entropy temperature parameter.")
+    parser.add_argument("--buffer-size", type=int, default=int(10 ** 6), help="Maximum length of replay buffer.")
+    parser.add_argument("--gamma", type=float, default=0.99, help="The discount factor.")
+    parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate of the network")
+    parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) of the network")
     parser.add_argument(
-        "--tau", type=float, default=0.05, help="Interpolation factor in polyak averaging for target networks."
-    )
-    parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size for optimizer")
-    parser.add_argument("--buffer-size", type=int, default=10 ** 6, help="Maximum length of replay buffer")
-    parser.add_argument("--actor-lr", type=float, default=0.001, help="Learning rate for actor.")
-    parser.add_argument("--actor-optimizer", type=str, default="Adam", help="Optimizer class (or name) for actor")
-    parser.add_argument(
-        "--actor-optimizer-kwargs",
+        "--optimizer-kwargs",
         default={},
         action=StoreDictKeyPair,
-        metavar="KEY1=VAL1 KEY2=VAL2...",
-        help="Parameter dict for actor optimizer.",
-    )
-    parser.add_argument("--critic-lr", type=float, default=0.001, help="Learning rate of the critic")
-    parser.add_argument("--critic-optimizer", type=str, default="Adam", help="Optimizer class (or str) for the critic")
-    parser.add_argument(
-        "--critic-optimizer-kwargs",
-        default={},
-        action=StoreDictKeyPair,
-        metavar="KEY1=VAL1 KEY2=VAL2...",
-        help="Parameter dict for the critic optimizer",
-    )
-    parser.add_argument("--v-lr", type=float, default=0.001, help="Learning rate for value network.")
-    parser.add_argument("--v-optimizer", type=str, default="Adam", help="Optimizer class (or name) for value network.")
-    parser.add_argument(
-        "--v-optimizer-kwargs",
-        default={},
-        action=StoreDictKeyPair,
-        metavar="KEY1=VAL1 KEY2=VAL2",
-        help="Parameter dict for value network optimizer",
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3....",
+        help="Parameter dict for the optimizer",
     )
 
     parser.add_argument(
@@ -75,21 +50,12 @@ def get_args():
 
     # trainer hyperparameters
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
+
     parser.add_argument(
         "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
-        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
-    )
-    parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
-    )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
     )
     parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
@@ -114,6 +80,7 @@ if __name__ == "__main__":
 
     if args.render:
         args.env_option["render_mode"] = "human"
+
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -123,7 +90,7 @@ if __name__ == "__main__":
 
     env, eval_env = make_env(**config)
 
-    algo = SACv1(
+    algo = REINFORCE(
         observation_space=env.observation_space,
         action_space=env.action_space,
         **config
@@ -135,6 +102,7 @@ if __name__ == "__main__":
         env=env,
         eval_env=eval_env,
         **config
+
     )
 
     trainer.run()

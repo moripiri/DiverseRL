@@ -2,7 +2,7 @@ import argparse
 
 import yaml
 
-from diverserl.algos.deep_rl import SACv2
+from diverserl.algos import SACv2
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair

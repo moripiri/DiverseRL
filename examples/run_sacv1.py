@@ -2,14 +2,14 @@ import argparse
 
 import yaml
 
-from diverserl.algos.deep_rl import TD3
+from diverserl.algos import SACv1
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="SACv2 Learning Example")
+    parser = argparse.ArgumentParser(description="SACv1 Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
@@ -24,37 +24,23 @@ def get_args():
     )
 
     # deep rl hyperparameters
-    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
     parser.add_argument(
-        "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
+        "--network-type", type=str, default="MLP", choices=["MLP"], help="Type of the SACv1 networks to be used."
+    )
+    parser.add_argument(
+        "--network-config",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2...",
+        help="Configurations of the SACv1 networks.",
     )
     parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
+    parser.add_argument("--alpha", type=float, default=0.1, help="The entropy temperature parameter.")
     parser.add_argument(
         "--tau", type=float, default=0.05, help="Interpolation factor in polyak averaging for target networks."
     )
-    parser.add_argument(
-        "--noise-scale",
-        type=float,
-        default=0.1,
-        help="Stddev of Gaussian noise added to policy action at training time",
-    )
-    parser.add_argument(
-        "--target-noise-scale",
-        type=float,
-        default=0.2,
-        help="Stddev for smoothing noise added to target policy action.",
-    )
-    parser.add_argument(
-        "--noise-clip", type=float, default=0.5, help="Limit for absolute value of target policy action noise."
-    )
-    parser.add_argument(
-        "--policy-delay",
-        type=int,
-        default=2,
-        help="Policy will only be updated once every policy_delay times for each update of the critics.",
-    )
     parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size for optimizer")
-    parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer")
+    parser.add_argument("--buffer-size", type=int, default=10 ** 6, help="Maximum length of replay buffer")
     parser.add_argument("--actor-lr", type=float, default=0.001, help="Learning rate for actor.")
     parser.add_argument("--actor-optimizer", type=str, default="Adam", help="Optimizer class (or name) for actor")
     parser.add_argument(
@@ -72,6 +58,15 @@ def get_args():
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2...",
         help="Parameter dict for the critic optimizer",
+    )
+    parser.add_argument("--v-lr", type=float, default=0.001, help="Learning rate for value network.")
+    parser.add_argument("--v-optimizer", type=str, default="Adam", help="Optimizer class (or name) for value network.")
+    parser.add_argument(
+        "--v-optimizer-kwargs",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2",
+        help="Parameter dict for value network optimizer",
     )
 
     parser.add_argument(
@@ -125,12 +120,14 @@ if __name__ == "__main__":
             config['config_path'] = args.config_path
     else:
         config = vars(args)
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
 
-    algo = TD3(
+    env, eval_env = make_env(**config)
+
+    algo = SACv1(
         observation_space=env.observation_space,
         action_space=env.action_space,
         **config
+
     )
 
     trainer = DeepRLTrainer(

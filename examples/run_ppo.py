@@ -2,7 +2,7 @@ import argparse
 
 import yaml
 
-from diverserl.algos.deep_rl import PPO
+from diverserl.algos import PPO
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import OnPolicyTrainer
 from examples.utils import StoreDictKeyPair
