@@ -4,7 +4,6 @@ import torch
 from torch import nn
 from torch.distributions.categorical import Categorical
 
-from diverserl.networks.base import Network
 from diverserl.networks.basic_networks import MLP
 
 
