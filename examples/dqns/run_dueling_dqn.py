@@ -2,14 +2,14 @@ import argparse
 
 import yaml
 
-from diverserl.algos import DQN
+from diverserl.algos.dqns import DuelingDQN
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="DQN Learning Example")
+    parser = argparse.ArgumentParser(description="Double DQN Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
@@ -80,7 +80,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
 
     parser.add_argument(
-        "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
+        "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
         "--training-freq", type=int, default=1, help="How often in total_step to perform training"
@@ -127,7 +127,11 @@ if __name__ == "__main__":
 
     env, eval_env = make_env(**config)
 
-    algo = DQN(observation_space=env.observation_space, action_space=env.action_space, **config)
+    algo = DuelingDQN(
+        observation_space=env.observation_space,
+        action_space=env.action_space,
+        **config
+    )
 
     trainer = DeepRLTrainer(
         algo=algo,

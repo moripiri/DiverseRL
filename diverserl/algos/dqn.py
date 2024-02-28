@@ -15,24 +15,24 @@ from diverserl.networks import DeterministicActor, PixelEncoder
 class DQN(DeepRL):
     def __init__(
         self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "MLP",
-        network_config: Optional[Dict[str, Any]] = None,
-        eps_initial: float = 1.0,
-        eps_final: float = 0.05,
-        decay_fraction: float = 0.5,
-        gamma: float = 0.9,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        learning_rate: float = 0.001,
-        optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
-        optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        target_copy_freq: int = 10,
-        training_start: int = 1000,
-        max_step: int = 1000000,
-        device: str = "cpu",
-        **kwargs: Optional[Dict[str, Any]]
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            network_type: str = "MLP",
+            network_config: Optional[Dict[str, Any]] = None,
+            eps_initial: float = 1.0,
+            eps_final: float = 0.05,
+            decay_fraction: float = 0.5,
+            gamma: float = 0.9,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            learning_rate: float = 0.001,
+            optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
+            optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            target_copy_freq: int = 10,
+            training_start: int = 1000,
+            max_step: int = 1000000,
+            device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         DQN(Deep-Q Network).

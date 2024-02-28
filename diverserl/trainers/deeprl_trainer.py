@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 import gymnasium as gym
 import numpy as np
 
-from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.algos.base import DeepRL
 from diverserl.trainers.base import Trainer
 
 

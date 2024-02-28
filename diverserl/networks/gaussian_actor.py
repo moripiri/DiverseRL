@@ -5,12 +5,13 @@ from torch import nn
 from torch.distributions.normal import Normal
 
 from diverserl.networks.base import Network
+from diverserl.networks.basic_networks import MLP
 
 LOG_STD_MIN = -20.0
 LOG_STD_MAX = 2.0
 
 
-class GaussianActor(Network):
+class GaussianActor(MLP):
     def __init__(
         self,
         state_dim: int,
@@ -30,20 +31,6 @@ class GaussianActor(Network):
         use_bias: bool = True,
         device: str = "cpu",
     ):
-        super().__init__(
-            input_dim=state_dim,
-            output_dim=action_dim,
-            mid_activation=mid_activation,
-            mid_activation_kwargs=mid_activation_kwargs,
-            kernel_initializer=kernel_initializer,
-            kernel_initializer_kwargs=kernel_initializer_kwargs,
-            bias_initializer=bias_initializer,
-            bias_initializer_kwargs=bias_initializer_kwargs,
-            use_bias=use_bias,
-            device=device,
-        )
-        self.hidden_units = hidden_units
-
         self.squash = squash
         self.independent_std = independent_std
         assert not (self.independent_std and self.squash)
@@ -55,8 +42,19 @@ class GaussianActor(Network):
         if self.independent_std:
             self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
 
-        self._make_layers()
-        self.to(torch.device(device))
+        super().__init__(
+            input_dim=state_dim,
+            output_dim=action_dim,
+            hidden_units=hidden_units,
+            mid_activation=mid_activation,
+            mid_activation_kwargs=mid_activation_kwargs,
+            kernel_initializer=kernel_initializer,
+            kernel_initializer_kwargs=kernel_initializer_kwargs,
+            bias_initializer=bias_initializer,
+            bias_initializer_kwargs=bias_initializer_kwargs,
+            use_bias=use_bias,
+            device=device,
+        )
 
     def _make_layers(self) -> None:
         """
@@ -71,7 +69,7 @@ class GaussianActor(Network):
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
         self.trunks = nn.Sequential(*layers)
-        self.mean_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
+        self.mean_layer = nn.Linear(layer_units[-1], self.output_dim, bias=False, device=self.device)
 
         if not self.independent_std:
             self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
@@ -160,6 +158,6 @@ class GaussianActor(Network):
 
 
 if __name__ == "__main__":
-    a = GaussianActor(5, 2, independent_std=True)
+    a = GaussianActor(5, 2)
     print(a)
     print(a(torch.ones((1, 5))))

@@ -73,7 +73,7 @@ class MLP(Network):
             if self.mid_activation is not None:
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        layers.append(nn.Linear(self.hidden_units[-1], self.output_dim, bias=self.use_bias, device=self.device))
+        layers.append(nn.Linear(layer_units[-1], self.output_dim, bias=self.use_bias, device=self.device))
         if self.last_activation is not None:
             layers.append(self.last_activation(**self.last_activation_kwargs))
 
@@ -224,5 +224,5 @@ class VNetwork(MLP):
 
 if __name__ == "__main__":
     print(getattr(nn, "ReLU") == nn.ReLU)
-    a = QNetwork(5, 2, kernel_initializer="orthogonal_", bias_initializer="zeros_", bias_initializer_kwargs={})
+    a = MLP(5, 2, hidden_units=(64,), kernel_initializer="orthogonal_", bias_initializer="zeros_", bias_initializer_kwargs={})
     print(a)
