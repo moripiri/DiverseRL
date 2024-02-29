@@ -3,12 +3,12 @@ from typing import Any, Dict, List, Optional, Type, Union
 import torch
 from gymnasium import spaces
 
-from diverserl.algos import DQN
+from diverserl.algos.dqns import DDQN
 from diverserl.networks import PixelEncoder
 from diverserl.networks.dueling_network import DuelingNetwork
 
 
-class DuelingDQN(DQN):
+class DuelingDQN(DDQN):
     def __init__(
             self,
             observation_space: spaces.Space,
