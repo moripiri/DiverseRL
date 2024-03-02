@@ -6,6 +6,7 @@ from gymnasium import spaces
 from diverserl.algos.dqns import DDQN
 from diverserl.networks import PixelEncoder
 from diverserl.networks.dueling_network import DuelingNetwork
+from diverserl.networks.noisy_networks import NoisyDuelingNetwork
 
 
 class DuelingDQN(DDQN):
@@ -13,7 +14,7 @@ class DuelingDQN(DDQN):
             self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
-            network_type: str = "MLP",
+            network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
             eps_final: float = 0.05,
@@ -30,13 +31,30 @@ class DuelingDQN(DDQN):
             device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
     ) -> None:
-        super().__init__(observation_space, action_space, network_type, network_config, eps_initial, eps_final,
-                         decay_fraction, gamma, batch_size, buffer_size, learning_rate, optimizer, optimizer_kwargs,
-                         target_copy_freq, training_start, max_step, device, **kwargs)
+        super().__init__(
+            observation_space=observation_space,
+            action_space=action_space,
+            network_type=network_type,
+            network_config=network_config,
+            eps_initial=eps_initial,
+            eps_final=eps_final,
+            decay_fraction=decay_fraction,
+            gamma=gamma,
+            batch_size=batch_size,
+            buffer_size=buffer_size,
+            learning_rate=learning_rate,
+            optimizer=optimizer,
+            optimizer_kwargs=optimizer_kwargs,
+            target_copy_freq=target_copy_freq,
+            training_start=training_start,
+            max_step=max_step,
+            device=device,
+            **kwargs)
 
     def __repr__(self) -> str:
         return "Dueling_DQN"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Q_network": DuelingNetwork, "Encoder": PixelEncoder}}
+        return {"Default": {"Q_network": DuelingNetwork, "Encoder": PixelEncoder},
+                "Noisy": {"Q_network": NoisyDuelingNetwork, "Encoder": PixelEncoder}}

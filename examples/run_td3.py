@@ -24,7 +24,7 @@ def get_args():
     )
 
     # deep rl hyperparameters
-    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
+    parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )

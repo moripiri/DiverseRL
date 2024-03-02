@@ -15,7 +15,7 @@ class REINFORCE(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         buffer_size: int = 10**6,
         gamma: float = 0.99,
@@ -77,7 +77,7 @@ class REINFORCE(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Network": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}}
+        return {"Default": {"Network": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}}
 
     def _build_network(self) -> None:
         network_class = self.network_list()[self.network_type]["Network"]["Discrete" if self.discrete else "Continuous"]

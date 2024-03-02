@@ -10,6 +10,7 @@ from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
 from diverserl.networks import DeterministicActor, PixelEncoder
+from diverserl.networks.noisy_networks import NoisyDeterministicActor
 
 
 class DQN(DeepRL):
@@ -17,7 +18,7 @@ class DQN(DeepRL):
         self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
-            network_type: str = "MLP",
+            network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
             eps_final: float = 0.05,
@@ -93,7 +94,8 @@ class DQN(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Q_network": DeterministicActor, "Encoder": PixelEncoder}}
+        return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder},
+                "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder}}
 
     def _build_network(self) -> None:
         if not isinstance(self.state_dim, int):
@@ -144,7 +146,6 @@ class DQN(DeepRL):
         else:
             observation = super()._fix_ob_shape(observation)
 
-            self.q_network.train()
             with torch.no_grad():
                 action = self.q_network(observation).argmax(1).cpu().numpy()[0]
 

@@ -9,7 +9,7 @@ from examples.utils import StoreDictKeyPair
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="Double DQN Learning Example")
+    parser = argparse.ArgumentParser(description="Dueling DQN Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
@@ -32,21 +32,21 @@ def get_args():
     parser.add_argument("--repeat-action-probability", type=float, default=0.)
 
     # dqn hyperparameters
-    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
+    parser.add_argument("--network-type", type=str, default="Noisy", choices=["Default", "Noisy"])
     parser.add_argument(
-        "--network-config", default={"Q_network": {'estimator': 'mean'}}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
+        "--network-config", default={"Q_network": {'estimator': 'mean', 'std_init':0.01}}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )
     parser.add_argument(
         "--eps-initial",
         type=float,
-        default=0.05,
+        default=0.0,
         choices=range(0, 1),
         help="Initial probability to conduct random action during training",
     )
     parser.add_argument(
         "--eps-final",
         type=float,
-        default=0.05,
+        default=0.0,
         choices=range(0, 1),
         help="Final probability to conduct random action during training",
     )
@@ -57,7 +57,7 @@ def get_args():
         choices=range(0, 1),
         help="Fraction of max_step to perform epsilon decay during training.",
     )
-    parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor")
+    parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=256, help="Minibatch size for optimizer.")
     parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
     parser.add_argument("--learning-rate", type=float, default=0.001, help="Learning rate of the Q-network")
@@ -70,7 +70,7 @@ def get_args():
         help="Parameter dict for the optimizer",
     )
     parser.add_argument(
-        "--target-copy-freq", type=int, default=5, help="N step to pass to copy Q-network to target Q-network"
+        "--target-copy-freq", type=int, default=10, help="N step to pass to copy Q-network to target Q-network"
     )
     parser.add_argument(
         "--device", type=str, default="cpu", help="Device (cpu, cuda, ...) on which the code should be run"

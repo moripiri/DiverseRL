@@ -16,7 +16,7 @@ class PPO(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         mode: str = "clip",
         clip: float = 0.2,
@@ -116,7 +116,7 @@ class PPO(DeepRL):
     @staticmethod
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
-            "MLP": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork}
+            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork}
         }
         return ppo_network_list
 

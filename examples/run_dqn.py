@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -32,21 +32,21 @@ def get_args():
     parser.add_argument("--repeat-action-probability", type=float, default=0.)
 
     # dqn hyperparameters
-    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
+    parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )
     parser.add_argument(
         "--eps-initial",
         type=float,
-        default=1.0,
+        default=0.0,
         choices=range(0, 1),
         help="Initial probability to conduct random action during training",
     )
     parser.add_argument(
         "--eps-final",
         type=float,
-        default=0.05,
+        default=0.0,
         choices=range(0, 1),
         help="Final probability to conduct random action during training",
     )
@@ -60,7 +60,7 @@ def get_args():
     parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
     parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
-    parser.add_argument("--learning-rate", type=float, default=0.0001, help="Learning rate of the Q-network")
+    parser.add_argument("--learning-rate", type=float, default=0.0005, help="Learning rate of the Q-network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) for the Q-network")
     parser.add_argument(
         "--optimizer-kwargs",
@@ -80,10 +80,10 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
 
     parser.add_argument(
-        "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
+        "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
-        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
+        "--training-freq", type=int, default=4, help="How often in total_step to perform training"
     )
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"

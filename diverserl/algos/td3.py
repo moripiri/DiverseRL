@@ -17,7 +17,7 @@ class TD3(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         tau: float = 0.05,
@@ -99,7 +99,7 @@ class TD3(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Actor": DeterministicActor, "Critic": QNetwork}}
+        return {"Default": {"Actor": DeterministicActor, "Critic": QNetwork}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

@@ -17,7 +17,7 @@ class SACv2(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         alpha: float = 0.1,
@@ -111,7 +111,7 @@ class SACv2(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]
@@ -249,7 +249,7 @@ class SACv1(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         alpha: float = 0.1,
@@ -330,7 +330,7 @@ class SACv1(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

@@ -25,7 +25,7 @@ def get_args():
 
     # deep rl hyperparameters
     parser.add_argument(
-        "--network-type", type=str, default="MLP", choices=["MLP"], help="Type of the SACv1 networks to be used."
+        "--network-type", type=str, default="Default", choices=["Default"], help="Type of the SACv1 networks to be used."
     )
     parser.add_argument(
         "--network-config",
