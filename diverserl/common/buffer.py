@@ -139,3 +139,32 @@ class ReplayBuffer:
 
         self.idx = 0
         self.full = False
+
+
+class PrioritizedReplayBuffer(ReplayBuffer):
+    def __init__(self,
+                 state_dim: Union[int, Tuple[int, ...]],
+                 action_dim: int,
+                 max_size: int = 10 ** 6,
+                 alpha: float = 0.7,
+                 device="cpu",
+                 ) -> None:
+        super().__init__(state_dim=state_dim, action_dim=action_dim, max_size=max_size, save_log_prob=False,
+                         device=device)
+        self.alpha = alpha
+
+        self.priorities = np.zeros((max_size,), dtype=np.float32)
+
+    def sample(self, batch_size):
+        pass
+
+    def add(self,
+        s: np.ndarray,
+        a: Union[int, np.ndarray],
+        r: float,
+        ns: np.ndarray,
+        d: bool,
+        t: bool,
+        log_prob: Optional[float] = None,
+    ) -> None:
+        pass

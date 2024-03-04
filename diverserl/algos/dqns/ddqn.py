@@ -30,9 +30,24 @@ class DDQN(DQN):
             device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
     ) -> None:
-        super().__init__(observation_space, action_space, network_type, network_config, eps_initial, eps_final,
-                         decay_fraction, gamma, batch_size, buffer_size, learning_rate, optimizer, optimizer_kwargs,
-                         target_copy_freq, training_start, max_step, device, **kwargs)
+        super().__init__(observation_space=observation_space,
+                         action_space=action_space,
+                         network_type=network_type,
+                         network_config=network_config,
+                         eps_initial=eps_initial,
+                         eps_final=eps_final,
+                         decay_fraction=decay_fraction,
+                         gamma=gamma,
+                         batch_size=batch_size,
+                         buffer_size=buffer_size,
+                         learning_rate=learning_rate,
+                         optimizer=optimizer,
+                         optimizer_kwargs=optimizer_kwargs,
+                         target_copy_freq=target_copy_freq,
+                         training_start=training_start,
+                         max_step=max_step,
+                         device=device,
+                         **kwargs)
 
     def __repr__(self) -> str:
         return "DDQN"
