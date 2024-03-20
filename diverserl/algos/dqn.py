@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from gymnasium import spaces
 
 from diverserl.algos.base import DeepRL
-from diverserl.common.buffer import ReplayBuffer
+from diverserl.common.buffer import PrioritizedReplayBuffer, ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
 from diverserl.networks import DeterministicActor, PixelEncoder
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
@@ -70,9 +70,9 @@ class DQN(DeepRL):
         self.state_dim = observation_space.shape[0] if len(observation_space.shape) == 1 else observation_space.shape
         self.action_dim = action_space.n
 
-        self._build_network()
+        self.buffer_size = buffer_size
 
-        self.buffer = ReplayBuffer(state_dim=self.state_dim, action_dim=1, max_size=buffer_size, device=self.device)
+        self._build_network()
 
         self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
@@ -94,8 +94,11 @@ class DQN(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder},
-                "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder}}
+        return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "PrioritizedReplay": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": PrioritizedReplayBuffer},
+                "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "NoisyPrioritizedReplay": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": PrioritizedReplayBuffer}
+                }
 
     def _build_network(self) -> None:
         if not isinstance(self.state_dim, int):
@@ -121,6 +124,11 @@ class DQN(DeepRL):
         ).train()
 
         self.target_q_network = deepcopy(self.q_network).eval()
+
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+
+        self.buffer = buffer_class(state_dim=self.state_dim, action_dim=1, device=self.device, max_size=self.buffer_size, **buffer_config)
 
     def update_eps(self):
         """
@@ -175,18 +183,27 @@ class DQN(DeepRL):
         self.training_count += 1
         self.q_network.train()
 
-        s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
+        if 'Prioritized' in self.network_type:
+            s, a, r, ns, d, t, weights, tree_ids = self.buffer.sample(self.batch_size)
+        else:
+            s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
+            weights = torch.ones_like(t)
 
         with torch.no_grad():
             target_value = r + self.gamma * (1 - d) * (self.target_q_network(ns).max(1, keepdims=True)[0])
 
         selected_value = self.q_network(s).gather(1, a.to(torch.int64))
+        loss = torch.mean(weights * (selected_value - target_value)**2)
 
-        loss = F.smooth_l1_loss(selected_value, target_value)
+        #loss = F.smooth_l1_loss(selected_value, target_value)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        if 'Prioritized' in self.network_type:
+            td_error = torch.abs(selected_value - target_value).detach().cpu().numpy().reshape(-1,)
+            self.buffer.update_priorities(tree_ids, td_error)
 
         if self.training_count % self.target_copy_freq == 0:
             hard_update(self.q_network, self.target_q_network)

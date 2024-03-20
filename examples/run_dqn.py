@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -32,7 +32,7 @@ def get_args():
     parser.add_argument("--repeat-action-probability", type=float, default=0.)
 
     # dqn hyperparameters
-    parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
+    parser.add_argument("--network-type", type=str, default="PrioritizedReplay", choices=["Default", "Noisy", "PrioritizedReplay", "NoisyPrioritizedReplay"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )

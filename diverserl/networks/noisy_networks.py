@@ -65,7 +65,6 @@ class NoisyMLP(MLP):
             device=device,
         )
 
-
     def _make_layers(self) -> None:
         """
         Make MLP Noisy layers from layer dimensions and activations and initialize its weights and biases.
@@ -88,52 +87,57 @@ class NoisyMLP(MLP):
         self.layers.apply(self._init_weights)
 
 
-class NoisyDeterministicActor(NoisyMLP, DeterministicActor):
+class NoisyDeterministicActor(NoisyMLP):
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        action_scale: float = 1.0,
-        action_bias: float = 0.0,
-        use_bias: bool = True,
-        feature_encoder: Optional[nn.Module] = None,
-        std_init: float = 0.5,
-        noise_type: str = 'factorized',
-        device: str = "cpu",
+            self,
+            state_dim: int,
+            action_dim: int,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            last_activation: Optional[Union[str, Type[nn.Module]]] = None,
+            last_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            action_scale: float = 1.0,
+            action_bias: float = 0.0,
+            use_bias: bool = True,
+            feature_encoder: Optional[nn.Module] = None,
+            std_init: float = 0.5,
+            noise_type: str = 'factorized',
+            device: str = "cpu",
     ):
-        NoisyMLP.__init__(self,
-            input_dim=state_dim,
-            output_dim=action_dim,
-            hidden_units=hidden_units,
-            mid_activation=mid_activation,
-            mid_activation_kwargs=mid_activation_kwargs,
-            last_activation=last_activation,
-            last_activation_kwargs=last_activation_kwargs,
-            kernel_initializer=kernel_initializer,
-            kernel_initializer_kwargs=kernel_initializer_kwargs,
-            bias_initializer=bias_initializer,
-            bias_initializer_kwargs=bias_initializer_kwargs,
-            use_bias=use_bias,
-            std_init=std_init,
-            noise_type=noise_type,
-            device=device,
-        )
+        super().__init__(
+                          input_dim=state_dim,
+                          output_dim=action_dim,
+                          hidden_units=hidden_units,
+                          mid_activation=mid_activation,
+                          mid_activation_kwargs=mid_activation_kwargs,
+                          last_activation=last_activation,
+                          last_activation_kwargs=last_activation_kwargs,
+                          kernel_initializer=kernel_initializer,
+                          kernel_initializer_kwargs=kernel_initializer_kwargs,
+                          bias_initializer=bias_initializer,
+                          bias_initializer_kwargs=bias_initializer_kwargs,
+                          use_bias=use_bias,
+                          std_init=std_init,
+                          noise_type=noise_type,
+                          device=device,
+                          )
         self.feature_encoder = feature_encoder
 
         self.action_scale = action_scale
         self.action_bias = action_bias
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:
-        return DeterministicActor.forward(self, input)
+        if self.feature_encoder is not None:
+            input = self.feature_encoder(input.to(self.device))
+
+        output = super().forward(input)
+
+        return self.action_scale * output + self.action_bias
 
 class NoisyDuelingNetwork(DuelingNetwork):
     def __init__(
@@ -186,11 +190,12 @@ class NoisyDuelingNetwork(DuelingNetwork):
         self.layers = nn.Sequential(*layers)
 
         self.value = NoisyLinear(layer_units[-1], 1, bias=self.use_bias, std_init=self.std_init,
-                                      noise_type=self.noise_type,device=self.device)
+                                 noise_type=self.noise_type, device=self.device)
         self.advantage = NoisyLinear(layer_units[-1], self.output_dim, std_init=self.std_init,
-                                      noise_type=self.noise_type, bias=self.use_bias, device=self.device)
+                                     noise_type=self.noise_type, bias=self.use_bias, device=self.device)
 
         self.layers.apply(self._init_weights)
+
 
 class NoisyLinear(nn.Linear):
     def __init__(
@@ -264,14 +269,14 @@ class NoisyLinear(nn.Linear):
         if self.noise_type == 'factorized':
             mu_range = 1 / math.sqrt(self.in_features)
             self.weight_mu.data.uniform_(-mu_range, mu_range)
-            self.weight_sigma.data.fill_(self.std_init / math.sqrt(self.in_features)) # in paper, std_init is 0.5
+            self.weight_sigma.data.fill_(self.std_init / math.sqrt(self.in_features))  # in paper, std_init is 0.5
             if self.bias_mu is not None:
                 self.bias_mu.data.uniform_(-mu_range, mu_range)
                 self.bias_sigma.data.fill_(self.std_init / math.sqrt(self.out_features))
         else:
             mu_range = math.sqrt(3 / self.in_features)
             self.weight_mu.data.uniform_(-mu_range, mu_range)
-            self.weight_sigma.data.fill_(self.std_init) # in paper, std_init was 0.017
+            self.weight_sigma.data.fill_(self.std_init)  # in paper, std_init was 0.017
             if self.bias_mu is not None:
                 self.bias_mu.data.uniform_(-mu_range, mu_range)
                 self.bias_sigma.data.fill_(self.std_init)
@@ -321,7 +326,7 @@ class NoisyLinear(nn.Linear):
 
 
 if __name__ == '__main__':
-    #print(NoisyDeterministicActor.mro())
+    # print(NoisyDeterministicActor.mro())
     a = NoisyDeterministicActor(5, 2)
-    #print(a.mro())
+    # print(a.mro())
     print(a(torch.randn(1, 5)))
