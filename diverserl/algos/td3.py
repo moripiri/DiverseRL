@@ -75,9 +75,9 @@ class TD3(DeepRL):
         self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
         self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
+        self.buffer_size = buffer_size
         self._build_network()
 
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
@@ -128,6 +128,10 @@ class TD3(DeepRL):
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
         ).train()
         self.target_critic2 = deepcopy(self.critic2).eval()
+
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """

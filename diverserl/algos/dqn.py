@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from gymnasium import spaces
 
 from diverserl.algos.base import DeepRL
-from diverserl.common.buffer import PrioritizedReplayBuffer, ReplayBuffer
+from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
 from diverserl.networks import DeterministicActor, PixelEncoder
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
@@ -95,9 +95,7 @@ class DQN(DeepRL):
     @staticmethod
     def network_list() -> Dict[str, Any]:
         return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
-                "PrioritizedReplay": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": PrioritizedReplayBuffer},
                 "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
-                "NoisyPrioritizedReplay": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": PrioritizedReplayBuffer}
                 }
 
     def _build_network(self) -> None:
@@ -183,27 +181,17 @@ class DQN(DeepRL):
         self.training_count += 1
         self.q_network.train()
 
-        if 'Prioritized' in self.network_type:
-            s, a, r, ns, d, t, weights, tree_ids = self.buffer.sample(self.batch_size)
-        else:
-            s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
-            weights = torch.ones_like(t)
+        s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
 
         with torch.no_grad():
             target_value = r + self.gamma * (1 - d) * (self.target_q_network(ns).max(1, keepdims=True)[0])
 
         selected_value = self.q_network(s).gather(1, a.to(torch.int64))
-        loss = torch.mean(weights * (selected_value - target_value)**2)
-
-        #loss = F.smooth_l1_loss(selected_value, target_value)
+        loss = F.smooth_l1_loss(selected_value, target_value)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-        if 'Prioritized' in self.network_type:
-            td_error = torch.abs(selected_value - target_value).detach().cpu().numpy().reshape(-1,)
-            self.buffer.update_priorities(tree_ids, td_error)
 
         if self.training_count % self.target_copy_freq == 0:
             hard_update(self.q_network, self.target_q_network)

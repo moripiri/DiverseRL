@@ -4,6 +4,7 @@ import torch
 from gymnasium import spaces
 
 from diverserl.algos.dqns import DDQN
+from diverserl.common.buffer import ReplayBuffer
 from diverserl.networks import PixelEncoder
 from diverserl.networks.dueling_network import DuelingNetwork
 from diverserl.networks.noisy_networks import NoisyDuelingNetwork
@@ -56,5 +57,5 @@ class DuelingDQN(DDQN):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Q_network": DuelingNetwork, "Encoder": PixelEncoder},
-                "Noisy": {"Q_network": NoisyDuelingNetwork, "Encoder": PixelEncoder}}
+        return {"Default": {"Q_network": DuelingNetwork, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "Noisy": {"Q_network": NoisyDuelingNetwork, "Encoder": PixelEncoder, "Buffer": ReplayBuffer}}
