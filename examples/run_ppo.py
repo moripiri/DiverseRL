@@ -2,7 +2,7 @@ import argparse
 
 import yaml
 
-from diverserl.algos.deep_rl import PPO
+from diverserl.algos import PPO
 from diverserl.common.utils import make_env, set_seed
 from diverserl.trainers import OnPolicyTrainer
 from examples.utils import StoreDictKeyPair
@@ -24,7 +24,7 @@ def get_args():
     )
 
     # deep rl hyperparameters
-    parser.add_argument("--network-type", type=str, default="MLP", choices=["MLP"])
+    parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )

@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from gymnasium import spaces
 
-from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, soft_update
 from diverserl.networks import GaussianActor, QNetwork, VNetwork
@@ -17,7 +17,7 @@ class SACv2(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         alpha: float = 0.1,
@@ -81,6 +81,8 @@ class SACv2(DeepRL):
         self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
         self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
+        self.buffer_size = buffer_size
+
         self._build_network()
 
         self.log_alpha = torch.tensor(np.log(alpha), device=device, requires_grad=train_alpha)
@@ -88,8 +90,6 @@ class SACv2(DeepRL):
         self.train_alpha = train_alpha
 
         self.critic_update = critic_update
-
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
@@ -111,7 +111,7 @@ class SACv2(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]
@@ -144,6 +144,11 @@ class SACv2(DeepRL):
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
         ).train()
         self.target_critic2 = deepcopy(self.critic).eval()
+
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
+
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -249,7 +254,7 @@ class SACv1(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
         alpha: float = 0.1,
@@ -307,11 +312,11 @@ class SACv1(DeepRL):
         self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
         self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
+        self.buffer_size = buffer_size
         self.gamma = gamma
         self.alpha = alpha
         self.tau = tau
 
-        self.buffer = ReplayBuffer(self.state_dim, self.action_dim, buffer_size, device=self.device)
         self.batch_size = batch_size
 
         self._build_network()
@@ -330,7 +335,7 @@ class SACv1(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]
@@ -363,6 +368,10 @@ class SACv1(DeepRL):
 
         self.v_network = v_class(state_dim=self.state_dim, device=self.device, **v_config).train()
         self.target_v_network = deepcopy(self.v_network).eval()
+
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """

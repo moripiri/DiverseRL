@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from gymnasium import spaces
 
-from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import CategoricalActor, GaussianActor
@@ -15,7 +15,7 @@ class REINFORCE(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         buffer_size: int = 10**6,
         gamma: float = 0.99,
@@ -59,14 +59,10 @@ class REINFORCE(DeepRL):
             self.discrete = False
         else:
             raise TypeError
+        self.buffer_size = buffer_size
 
         self._build_network()
-        self.buffer = ReplayBuffer(
-            state_dim=self.state_dim,
-            action_dim=1 if self.discrete else self.action_dim,
-            max_size=buffer_size,
-            device=self.device,
-        )
+
 
         self.optimizer = get_optimizer(self.network.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
@@ -77,7 +73,7 @@ class REINFORCE(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"MLP": {"Network": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}}
+        return {"Default": {"Network": {"Discrete": CategoricalActor, "Continuous": GaussianActor}}}
 
     def _build_network(self) -> None:
         network_class = self.network_list()[self.network_type]["Network"]["Discrete" if self.discrete else "Continuous"]
@@ -87,6 +83,17 @@ class REINFORCE(DeepRL):
         self.network = network_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config
         ).train()
+
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+
+        self.buffer = buffer_class(
+            state_dim=self.state_dim,
+            action_dim=1 if self.discrete else self.action_dim,
+            max_size=self.buffer_size,
+            device=self.device,
+            **buffer_config
+        )
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
         observation = super()._fix_ob_shape(observation)

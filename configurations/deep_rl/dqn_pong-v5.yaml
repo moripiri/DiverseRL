@@ -1,0 +1,51 @@
+# env setting
+env_id: ALE/Pong-ram-v5
+render: false
+env_option: {}
+image_size: 84
+noop_max: 30
+frame_skip: 4
+frame_stack: 4
+terminal_on_life_loss: true
+grayscale_obs: true
+repeat_action_probability: 0.0
+
+# dqn setting
+network_type: MLP
+network_config:
+  Q_network:
+    hidden_units: [64, 64]
+  Encoder:
+    feature_dim: 512
+    layer_num: 3
+    channel_num: [32, 64, 64]
+    kernel_size: [8, 4, 3]
+    strides: [4, 2, 1]
+eps_initial: 1.0
+eps_final: 0.05
+decay_fraction: 0.5
+gamma: 0.99
+batch_size: 32
+buffer_size: 1000000
+learning_rate: 0.0001
+optimizer: Adam
+optimizer_kwargs: {}
+target_copy_freq: 1000
+device: cpu
+
+# trainer setting
+seed: 1234
+training_start: 10000
+training_freq: 4
+training_num: 1
+train_type: online
+max_step: 3000000
+do_eval: true
+eval_every: 10000
+eval_ep: 1
+
+# log setting
+log_tensorboard: true
+log_wandb: true
+save_model: false
+save_freq: 100000

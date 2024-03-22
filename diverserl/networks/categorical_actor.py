@@ -4,10 +4,10 @@ import torch
 from torch import nn
 from torch.distributions.categorical import Categorical
 
-from diverserl.networks.base import Network
+from diverserl.networks.basic_networks import MLP
 
 
-class CategoricalActor(Network):
+class CategoricalActor(MLP):
     def __init__(
         self,
         state_dim: int,
@@ -25,6 +25,7 @@ class CategoricalActor(Network):
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
+            hidden_units=hidden_units,
             mid_activation=mid_activation,
             mid_activation_kwargs=mid_activation_kwargs,
             last_activation=nn.Softmax,
@@ -36,28 +37,6 @@ class CategoricalActor(Network):
             use_bias=use_bias,
             device=device,
         )
-        self.hidden_units = hidden_units
-
-        self._make_layers()
-        self.to(torch.device(device))
-
-    def _make_layers(self) -> None:
-        """
-        Make Categorical Actor layers from layer dimensions and activations and initialize its weights and biases.
-        """
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
-
-        for i in range(len(layer_units) - 1):
-            layers.append(nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
-
-        layers.append(nn.Linear(self.hidden_units[-1], self.output_dim, bias=self.use_bias, device=self.device))
-        layers.append(self.last_activation(**self.last_activation_kwargs))
-
-        self.layers = nn.Sequential(*layers)
-        self.layers.apply(self._init_weights)
 
     def forward(self, state: torch.Tensor, deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
         """
@@ -129,6 +108,6 @@ class CategoricalActor(Network):
 
 
 if __name__ == "__main__":
-    a = CategoricalActor(5, 3, device="cuda")
+    a = CategoricalActor(5, 3)
     print(a)
     print(a(torch.ones((1, 5)), deterministic=True))

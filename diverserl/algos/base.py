@@ -66,7 +66,7 @@ class DeepRL(ABC):
     @abstractmethod
     def _build_network(self) -> None:
         """
-        Build neural networks required for the algorithm.
+        Build neural networks and buffer required for the algorithm.
         :return:
         """
         pass

@@ -3,7 +3,7 @@ from typing import Any, Dict, Optional
 import gymnasium as gym
 import numpy as np
 
-from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.algos.base import DeepRL
 from diverserl.trainers.base import Trainer
 
 
@@ -99,7 +99,7 @@ class DeepRLTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset(seed=self.seed - 1)
+            observation, info = self.eval_env.reset()
             terminated, truncated = False, False
             episode_reward = 0
             local_step = 0

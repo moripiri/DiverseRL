@@ -1,4 +1,5 @@
-from typing import Optional, Tuple, Union
+import random
+from typing import Any, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -81,6 +82,10 @@ class ReplayBuffer:
         if self.idx == 0:
             self.full = True
 
+    @property
+    def size(self) -> int:
+        return self.max_size if self.full else self.idx
+
     def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
         """
         Randomly sample wanted size of mini batch from buffer.
@@ -89,28 +94,6 @@ class ReplayBuffer:
         :return: Sampled mini batch
         """
         ids = np.random.randint(0, self.max_size if self.full else self.idx, size=batch_size)
-
-        states = torch.from_numpy(self.s[ids]).to(self.device)
-        actions = torch.from_numpy(self.a[ids]).to(self.device)
-        rewards = torch.from_numpy(self.r[ids]).to(self.device)
-        next_states = torch.from_numpy(self.ns[ids]).to(self.device)
-        dones = torch.from_numpy(self.d[ids]).to(self.device)
-        terminates = torch.from_numpy(self.t[ids]).to(self.device)
-
-        if self.save_log_prob:
-            log_probs = torch.from_numpy(self.log_prob[ids]).to(self.device)
-
-            return states, actions, rewards, next_states, dones, terminates, log_probs
-
-        return states, actions, rewards, next_states, dones, terminates
-
-    def all_sample(self) -> Tuple[Tensor, ...]:
-        """
-        Return all records from buffer.
-
-        :return: Tuples of RL records
-        """
-        ids = np.arange(self.max_size if self.full else self.idx)
 
         states = torch.from_numpy(self.s[ids]).to(self.device)
         actions = torch.from_numpy(self.a[ids]).to(self.device)

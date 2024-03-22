@@ -5,7 +5,7 @@ import torch
 import torch.nn.functional as F
 from gymnasium import spaces
 
-from diverserl.algos.deep_rl.base import DeepRL
+from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import CategoricalActor, GaussianActor, VNetwork
@@ -16,7 +16,7 @@ class PPO(DeepRL):
         self,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        network_type: str = "MLP",
+        network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         mode: str = "clip",
         clip: float = 0.2,
@@ -79,15 +79,9 @@ class PPO(DeepRL):
             self.discrete = False
         else:
             raise TypeError
+        self.buffer_size = buffer_size
 
         self._build_network()
-        self.buffer = ReplayBuffer(
-            state_dim=self.state_dim,
-            action_dim=1 if self.discrete else self.action_dim,
-            save_log_prob=True,
-            max_size=buffer_size,
-            device=self.device,
-        )
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
@@ -116,7 +110,7 @@ class PPO(DeepRL):
     @staticmethod
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
-            "MLP": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork}
+            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork, "Buffer": ReplayBuffer}
         }
         return ppo_network_list
 
@@ -136,6 +130,17 @@ class PPO(DeepRL):
         ).train()
         self.critic = critic_class(state_dim=self.state_dim, device=self.device, **critic_config).train()
 
+        buffer_class = self.network_list()[self.network_type]["Buffer"]
+        buffer_config = self.network_config["Buffer"]
+
+        self.buffer = buffer_class(
+            state_dim=self.state_dim,
+            action_dim=1 if self.discrete else self.action_dim,
+            save_log_prob=True,
+            max_size=self.buffer_size,
+            device=self.device,
+            **buffer_config
+        )
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
         observation = super()._fix_ob_shape(observation)
 
