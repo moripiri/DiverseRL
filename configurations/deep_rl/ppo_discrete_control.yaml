@@ -1,0 +1,38 @@
+env_id: MountainCar-v0
+render: false
+env_option: {}
+
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [64, 64]
+    mid_activation: Tanh
+  Critic:
+    hidden_units: [64, 64]
+    mid_activation: Tanh
+mode: clip
+clip: 0.2
+target_dist: 0.01
+beta: 3.0
+gamma: 0.99
+lambda_gae: 0.95
+horizon: 128
+batch_size: 32
+buffer_size: 10000
+actor_lr: 0.00025
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.00025
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+device: cpu
+seed: 1
+
+max_step: 500000
+do_eval: true
+eval_every: 10000
+eval_ep: 1
+log_tensorboard: false
+log_wandb: true
+save_model: false
+save_freq: 100000

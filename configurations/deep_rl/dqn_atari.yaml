@@ -1,5 +1,5 @@
 # env setting
-env_id: ALE/Pong-ram-v5
+env_id: ALE/Pong-v5
 render: false
 env_option: {}
 image_size: 84
@@ -11,7 +11,7 @@ grayscale_obs: true
 repeat_action_probability: 0.0
 
 # dqn setting
-network_type: MLP
+network_type: Default
 network_config:
   Q_network:
     hidden_units: [64, 64]
@@ -22,8 +22,8 @@ network_config:
     kernel_size: [8, 4, 3]
     strides: [4, 2, 1]
 eps_initial: 1.0
-eps_final: 0.05
-decay_fraction: 0.5
+eps_final: 0.01
+decay_fraction: 0.1
 gamma: 0.99
 batch_size: 32
 buffer_size: 1000000
@@ -34,12 +34,12 @@ target_copy_freq: 1000
 device: cpu
 
 # trainer setting
-seed: 1234
-training_start: 10000
+seed: 1
+training_start: 80000
 training_freq: 4
 training_num: 1
 train_type: online
-max_step: 3000000
+max_step: 10000000
 do_eval: true
 eval_every: 10000
 eval_ep: 1

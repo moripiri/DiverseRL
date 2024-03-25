@@ -99,7 +99,7 @@ class TD3(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": DeterministicActor, "Critic": QNetwork}}
+        return {"Default": {"Actor": DeterministicActor, "Critic": QNetwork, "Buffer": ReplayBuffer}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

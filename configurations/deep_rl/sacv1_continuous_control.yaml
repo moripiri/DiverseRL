@@ -1,0 +1,38 @@
+env_id: Pendulum-v1
+render: false
+env_option: {}
+
+network_type: Default
+network_config:
+  Actor: {}
+  Critic: {}
+  V_network: {}
+gamma: 0.99
+alpha: 0.1
+tau: 0.05
+batch_size: 256
+buffer_size: 1000000
+actor_lr: 0.001
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.001
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+v_lr: 0.001
+v_optimizer: Adam
+v_optimizer_kwargs: {}
+device: cpu
+seed: 1
+
+training_start: 1000
+training_freq: 1
+training_num: 1
+train_type: online
+max_step: 100000
+do_eval: true
+eval_every: 1000
+eval_ep: 10
+log_tensorboard: false
+log_wandb: false
+save_model: false
+save_freq: 100000

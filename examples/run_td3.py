@@ -9,7 +9,7 @@ from examples.utils import StoreDictKeyPair
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description="SACv2 Learning Example")
+    parser = argparse.ArgumentParser(description="TD3 Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
@@ -125,7 +125,8 @@ if __name__ == "__main__":
             config['config_path'] = args.config_path
     else:
         config = vars(args)
-    env, eval_env = make_env(env_id=args.env_id, seed=args.seed, env_option=args.env_option)
+
+    env, eval_env = make_env(**config)
 
     algo = TD3(
         observation_space=env.observation_space,

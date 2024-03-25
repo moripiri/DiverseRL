@@ -1,0 +1,36 @@
+env_id: HalfCheetah-v4
+render: false
+env_option: {}
+
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [256, 256]
+  Critic:
+    hidden_units: [256, 256]
+gamma: 0.99
+tau: 0.005
+noise_scale: 0.1
+batch_size: 256
+buffer_size: 1000000
+actor_lr: 0.0003
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.0003
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+device: cpu
+
+seed: 1
+training_start: 10000
+training_freq: 1
+training_num: 1
+train_type: online
+max_step: 1000000
+do_eval: true
+eval_every: 10000
+eval_ep: 1
+log_tensorboard: true
+log_wandb: true
+save_model: false
+save_freq: 100000

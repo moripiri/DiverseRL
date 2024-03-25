@@ -205,7 +205,7 @@ class DeepRLTrainer(Trainer):
                         if self.save_model:
                             self.wandb.save(f"{self.save_folder}/*.pt")
 
-                        self.wandb.finish(quiet=True)
+                        #self.wandb.finish(quiet=True)
                     break
 
             progress.console.print("=" * 100, style="bold")

@@ -59,6 +59,7 @@ def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:

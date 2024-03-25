@@ -1,0 +1,12 @@
+env_id: CliffWalking-v0
+render: false
+env_option: {}
+
+gamma: 0.9
+eps: 0.1
+max_episode: 1000
+seed: 1
+
+do_eval: true
+eval_every: 100
+eval_ep: 10

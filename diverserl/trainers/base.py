@@ -8,6 +8,8 @@ import yaml
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
+from diverserl.common.utils import env_namespace
+
 
 class Trainer(ABC):
     def __init__(
@@ -84,15 +86,16 @@ class Trainer(ABC):
 
         if self.log_wandb:
             import wandb
+            namespace = env_namespace(self.env.spec)
 
             self.wandb = wandb.init(
-                project=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
+                project="DiverseRL",
                 config=self.config,
-                group=wandb_group,
+                group=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
                 name=f"{self.start_time}",
                 id=self.run_name,
                 notes=self.run_name,
-                tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id.replace('ALE/', '')}"],
+                tags=["RL", "DiverseRL", f"{self.algo}", namespace, f"{self.env.spec.id.replace('ALE/', '')}"],
             )
 
         self.save_model = save_model
