@@ -12,7 +12,7 @@ In this repo, the term '**Classic RL**' is used for these basic RL algorithms.
 
 ---
 ## Environments
-**Classic RL** algorithms are only applicable to **gymnasium**'s *toy text* environments.
+**Classic RL** algorithms are applicable to gridworld environments.
 1. BlackJack
 2. Taxi
 3. CliffWalking

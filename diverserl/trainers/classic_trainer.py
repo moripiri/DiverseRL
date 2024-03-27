@@ -32,6 +32,13 @@ class ClassicTrainer(Trainer):
         :param eval_every: Perform evalaution every n episode
         :param eval_ep: How many episodes to run to perform evaluation
         """
+        config = locals()
+        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+            del config[key]
+        for key, value in config['kwargs'].items():
+            config[key] = value
+        del config['kwargs']
+
         super().__init__(
             algo=algo,
             env=env,
@@ -40,7 +47,7 @@ class ClassicTrainer(Trainer):
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
-            **kwargs
+            config=config,
         )
         self.seed = seed
         self.max_episode = max_episode

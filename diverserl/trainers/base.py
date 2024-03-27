@@ -23,7 +23,6 @@ class Trainer(ABC):
         eval_ep: int,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
-        wandb_group: Optional[str] = None,
         save_model: bool = False,
         save_freq: int = 10**6,
         config: Dict[str, Any] = None,

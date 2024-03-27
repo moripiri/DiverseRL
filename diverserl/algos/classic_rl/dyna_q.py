@@ -81,6 +81,8 @@ class DynaQ(ClassicRL):
         self.q[s, a] = self.q[s, a] + self.alpha * (r + self.gamma * np.max(self.q[ns]) - self.q[s, a])
 
         self.model_r[s, a] = r
+
+        print(s, a, ns, self.model_ns.shape)
         self.model_ns[s, a] = ns
 
         self.ob_traj.append(s)
