@@ -18,7 +18,8 @@ max_step: 100000
 do_eval: true
 eval_every: 1000
 eval_ep: 10
-log_tensorboard: false
-log_wandb: false
+log_tensorboard: true
+log_wandb: true
+record_video: true
 save_model: false
 save_freq: 100000

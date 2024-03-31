@@ -16,11 +16,12 @@ def get_args():
     parser.add_argument(
         "--env-id",
         type=str,
-        default="Taxi-v3",
+        default="FrozenLake-v1",
         choices=["Blackjack-v1", "Taxi-v3", "CliffWalking-v0", "FrozenLake-v1"],
         help="Name of the gymnasium environment to run.",
     )
-    parser.add_argument("--render", default=False, action="store_true")
+    parser.add_argument("--render", default=False, action="store_true", help='Render evaluation environment')
+
     parser.add_argument(
         "--env-option",
         default={},
@@ -43,8 +44,13 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1, help="Random seed.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
-    parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
+    parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
 
+    parser.add_argument(
+        "--log-tensorboard", action="store_true", default=True, help="Whether to save the run in tensorboard"
+    )
+    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
     args = parser.parse_args()
 
     return args
@@ -55,8 +61,8 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
+    # if args.render:
+    #     args.env_option["render_mode"] = "human"
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)

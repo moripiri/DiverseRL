@@ -47,5 +47,6 @@ eval_ep: 1
 # log setting
 log_tensorboard: true
 log_wandb: true
+record_video: true
 save_model: false
 save_freq: 100000

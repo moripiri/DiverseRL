@@ -97,12 +97,13 @@ def get_args():
     )
     parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
-    parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
     parser.add_argument("--save-model", action="store_true", default=False, help="Whether to save the model")
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
@@ -114,9 +115,6 @@ def get_args():
 if __name__ == "__main__":
     args = get_args()
     set_seed(args.seed)
-
-    if args.render:
-        args.env_option["render_mode"] = "human"
 
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
