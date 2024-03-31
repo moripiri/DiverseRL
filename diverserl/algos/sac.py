@@ -111,7 +111,7 @@ class SACv2(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "Buffer": ReplayBuffer}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]
@@ -335,7 +335,7 @@ class SACv1(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork, "Buffer": ReplayBuffer}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

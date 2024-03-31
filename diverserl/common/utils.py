@@ -59,6 +59,7 @@ def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
 
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
@@ -88,17 +89,20 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     return ns
 
 
-def make_env(env_id: str, env_option: Dict[str, Any], seed: int = 0,
+
+def make_env(env_id: str, env_option: Dict[str, Any], seed: int = 0, render: bool = False, record_video: bool = False,
              image_size: int = 84, noop_max: int = 30, frame_skip: int = 4, frame_stack: int = 4,
              terminal_on_life_loss: bool = True, grayscale_obs: bool = True, repeat_action_probability: float = 0., **kwargs: Optional[Dict[str, Any]]
 ) -> \
 Tuple[Env, Env]:
     """
-    Creates gym environments for deep RL training.
+    Creates gym environment for deep RL training.
 
     :param env_id: name of the gymnasium environment.
     :param env_option: additional arguments for environment creation.
     :param seed: random seed.
+    :param render: Whether to render the video. Doing both rendering and recording is not available.
+    :param record_video: Whether to record the video. Doing both rendering and recording is not available.
     :param image_size: size of the image_type observation (image_size, image_size)
     :param noop_max: used for atari image type observation
     :param frame_skip:
@@ -111,31 +115,44 @@ Tuple[Env, Env]:
     """
 
     namespace = env_namespace(gym.make(env_id).spec)
-    overall_option = deepcopy(env_option)
 
-    if namespace == 'atari_env':
-        overall_option[
-            'repeat_action_probability'] = repeat_action_probability  # add repeat_action_probability in env_option
+    def thunk(render: bool = False, record_video: bool = False, seed: int = 0,
+    ) -> Env:
+        option = deepcopy(env_option)
+        assert not (render and record_video), ValueError("Cannot specify both render and record_video")
 
-        if '-ram' in env_id:
-            overall_option['frameskip'] = frame_skip
-            env = TransformObservation(
-                FlattenObservation(FrameStack(gym.make(env_id, **overall_option), num_stack=frame_stack)),
-                lambda obs: obs / 255.)
+        if render:
+            option['render_mode'] = 'human'
+        elif record_video: # RecordVideo Wrapper will be set in trainer class.
+            option['render_mode'] = 'rgb_array'
         else:
-            overall_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
-            env = gym.make(env_id, **overall_option)
+            option['render_mode'] = None
 
-            env = FrameStack(AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
-                                                terminal_on_life_loss=terminal_on_life_loss,
-                                                grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
+        if namespace == 'atari_env':
+            option[
+                'repeat_action_probability'] = repeat_action_probability  # add repeat_action_probability in env_option
 
-    else:
-        env = gym.make(env_id, **overall_option)
+            if '-ram' in env_id:
+                option['frameskip'] = frame_skip
+                env = TransformObservation(
+                    FlattenObservation(FrameStack(gym.make(env_id, **option), num_stack=frame_stack)),
+                    lambda obs: obs / 255.)
+            else:
+                option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
+                env = gym.make(env_id, **option)
 
-    env.action_space.seed(seed)
+                env = FrameStack(AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
+                                                    terminal_on_life_loss=terminal_on_life_loss,
+                                                    grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
 
-    eval_env = deepcopy(env)
-    eval_env.action_space.seed(seed - 1)
+        else:
+            env = gym.make(env_id, **option)
 
-    return env, eval_env
+        env.action_space.seed(seed)
+
+        return env
+
+    train_env = thunk(False, False, seed) #Rendering or recording all training env is bothersome.
+    eval_env = thunk(render, record_video, seed - 1) #Only render or record evaluation env.
+
+    return train_env, eval_env

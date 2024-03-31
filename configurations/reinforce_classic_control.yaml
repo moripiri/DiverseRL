@@ -1,0 +1,25 @@
+env_id: Pendulum-v1
+render: false
+env_option: {}
+
+network_type: Default
+network_config: {}
+buffer_size: 1000000
+gamma: 0.99
+learning_rate: 0.001
+optimizer: Adam
+optimizer_kwargs: {}
+device: cpu
+
+seed: 1
+training_start: 1000
+training_num: 1
+max_step: 100000
+do_eval: true
+eval_every: 1000
+eval_ep: 10
+log_tensorboard: true
+log_wandb: true
+record_video: true
+save_model: false
+save_freq: 100000

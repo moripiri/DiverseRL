@@ -91,6 +91,8 @@ def get_args():
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
     parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+
     parser.add_argument("--save-model", action="store_true", default=False, help="Whether to save the model")
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 

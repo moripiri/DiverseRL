@@ -24,6 +24,7 @@ class DeepRLTrainer(Trainer):
         eval_ep: int = 10,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
+        record_video: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
         **kwargs: Optional[Dict[str, Any]]
@@ -39,11 +40,14 @@ class DeepRLTrainer(Trainer):
         :param training_num: How many times to run training function in the algorithm each time
         :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
-        :param do_eval: Whether to perform the evaluation.
-        :param eval_every: Do evaluation every N step.
+        :param do_eval: Whether to perform the evaluation
+        :param eval_every: Do evaluation every N step
         :param eval_ep: Number of episodes to run evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
+        :param record_video: Whether to record the evaluation procedure.
+        :param save_model: Whether to save the model (both in local and wandb)
+        :param save_freq: How often to save the model
         """
         config = locals()
         for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
@@ -62,6 +66,7 @@ class DeepRLTrainer(Trainer):
             eval_ep=eval_ep,
             log_tensorboard=log_tensorboard,
             log_wandb=log_wandb,
+            record_video=record_video,
             save_model=save_model,
             save_freq=save_freq,
             config=config
@@ -180,7 +185,7 @@ class DeepRLTrainer(Trainer):
                         self.evaluate()
 
                     if self.save_model and self.total_step % self.save_freq == 0:
-                        self.algo.save(f"{self.save_folder}/{self.total_step}")
+                        self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
                 self.episode += 1
 
@@ -203,9 +208,7 @@ class DeepRLTrainer(Trainer):
                         self.tensorboard.close()
                     if self.log_wandb:
                         if self.save_model:
-                            self.wandb.save(f"{self.save_folder}/*.pt")
-
-                        self.wandb.finish(quiet=True)
+                            self.wandb.save(f"{self.ckpt_folder}/*.pt")
                     break
 
             progress.console.print("=" * 100, style="bold")

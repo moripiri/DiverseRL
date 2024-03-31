@@ -93,7 +93,30 @@ class ReplayBuffer:
         :param batch_size: Length of the mini-batch
         :return: Sampled mini batch
         """
-        ids = np.random.randint(0, self.max_size if self.full else self.idx, size=batch_size)
+
+        ids = np.random.randint(0, self.size, size=batch_size)
+
+        states = torch.from_numpy(self.s[ids]).to(self.device)
+        actions = torch.from_numpy(self.a[ids]).to(self.device)
+        rewards = torch.from_numpy(self.r[ids]).to(self.device)
+        next_states = torch.from_numpy(self.ns[ids]).to(self.device)
+        dones = torch.from_numpy(self.d[ids]).to(self.device)
+        terminates = torch.from_numpy(self.t[ids]).to(self.device)
+
+        if self.save_log_prob:
+            log_probs = torch.from_numpy(self.log_prob[ids]).to(self.device)
+
+            return states, actions, rewards, next_states, dones, terminates, log_probs
+
+        return states, actions, rewards, next_states, dones, terminates
+
+    def all_sample(self) -> Tuple[Tensor, ...]:
+        """
+        Return all records from buffer.
+
+        :return: Tuples of RL records
+        """
+        ids = np.arange(self.size)
 
         states = torch.from_numpy(self.s[ids]).to(self.device)
         actions = torch.from_numpy(self.a[ids]).to(self.device)

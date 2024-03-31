@@ -148,7 +148,7 @@ class OnPolicyTrainer(Trainer):
                         self.evaluate()
 
                     if self.save_model and self.total_step % self.save_freq == 0:
-                        self.algo.save(f"{self.save_folder}/{self.total_step}")
+                        self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
                     if terminated or truncated:
                         observation, info = self.env.reset()
@@ -177,7 +177,7 @@ class OnPolicyTrainer(Trainer):
                         self.tensorboard.close()
                     if self.log_wandb:
                         if self.save_model:
-                            self.wandb.save(f"{self.save_folder}/*.pt")
+                            self.wandb.save(f"{self.ckpt_folder}/*.pt")
 
                         self.wandb.finish(quiet=True)
                     break

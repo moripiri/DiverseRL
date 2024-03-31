@@ -1,14 +1,20 @@
 import os
+import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 import gymnasium as gym
 import yaml
+from gymnasium.wrappers import RecordVideo
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
+from diverserl.common.utils import env_namespace
 
+ROOT_PATH = sys.path[1]
+LOG_PATH = f"{ROOT_PATH}/logs"
+WANDB_PATH = f"{ROOT_PATH}/wandb" # Wandb in LOG_PATH causes error.
 class Trainer(ABC):
     def __init__(
         self,
@@ -21,9 +27,9 @@ class Trainer(ABC):
         eval_ep: int,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
-        wandb_group: Optional[str] = None,
         save_model: bool = False,
         save_freq: int = 10**6,
+        record_video: bool = False,
         config: Dict[str, Any] = None,
     ):
 
@@ -56,6 +62,7 @@ class Trainer(ABC):
 
         self.log_tensorboard = log_tensorboard
         self.log_wandb = log_wandb
+        self.record_video = record_video
 
         self.config = config
 
@@ -75,32 +82,39 @@ class Trainer(ABC):
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
         self.run_name = f"{self.start_time}_{self.algo}_{self.env.spec.id.replace('ALE/', '')}"
 
+        if self.record_video:
+            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
 
-            self.tensorboard = SummaryWriter(log_dir=f"./logs/{self.run_name}/tensorboard")
-            with open(f"./logs/{self.run_name}/config.yaml", 'w') as file:
+            self.tensorboard = SummaryWriter(log_dir=f"{LOG_PATH}/{self.run_name}/tensorboard")
+            with open(f"{LOG_PATH}/{self.run_name}/config.yaml", 'w') as file:
                 yaml.dump(self.config, file, sort_keys=False)
 
         if self.log_wandb:
             import wandb
+            os.makedirs(f"{LOG_PATH}/{self.run_name}", exist_ok=True)
+            namespace = env_namespace(self.env.spec)
 
             self.wandb = wandb.init(
-                project=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
+                project="DiverseRL",
+                dir=f"{LOG_PATH}/{self.run_name}",
                 config=self.config,
-                group=wandb_group,
+                group=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
                 name=f"{self.start_time}",
                 id=self.run_name,
                 notes=self.run_name,
-                tags=["RL", "DiverseRL", f"{self.algo}", f"{self.env.spec.id.replace('ALE/', '')}"],
+                monitor_gym=record_video,
+                tags=["RL", "DiverseRL", f"{self.algo}", namespace, f"{self.env.spec.id.replace('ALE/', '')}"],
             )
 
         self.save_model = save_model
         self.save_freq = save_freq if save_freq < total else total
 
         if self.save_model:
-            self.save_folder = f"./logs/{self.run_name}/ckpt"
-            os.makedirs(self.save_folder, exist_ok=True)
+            self.ckpt_folder = f"{LOG_PATH}/{self.run_name}/ckpt"
+            os.makedirs(self.ckpt_folder, exist_ok=True)
 
     @abstractmethod
     def evaluate(self):

@@ -18,6 +18,9 @@ class ClassicTrainer(Trainer):
         do_eval: bool = True,
         eval_every: int = 1000,
         eval_ep: int = 10,
+        log_tensorboard: bool=False,
+        log_wandb: bool = False,
+        record_video: bool = False,
         **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
@@ -31,7 +34,17 @@ class ClassicTrainer(Trainer):
         :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode
         :param eval_ep: How many episodes to run to perform evaluation
+        :param log_tensorboard: Whether to log the training records in tensorboard
+        :param log_wandb: Whether to log the training records in Wandb
+        :param record_video: Whether to record the evaluation procedure.
         """
+        config = locals()
+        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+            del config[key]
+        for key, value in config['kwargs'].items():
+            config[key] = value
+        del config['kwargs']
+
         super().__init__(
             algo=algo,
             env=env,
@@ -40,7 +53,10 @@ class ClassicTrainer(Trainer):
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
-            **kwargs
+            log_tensorboard=log_tensorboard,
+            log_wandb=log_wandb,
+            record_video=record_video,
+            config=config
         )
         self.seed = seed
         self.max_episode = max_episode
@@ -89,6 +105,10 @@ class ClassicTrainer(Trainer):
         self.progress.console.print(
             f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}, success_rate: {success_rate:04.2f}",
         )
+
+        self.log_scalar(
+            {"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.current_episode + 1
+        )
         self.progress.console.print("=" * 100, style="bold")
 
     def run(self) -> None:
@@ -96,11 +116,12 @@ class ClassicTrainer(Trainer):
         Train classic RL algorithm
         """
         with self.progress as progress:
-            total_step = 0
+
             success_num = 0
 
             for episode in range(self.max_episode):
                 progress.advance(self.task)
+                self.current_episode = episode
 
                 observation, info = self.env.reset(seed=self.seed)
                 terminated, truncated = False, False
@@ -137,18 +158,29 @@ class ClassicTrainer(Trainer):
 
                     success = self.distinguish_success(float(env_reward), next_observation)
                     local_step += 1
-                    total_step += 1
 
                 success_num += int(success)
                 progress.console.print(
                     f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward}, success: {success}",
                 )
 
-                if self.do_eval and episode % self.eval_every == 0:
+                self.log_scalar(
+                    {
+                        "train/episode_reward": episode_reward,
+                        "train/local_step": local_step,
+                        "train/success": int(success),
+                    },
+                    self.current_episode,
+                )
+                if self.do_eval and self.current_episode % self.eval_every == 0:
                     self.evaluate()
 
             progress.console.print("=" * 100, style="bold")
             progress.console.print(f"Success ratio: {success_num / self.max_episode:.3f}")
+
+            if self.log_tensorboard:
+                self.tensorboard.close()
+
 
     def process_reward(self, step_result: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """
