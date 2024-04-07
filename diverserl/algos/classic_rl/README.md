@@ -1,4 +1,4 @@
-# Classic RL algorithms
+## Classic RL algorithms
 
 ---
 ## Overview

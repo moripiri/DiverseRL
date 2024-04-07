@@ -1,4 +1,4 @@
-# Deep RL algorithms
+## Model-free Deep RL algorithms
 
 ---
 ## Overview

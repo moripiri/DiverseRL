@@ -90,7 +90,7 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
 
 
 
-def make_env(env_id: str, env_option: Dict[str, Any], seed: int = 0, render: bool = False, record_video: bool = False,
+def make_env(env_id: str, env_option: Dict[str, Any] = {}, seed: int = 0, render: bool = False, record_video: bool = False,
              image_size: int = 84, noop_max: int = 30, frame_skip: int = 4, frame_stack: int = 4,
              terminal_on_life_loss: bool = True, grayscale_obs: bool = True, repeat_action_probability: float = 0., **kwargs: Optional[Dict[str, Any]]
 ) -> \
