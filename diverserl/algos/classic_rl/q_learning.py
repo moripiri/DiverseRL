@@ -27,7 +27,7 @@ class QLearning(ClassicRL):
 
         self.q = (
             np.zeros([self.state_dim, self.action_dim])
-            if isinstance(env.observation_space, spaces.Discrete)
+            if isinstance(self.state_dim, int)
             else np.zeros([*self.state_dim, self.action_dim])
         )
 

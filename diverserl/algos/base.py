@@ -4,7 +4,6 @@ from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 import torch
-from jedi.inference import param
 
 
 def get_optimizer(

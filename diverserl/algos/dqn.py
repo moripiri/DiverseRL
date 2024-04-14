@@ -150,7 +150,7 @@ class DQN(DeepRL):
         if np.random.rand() < self.eps:
             return np.random.randint(self.action_dim)
         else:
-            observation = super()._fix_ob_shape(observation)
+            observation = self._fix_ob_shape(observation)
 
             with torch.no_grad():
                 action = self.q_network(observation).argmax(1).cpu().numpy()[0]
@@ -164,7 +164,7 @@ class DQN(DeepRL):
         :param observation: The input observation
         :return: The DQN agent's action (in evaluation mode)
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
         self.q_network.eval()
         with torch.no_grad():
             action = self.q_network(observation).argmax(1).cpu().numpy()[0]

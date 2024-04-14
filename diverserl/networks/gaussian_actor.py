@@ -18,7 +18,7 @@ class GaussianActor(MLP):
         squash: bool = True,
         independent_std: bool = False,
         logstd_init: float = 0.0,
-        hidden_units: Tuple[int, ...] = (256, 256),
+        hidden_units: Tuple[int, ...] = (64, 64),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
         kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
@@ -38,9 +38,6 @@ class GaussianActor(MLP):
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-        if self.independent_std:
-            self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
-
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
@@ -54,6 +51,10 @@ class GaussianActor(MLP):
             use_bias=use_bias,
             device=device,
         )
+
+        if self.independent_std:
+            self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
+
 
     def _make_layers(self) -> None:
         """

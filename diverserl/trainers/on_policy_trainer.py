@@ -107,6 +107,7 @@ class OnPolicyTrainer(Trainer):
             {"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step
         )
 
+        self.progress.console.print("=" * 100, style="bold")
         self.progress.console.print(
             f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
         )
@@ -153,9 +154,9 @@ class OnPolicyTrainer(Trainer):
                     if terminated or truncated:
                         observation, info = self.env.reset()
 
-                        # progress.console.print(
-                        #     f"Episode: {episode:06d} -> Local_step: {local_step:04d}, Total_step: {total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                        # )
+                        progress.console.print(
+                            f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                        )
                         self.log_scalar(
                             {
                                 "train/episode_reward": episode_reward,

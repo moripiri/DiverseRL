@@ -18,15 +18,17 @@ class PPO(DeepRL):
         action_space: spaces.Space,
         network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
+        horizon: int = 128,
+        minibatch_size: int = 64,
+        num_epochs: int = 4,
+        gamma: float = 0.99,
+        lambda_gae: float = 0.96,
         mode: str = "clip",
         clip: float = 0.2,
         target_dist: float = 0.01,
         beta: float = 3.0,
-        gamma: float = 0.99,
-        lambda_gae: float = 0.96,
-        horizon: int = 128,
-        batch_size: int = 64,
-        buffer_size: int = 10**6,
+        vf_coef: float = 0.5,
+        entropy_coef: float = 0.01,
         actor_lr: float = 0.001,
         actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -52,7 +54,7 @@ class PPO(DeepRL):
         :param gamma: The discount factor
         :param lambda_gae: The lambda for the General Advantage Estimation (High Dimensional Continuous Control Using Generalized Advantage Estimation, Schulman et al. 2016(b))
         :param horizon: The number of steps to gather in each policy rollout
-        :param batch_size: Minibatch size for optimizer.
+        :param minibatch_size: Minibatch size for optimizer.
         :param buffer_size: Maximum length of replay buffer.
         :param actor_lr: Learning rate for actor.
         :param actor_optimizer: Optimizer class (or name) for actor.
@@ -79,7 +81,7 @@ class PPO(DeepRL):
             self.discrete = False
         else:
             raise TypeError
-        self.buffer_size = buffer_size
+        self.buffer_size = horizon
 
         self._build_network()
 
@@ -94,15 +96,19 @@ class PPO(DeepRL):
         self.target_dist = target_dist
         self.beta = beta
 
+        self.vf_coef = vf_coef
+        self.entropy_coef = entropy_coef
+
         self.gamma = gamma
         self.lambda_gae = lambda_gae
 
-        self.batch_size = batch_size
+        self.minibatch_size = minibatch_size
         self.horizon = horizon
+        self.num_epochs = num_epochs
 
-        assert horizon >= batch_size
+        assert horizon >= minibatch_size
 
-        self.num_epochs = int(horizon // batch_size)
+        self.num_epochs = int(horizon // minibatch_size)
 
     def __repr__(self) -> str:
         return "PPO"
@@ -142,7 +148,7 @@ class PPO(DeepRL):
             **buffer_config
         )
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.train()
 
@@ -152,7 +158,7 @@ class PPO(DeepRL):
         return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.eval()
 
@@ -163,83 +169,78 @@ class PPO(DeepRL):
 
     def train(self) -> Dict[str, Any]:
         total_a_loss, total_c_loss = 0.0, 0.0
-
         s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
 
-        episode_idxes = (torch.logical_or(d, t) == 1).reshape(-1).nonzero().squeeze()
+        dones = torch.logical_or(d, t).to(torch.float32)
 
         old_values = self.critic(s).detach()
         returns = torch.zeros_like(r)
         advantages = torch.zeros_like(r)
 
         running_return = torch.zeros(1)
-        previous_value = torch.zeros(1)
+        previous_value = self.critic(ns).detach()[-1]
         running_advantage = torch.zeros(1)
 
-        # GAE
+        # Generalized Advantage Estimation(GAE)
         for t in reversed(range(len(r))):
-            if t in episode_idxes:
-                running_return = torch.zeros(1)
-                previous_value = torch.zeros(1)
-                running_advantage = torch.zeros(1)
-
-            running_return = r[t] + self.gamma * running_return * (1 - d[t])
-            running_tderror = r[t] + self.gamma * previous_value * (1 - d[t]) - old_values[t]
-            running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - d[t])
+            running_return = r[t] + self.gamma * running_return * (1 - dones[t])
+            running_tderror = r[t] + self.gamma * previous_value * (1 - dones[t]) - old_values[t]
+            running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - dones[t])
 
             returns[t] = running_return
             previous_value = old_values[t]
             advantages[t] = running_advantage
 
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
-        # returns = (returns - returns.mean()) / (returns.std())
         horizon_idxes = np.arange(self.horizon)
-        np.random.shuffle(horizon_idxes)
 
         for epoch in range(self.num_epochs):
-            epoch_idxes = horizon_idxes[epoch * self.batch_size : (epoch + 1) * self.batch_size]
+            np.random.shuffle(horizon_idxes)
 
-            batch_s = s[epoch_idxes]
-            batch_a = a[epoch_idxes]
-            batch_log_prob = log_prob[epoch_idxes]
-            batch_advantages = advantages[epoch_idxes]
-            batch_returns = returns[epoch_idxes]
+            for start in range(int(self.horizon // self.minibatch_size)):
+                minibatch_idxes = horizon_idxes[start * self.minibatch_size: (start + 1) * self.minibatch_size]
 
-            # batch_advantages = (batch_advantages - batch_advantages.mean()) / (batch_advantages.std() + 1e-8)
+                batch_s = s[minibatch_idxes]
+                batch_a = a[minibatch_idxes]
+                batch_log_prob = log_prob[minibatch_idxes]
+                batch_advantages = advantages[minibatch_idxes]
+                batch_returns = returns[minibatch_idxes]
 
-            log_policy = self.actor.log_prob(batch_s, batch_a)
-            log_ratio = log_policy - batch_log_prob
-            ratio = log_ratio.exp()
+                batch_advantages = (batch_advantages - batch_advantages.mean()) / (batch_advantages.std() + 1e-8)
 
-            surrogate = ratio * batch_advantages
+                log_policy = self.actor.log_prob(batch_s, batch_a)
+                log_ratio = log_policy - batch_log_prob
+                ratio = log_ratio.exp()
 
-            if self.mode == "clip":
-                clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * batch_advantages
-                actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
-            else:
-                # http://joschu.net/blog/kl-approx.html
-                kl = (ratio - 1) - log_ratio
+                surrogate = ratio * batch_advantages
 
-                actor_loss = -(surrogate - self.beta * kl).mean()
+                if self.mode == "clip":
+                    clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * batch_advantages
+                    actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
+                else:
+                    # http://joschu.net/blog/kl-approx.html
+                    kl = (ratio - 1) - log_ratio
 
-                if self.mode == "adaptive_kl":
-                    if kl.mean().item() < self.target_dist / 1.5:
-                        self.beta /= 2
-                    elif kl.mean().item() > self.target_dist * 1.5:
-                        self.beta *= 2
+                    actor_loss = -(surrogate - self.beta * kl).mean()
 
-            critic_loss = F.mse_loss(self.critic(batch_s), batch_returns)
+                    if self.mode == "adaptive_kl":
+                        if kl.mean().item() < self.target_dist / 1.5:
+                            self.beta /= 2
+                        elif kl.mean().item() > self.target_dist * 1.5:
+                            self.beta *= 2
 
-            self.actor_optimizer.zero_grad()
-            actor_loss.backward()
-            self.actor_optimizer.step()
+                actor_loss -= self.entropy_coef * self.actor.entropy(batch_s).mean()
+                critic_loss = self.vf_coef * F.mse_loss(self.critic(batch_s), batch_returns)
 
-            self.critic_optimizer.zero_grad()
-            critic_loss.backward()
-            self.critic_optimizer.step()
+                self.actor_optimizer.zero_grad()
+                actor_loss.backward()
+                self.actor_optimizer.step()
 
-            total_a_loss += actor_loss.detach().cpu().numpy()
-            total_c_loss += critic_loss.detach().cpu().numpy()
+                self.critic_optimizer.zero_grad()
+                critic_loss.backward()
+                self.critic_optimizer.step()
+
+                total_a_loss += actor_loss.detach().cpu().numpy()
+                total_c_loss += critic_loss.detach().cpu().numpy()
 
         self.buffer.delete()
 

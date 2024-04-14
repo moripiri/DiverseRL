@@ -32,7 +32,7 @@ class DynaQ(ClassicRL):
 
         self.q = (
             np.zeros([self.state_dim, self.action_dim])
-            if isinstance(env.observation_space, spaces.Discrete)
+            if isinstance(self.state_dim, int)
             else np.zeros([*self.state_dim, self.action_dim])
         )
         self.model_r = np.zeros_like(self.q)
@@ -82,7 +82,6 @@ class DynaQ(ClassicRL):
 
         self.model_r[s, a] = r
 
-        print(s, a, ns, self.model_ns.shape)
         self.model_ns[s, a] = ns
 
         self.ob_traj.append(s)

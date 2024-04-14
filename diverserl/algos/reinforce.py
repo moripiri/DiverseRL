@@ -96,7 +96,7 @@ class REINFORCE(DeepRL):
         )
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.network.train()
 
@@ -106,7 +106,7 @@ class REINFORCE(DeepRL):
         return action.cpu().numpy()[0]
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.network.eval()
 

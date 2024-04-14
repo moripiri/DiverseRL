@@ -140,7 +140,7 @@ class TD3(DeepRL):
         :param observation: The input observation
         :return: The DDPG agent's action
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.train()
         with torch.no_grad():
@@ -156,7 +156,7 @@ class TD3(DeepRL):
         :param observation: The input observation
         :return: The DDPG agent's action (in evaluation mode)
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.eval()
         with torch.no_grad():

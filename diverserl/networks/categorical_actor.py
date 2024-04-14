@@ -12,7 +12,7 @@ class CategoricalActor(MLP):
         self,
         state_dim: int,
         action_dim: int,
-        hidden_units: Tuple[int, ...] = (256, 256),
+        hidden_units: Tuple[int, ...] = (64, 64),
         mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
         mid_activation_kwargs: Optional[Dict[str, Any]] = None,
         kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
@@ -68,7 +68,7 @@ class CategoricalActor(MLP):
         state = state.to(self.device)
 
         probs = self.layers(state)
-        dist = Categorical(probs)
+        dist = Categorical(probs=probs)
 
         return dist
 

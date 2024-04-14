@@ -157,7 +157,7 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.train()
         with torch.no_grad():
@@ -172,7 +172,7 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action (in evaluation mode)
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.eval()
         with torch.no_grad():
@@ -380,7 +380,7 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.train()
         with torch.no_grad():
@@ -395,7 +395,7 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action (in evaluation mode)
         """
-        observation = super()._fix_ob_shape(observation)
+        observation = self._fix_ob_shape(observation)
 
         self.actor.eval()
         with torch.no_grad():

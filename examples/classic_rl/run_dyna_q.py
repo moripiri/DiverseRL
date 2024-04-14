@@ -48,10 +48,10 @@ def get_args():
     parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
     parser.add_argument(
-        "--log-tensorboard", action="store_true", default=True, help="Whether to save the run in tensorboard"
+        "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
-    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
-    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+    parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=False, help="Whether to record the evaluation.")
 
     args = parser.parse_args()
 
