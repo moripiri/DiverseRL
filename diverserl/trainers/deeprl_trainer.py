@@ -11,7 +11,7 @@ class DeepRLTrainer(Trainer):
     def __init__(
         self,
         algo: DeepRL,
-        env: gym.Env,
+        env: gym.vector.SyncVectorEnv,
         eval_env: gym.Env,
         seed: int,
         training_start: int = 1000,
@@ -176,7 +176,7 @@ class DeepRLTrainer(Trainer):
                             self.log_scalar(result, self.total_step)
 
                     observation = next_observation
-                    episode_reward += reward
+                    episode_reward += np.mean(reward)
 
                     local_step += 1
                     self.total_step += 1

@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos.dqns import DuelingDQN
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -127,11 +127,11 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(**config)
 
     algo = DuelingDQN(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        observation_space=env.single_observation_space,
+        action_space=env.single_action_space,
         **config
     )
 

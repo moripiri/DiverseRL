@@ -3,12 +3,12 @@ import argparse
 import yaml
 
 from diverserl.algos import DQN
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="DQN Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
@@ -59,7 +59,7 @@ def get_args():
     )
     parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
-    parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
+    parser.add_argument("--buffer-size", type=int, default=10 ** 6, help="Maximum length of replay buffer.")
     parser.add_argument("--learning-rate", type=float, default=0.0005, help="Learning rate of the Q-network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) for the Q-network")
     parser.add_argument(
@@ -102,8 +102,8 @@ def get_args():
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
-    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
-    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+    parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=False, help="Whether to record the evaluation.")
     parser.add_argument("--save-model", action="store_true", default=False, help="Whether to save the model")
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
@@ -123,9 +123,11 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(**config)
 
-    algo = DQN(observation_space=env.observation_space, action_space=env.action_space, **config)
+    algo = DQN(observation_space=env.single_observation_space,
+               action_space=env.single_action_space,
+               **config)
 
     trainer = DeepRLTrainer(
         algo=algo,

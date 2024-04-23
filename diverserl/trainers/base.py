@@ -2,7 +2,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import gymnasium as gym
 import yaml
@@ -14,23 +14,25 @@ from diverserl.common.utils import env_namespace
 
 ROOT_PATH = sys.path[1]
 LOG_PATH = f"{ROOT_PATH}/logs"
-WANDB_PATH = f"{ROOT_PATH}/wandb" # Wandb in LOG_PATH causes error.
+WANDB_PATH = f"{ROOT_PATH}/wandb"  # Wandb in LOG_PATH causes error.
+
+
 class Trainer(ABC):
     def __init__(
-        self,
-        algo,
-        env: gym.Env,
-        eval_env: gym.Env,
-        total: int,
-        do_eval: bool,
-        eval_every: int,
-        eval_ep: int,
-        log_tensorboard: bool = False,
-        log_wandb: bool = False,
-        save_model: bool = False,
-        save_freq: int = 10**6,
-        record_video: bool = False,
-        config: Dict[str, Any] = None,
+            self,
+            algo,
+            env: Union[gym.Env, gym.vector.SyncVectorEnv],
+            eval_env: gym.Env,
+            total: int,
+            do_eval: bool,
+            eval_every: int,
+            eval_ep: int,
+            log_tensorboard: bool = False,
+            log_wandb: bool = False,
+            save_model: bool = False,
+            save_freq: int = 10 ** 6,
+            record_video: bool = False,
+            config: Dict[str, Any] = None,
     ):
 
         """
@@ -74,16 +76,24 @@ class Trainer(ABC):
             MofNCompleteColumn(),
             console=self.console,
         )
+        if isinstance(self.env, gym.vector.SyncVectorEnv):
+            self.env_id = self.env.envs[0].spec.id.replace('ALE/', '')
+            self.env_namespace = env_namespace(env.envs[0].spec)
+
+        else:
+            self.env_id = self.env.spec.id.replace('ALE/', '')
+            self.env_namespace = env_namespace(env.spec)
 
         self.task = self.progress.add_task(
-            description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env.spec.id.replace('ALE/', '')}[/grey42]...[/bold]",
+            description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env_id}[/grey42]...[/bold]",
             total=total,
         )
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
-        self.run_name = f"{self.start_time}_{self.algo}_{self.env.spec.id.replace('ALE/', '')}"
+        self.run_name = f"{self.start_time}_{self.algo}_{self.env_id}"
 
         if self.record_video:
-            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video",
+                                        name_prefix='eval_ep')
 
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
@@ -95,18 +105,17 @@ class Trainer(ABC):
         if self.log_wandb:
             import wandb
             os.makedirs(f"{LOG_PATH}/{self.run_name}", exist_ok=True)
-            namespace = env_namespace(self.env.spec)
 
             self.wandb = wandb.init(
                 project="DiverseRL",
                 dir=f"{LOG_PATH}/{self.run_name}",
                 config=self.config,
-                group=f"{self.algo}_{self.env.spec.id.replace('ALE/', '')}",
+                group=f"{self.algo}_{self.env_id}",
                 name=f"{self.start_time}",
                 id=self.run_name,
                 notes=self.run_name,
                 monitor_gym=record_video,
-                tags=["RL", "DiverseRL", f"{self.algo}", namespace, f"{self.env.spec.id.replace('ALE/', '')}"],
+                tags=["RL", "DiverseRL", f"{self.algo}", self.env_namespace, f"{self.env_id}"],
             )
 
         self.save_model = save_model

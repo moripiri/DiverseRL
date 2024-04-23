@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos import DDPG
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -94,7 +94,7 @@ def get_args():
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
     parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
-    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+    parser.add_argument("--record-video", action="store_true", default=False, help="Whether to record the evaluation.")
 
     parser.add_argument("--save-model", action="store_true", default=False, help="Whether to save the model")
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
@@ -119,11 +119,11 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(**config)
 
     algo = DDPG(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        observation_space=env.single_observation_space,
+        action_space=env.single_action_space,
         **config
     )
 

@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos.classic_rl import QLearning
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import ClassicTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -16,7 +16,7 @@ def get_args():
     parser.add_argument(
         "--env-id",
         type=str,
-        default="Taxi-v3",
+        default="CliffWalking-v0",
         choices=["Blackjack-v1", "Taxi-v3", "CliffWalking-v0", "FrozenLake-v1"],
         help="Name of the gymnasium environment to run.",
     )
@@ -45,10 +45,10 @@ def get_args():
     parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=10, help="Number of episodes to run evaulation.")
     parser.add_argument(
-        "--log-tensorboard", action="store_true", default=True, help="Whether to save the run in tensorboard"
+        "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
-    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
-    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+    parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=False, help="Whether to record the evaluation.")
 
     args = parser.parse_args()
 
@@ -60,18 +60,15 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
             config['config_path'] = args.config_path
     else:
         config = vars(args)
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(sync_vector_env=False, **config)
 
-    algo = QLearning(env=env, **config)
+    algo = QLearning(env.observation_space, env.action_space, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,

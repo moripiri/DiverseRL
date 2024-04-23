@@ -70,9 +70,9 @@ class DeepRL(ABC):
         """
         pass
 
-    def _fix_ob_shape(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
+    def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """
-        Fix observation appropriate for torch neural network module.
+        Fix observation appropriate to torch neural network module.
 
         :param observation: The input observation
         :return: The input observation in the form of two dimension tensor
@@ -80,12 +80,9 @@ class DeepRL(ABC):
 
         if isinstance(observation, torch.Tensor):
             observation = observation.to(dtype=torch.float32)
-            observation = torch.unsqueeze(observation, dim=0)
 
         else:
             observation = np.asarray(observation).astype(np.float32)
-
-            observation = np.expand_dims(observation, axis=0)
             observation = torch.from_numpy(observation)
 
         observation = observation.to(self.device)

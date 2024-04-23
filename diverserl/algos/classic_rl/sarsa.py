@@ -8,18 +8,17 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class SARSA(ClassicRL):
-    def __init__(self, env: gym.Env, gamma: float = 0.9, alpha: float = 0.1, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(self,  observation_space: spaces.Space, action_space: spaces.Space, gamma: float = 0.9, alpha: float = 0.1, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
         """
         Tabular SARSA algorithm.
 
         Reinforcement Learning: An Introduction Chapter 6, Richard S. Sutton and Andrew G. Barto
 
-        :param env: The environment for Q-learning agent to learn from
         :param gamma: The discount factor
         :param alpha: Step-size parameter (learning rate)
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env)
+        super().__init__(observation_space, action_space)
 
         self.alpha = alpha
         self.gamma = gamma
@@ -34,7 +33,7 @@ class SARSA(ClassicRL):
     def __repr__(self) -> str:
         return "SARSA"
 
-    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
+    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> np.ndarray:
         """
         Get the SARSA action in probability 1-self.eps from an observation (in training mode)
 
@@ -45,18 +44,18 @@ class SARSA(ClassicRL):
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
         else:
-            action = np.argmax(self.q[observation])
+            action = np.argmax(self.q[observation], axis=-1)
 
         return action
 
-    def eval_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
+    def eval_action(self, observation: Union[int, Tuple[int, ...]]) -> np.ndarray:
         """
         Get the SARSA action from an observation (in evaluation mode)
 
         :param observation: The input observation
         :return: The SARSA agent's action (in evaluation mode)
         """
-        action = np.argmax(self.q[observation])
+        action = np.argmax(self.q[observation], axis=-1)
 
         return action
 

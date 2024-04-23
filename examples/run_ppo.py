@@ -4,7 +4,7 @@ import numpy as np
 import yaml
 
 from diverserl.algos import PPO
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import OnPolicyTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -14,7 +14,7 @@ def get_args():
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="InvertedPendulum-v4", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v4", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -56,8 +56,8 @@ def get_args():
     parser.add_argument(
         "--lambda-gae", type=float, default=0.95, help="The lambda for the General Advantage Estimation"
     )
-    parser.add_argument("--vf_coef", type=float, default=0.05, help="The value loss coef")
-    parser.add_argument("--entropy-coef", type=float, default=0.01, help="The entropy coef")
+    parser.add_argument("--vf_coef", type=float, default=0.5, help="The value loss coef")
+    parser.add_argument("--entropy-coef", type=float, default=0.0, help="The entropy coef")
     parser.add_argument("--horizon", type=int, default=2048, help="The number of steps to gather in each policy rollout")
     parser.add_argument("--minibatch-size", type=int, default=64, help="Minibatch size for optimizer.")
     parser.add_argument("--num-epoch", type=int, default=10, help="The K epochs to update the policy")
@@ -109,9 +109,6 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -119,11 +116,11 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(num_envs = 1, **config)
 
     algo = PPO(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        observation_space=env.single_observation_space,
+        action_space=env.single_action_space,
         **config
 
     )

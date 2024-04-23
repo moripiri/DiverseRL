@@ -11,7 +11,7 @@ class OnPolicyTrainer(Trainer):
     def __init__(
         self,
         algo: DeepRL,
-        env: gym.Env,
+        env: gym.vector.SyncVectorEnv,
         eval_env: gym.Env,
         seed: int,
         max_step: int = 1000000,
@@ -22,6 +22,7 @@ class OnPolicyTrainer(Trainer):
         log_wandb: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
+        record_video: bool = False,
         **kwargs: Optional[Dict[str, Any]],
 
     ) -> None:
@@ -56,6 +57,7 @@ class OnPolicyTrainer(Trainer):
             eval_ep=eval_ep,
             log_tensorboard=log_tensorboard,
             log_wandb=log_wandb,
+            record_video=record_video,
             save_model=save_model,
             save_freq=save_freq,
             config=config
@@ -140,7 +142,7 @@ class OnPolicyTrainer(Trainer):
                     self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
 
                     observation = next_observation
-                    episode_reward += reward
+                    episode_reward += np.mean(reward)
 
                     local_step += 1
                     self.total_step += 1
@@ -151,25 +153,25 @@ class OnPolicyTrainer(Trainer):
                     if self.save_model and self.total_step % self.save_freq == 0:
                         self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
-                    if terminated or truncated:
-                        observation, info = self.env.reset()
-
-                        progress.console.print(
-                            f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                        )
-                        self.log_scalar(
-                            {
-                                "train/episode_reward": episode_reward,
-                                "train/local_step": local_step,
-                                "train/total_step": self.total_step,
-                                "train/training_count": self.algo.training_count,
-                            },
-                            self.total_step,
-                        )
-
-                        self.episode += 1
-                        episode_reward = 0
-                        local_step = 0
+                    # if terminated or truncated:
+                    #     observation, info = self.env.reset()
+                    #
+                    #     progress.console.print(
+                    #         f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                    #     )
+                    #     self.log_scalar(
+                    #         {
+                    #             "train/episode_reward": episode_reward,
+                    #             "train/local_step": local_step,
+                    #             "train/total_step": self.total_step,
+                    #             "train/training_count": self.algo.training_count,
+                    #         },
+                    #         self.total_step,
+                    #     )
+                    #
+                    #     self.episode += 1
+                    #     episode_reward = 0
+                    #     local_step = 0
 
                 self.algo.train()
 

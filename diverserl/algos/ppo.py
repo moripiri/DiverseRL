@@ -6,37 +6,38 @@ import torch.nn.functional as F
 from gymnasium import spaces
 
 from diverserl.algos.base import DeepRL
-from diverserl.common.buffer import ReplayBuffer
+from diverserl.common.buffer import ReplayBuffer, VectorReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import CategoricalActor, GaussianActor, VNetwork
 
 
 class PPO(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        horizon: int = 128,
-        minibatch_size: int = 64,
-        num_epochs: int = 4,
-        gamma: float = 0.99,
-        lambda_gae: float = 0.96,
-        mode: str = "clip",
-        clip: float = 0.2,
-        target_dist: float = 0.01,
-        beta: float = 3.0,
-        vf_coef: float = 0.5,
-        entropy_coef: float = 0.01,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
-        **kwargs: Optional[Dict[str, Any]]
+            self,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            num_envs: int = 1,
+            horizon: int = 128,
+            minibatch_size: int = 64,
+            num_epochs: int = 4,
+            gamma: float = 0.99,
+            lambda_gae: float = 0.96,
+            mode: str = "clip",
+            clip: float = 0.2,
+            target_dist: float = 0.01,
+            beta: float = 3.0,
+            vf_coef: float = 0.5,
+            entropy_coef: float = 0.01,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         PPO(Proximal Policy Gradients)
@@ -103,6 +104,7 @@ class PPO(DeepRL):
         self.lambda_gae = lambda_gae
 
         self.minibatch_size = minibatch_size
+        self.num_envs = num_envs
         self.horizon = horizon
         self.num_epochs = num_epochs
 
@@ -116,7 +118,8 @@ class PPO(DeepRL):
     @staticmethod
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
-            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork, "Buffer": ReplayBuffer}
+            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork,
+                        "Buffer": VectorReplayBuffer}
         }
         return ppo_network_list
 
@@ -147,18 +150,20 @@ class PPO(DeepRL):
             device=self.device,
             **buffer_config
         )
+
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
 
         with torch.no_grad():
             action, log_prob = self.actor(observation)
 
-        return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
+        return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
 
@@ -173,13 +178,13 @@ class PPO(DeepRL):
 
         dones = torch.logical_or(d, t).to(torch.float32)
 
-        old_values = self.critic(s).detach()
+        old_values = torch.squeeze(self.critic(s)).detach()
         returns = torch.zeros_like(r)
         advantages = torch.zeros_like(r)
 
-        running_return = torch.zeros(1)
-        previous_value = self.critic(ns).detach()[-1]
-        running_advantage = torch.zeros(1)
+        running_return = torch.zeros(self.num_envs)
+        previous_value = torch.squeeze(self.critic(ns)).detach()[-1]
+        running_advantage = torch.zeros(self.num_envs)
 
         # Generalized Advantage Estimation(GAE)
         for t in reversed(range(len(r))):
@@ -191,13 +196,20 @@ class PPO(DeepRL):
             previous_value = old_values[t]
             advantages[t] = running_advantage
 
-        horizon_idxes = np.arange(self.horizon)
+        s = s.reshape(-1, self.state_dim)
+        a = a.reshape(-1, 1 if self.discrete else self.action_dim)
+
+        log_prob = log_prob.reshape(-1, 1)
+        advantages = advantages.reshape(-1, 1)
+        returns = returns.reshape(-1, 1)
+
+        batch_idxes = np.arange(self.num_envs * self.horizon)
 
         for epoch in range(self.num_epochs):
-            np.random.shuffle(horizon_idxes)
+            np.random.shuffle(batch_idxes)
 
-            for start in range(int(self.horizon // self.minibatch_size)):
-                minibatch_idxes = horizon_idxes[start * self.minibatch_size: (start + 1) * self.minibatch_size]
+            for start in range(int((self.num_envs * self.horizon) // self.minibatch_size)):
+                minibatch_idxes = batch_idxes[start * self.minibatch_size: (start + 1) * self.minibatch_size]
 
                 batch_s = s[minibatch_idxes]
                 batch_a = a[minibatch_idxes]

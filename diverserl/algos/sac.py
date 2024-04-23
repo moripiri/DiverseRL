@@ -14,29 +14,29 @@ from diverserl.networks import GaussianActor, QNetwork, VNetwork
 
 class SACv2(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        gamma: float = 0.99,
-        alpha: float = 0.1,
-        train_alpha: bool = True,
-        target_alpha: Optional[float] = None,
-        tau: float = 0.05,
-        critic_update: int = 2,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        alpha_lr: float = 0.001,
-        alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
+            self,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            gamma: float = 0.99,
+            alpha: float = 0.1,
+            train_alpha: bool = True,
+            target_alpha: Optional[float] = None,
+            tau: float = 0.05,
+            critic_update: int = 2,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            alpha_lr: float = 0.001,
+            alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
 
     ) -> None:
@@ -147,8 +147,8 @@ class SACv2(DeepRL):
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
-        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
-
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device,
+                                   **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -157,13 +157,13 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -172,7 +172,8 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():
@@ -251,26 +252,26 @@ class SACv2(DeepRL):
 
 class SACv1(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        gamma: float = 0.99,
-        alpha: float = 0.1,
-        tau: float = 0.05,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        v_lr: float = 0.001,
-        v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
+            self,
+            observation_space: spaces.Space,
+            action_space: spaces.Space,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            gamma: float = 0.99,
+            alpha: float = 0.1,
+            tau: float = 0.05,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            v_lr: float = 0.001,
+            v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
 
     ) -> None:
@@ -371,7 +372,8 @@ class SACv1(DeepRL):
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
-        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device,
+                                   **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -380,13 +382,13 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -395,7 +397,8 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():

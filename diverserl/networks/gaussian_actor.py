@@ -53,7 +53,7 @@ class GaussianActor(MLP):
         )
 
         if self.independent_std:
-            self.logstd_init = torch.tensor(self.logstd_init, device=self.device).exp()
+            self.std = torch.tensor(self.logstd_init, device=self.device).exp()
 
 
     def _make_layers(self) -> None:
@@ -119,7 +119,7 @@ class GaussianActor(MLP):
         output_mean = self.mean_layer(trunk_output)
 
         if self.independent_std:
-            output_std = self.logstd_init
+            output_std = self.std
         else:
             output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
 

@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos.classic_rl import MonteCarlo
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import ClassicTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -59,8 +59,6 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
 
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
@@ -69,9 +67,9 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env, eval_env = make_envs(sync_vector_env=False, **config)
 
-    algo = MonteCarlo(env=env, **config)
+    algo = MonteCarlo(env.observation_space, env.action_space, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,

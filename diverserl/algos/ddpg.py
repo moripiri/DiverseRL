@@ -126,12 +126,12 @@ class DDPG(DeepRL):
         :param observation: The input observation
         :return: The DDPG agent's action
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
-            action = self.actor(observation).cpu().numpy()[0]
-            noise = np.random.normal(loc=0, scale=self.noise_scale, size=self.action_dim)
+            action = self.actor(observation).cpu().numpy()
+            noise = np.random.normal(loc=0, scale=self.noise_scale, size=(action.shape[0], self.action_dim))
 
         return np.clip(action + noise, -self.action_scale + self.action_bias, self.action_scale + self.action_bias)
 
@@ -142,7 +142,8 @@ class DDPG(DeepRL):
         :param observation: The input observation
         :return: The DDPG agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():
