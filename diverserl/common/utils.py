@@ -201,6 +201,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, seed: in
             else:
                 env = gym.make(env_id, **option)
 
+            env = gym.wrappers.RecordEpisodeStatistics(env)
             env.action_space.seed(seed)
 
             return env

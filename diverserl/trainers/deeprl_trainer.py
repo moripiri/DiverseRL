@@ -146,69 +146,67 @@ class DeepRLTrainer(Trainer):
         Train Deep RL algorithm.
         """
         with self.progress as progress:
-            while True:
-                observation, info = self.env.reset(seed=self.seed)
-                terminated, truncated = False, False
-                episode_reward = 0
-                local_step = 0
+            observation, info = self.env.reset(seed=self.seed)
 
-                while not (terminated or truncated):
-                    progress.advance(self.task)
+            while self.total_step <= self.max_step:
+                progress.advance(self.task)
 
-                    if self.total_step < self.training_start:
-                        action = self.env.action_space.sample()
+                if self.total_step < self.training_start:
+                    action = self.env.action_space.sample()
 
-                    else:
-                        action = self.algo.get_action(observation)
-                    (
-                        next_observation,
-                        reward,
-                        terminated,
-                        truncated,
-                        info,
-                    ) = self.env.step(action)
+                else:
+                    action = self.algo.get_action(observation)
+                (
+                    next_observation,
+                    reward,
+                    terminated,
+                    truncated,
+                    infos,
+                ) = self.env.step(action)
 
-                    self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
+                self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
-                    if self.total_step >= self.training_start and self.check_train(terminated or truncated):
-                        for _ in range(int(self.training_num)):
-                            result = self.algo.train()
-                            self.log_scalar(result, self.total_step)
+                # train algorithm
+                if self.total_step >= self.training_start and (self.total_step % self.training_freq == 0):
+                    for _ in range(int(self.training_num)):
+                        result = self.algo.train()
+                        self.log_scalar(result, self.total_step)
 
-                    observation = next_observation
-                    episode_reward += np.mean(reward)
+                observation = next_observation
+                self.total_step += 1
 
-                    local_step += 1
-                    self.total_step += 1
+                if self.do_eval and self.total_step % self.eval_every == 0:
+                    self.evaluate()
 
-                    if self.do_eval and self.total_step % self.eval_every == 0:
-                        self.evaluate()
+                if self.save_model and self.total_step % self.save_freq == 0:
+                    self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
-                    if self.save_model and self.total_step % self.save_freq == 0:
-                        self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
+                if any(terminated) or any(truncated):
+                    episode_infos = infos['final_info']
+                    for episode_info, episode_done in zip(episode_infos, infos['_final_info']):
+                        if episode_done:
+                            local_step = episode_info['episode']['l'].item()
+                            episode_reward = episode_info['episode']['r'].item()
 
-                self.episode += 1
+                            progress.console.print(
+                                f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                            )
+                            self.log_scalar(
+                                {
+                                    "train/episode_reward": episode_reward,
+                                    "train/local_step": local_step,
+                                    "train/total_step": self.total_step,
+                                    "train/training_count": self.algo.training_count,
+                                },
+                                self.total_step,
+                            )
 
-                progress.console.print(
-                    f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                )
+                            self.episode += 1
 
-                self.log_scalar(
-                    {
-                        "train/episode_reward": episode_reward,
-                        "train/local_step": local_step,
-                        "train/total_step": self.total_step,
-                        "train/training_count": self.algo.training_count,
-                    },
-                    self.total_step,
-                )
-
-                if self.total_step >= self.max_step:
-                    if self.log_tensorboard:
-                        self.tensorboard.close()
-                    if self.log_wandb:
-                        if self.save_model:
-                            self.wandb.save(f"{self.ckpt_folder}/*.pt")
-                    break
+                if self.log_tensorboard:
+                    self.tensorboard.close()
+                if self.log_wandb:
+                    if self.save_model:
+                        self.wandb.save(f"{self.ckpt_folder}/*.pt")
 
             progress.console.print("=" * 100, style="bold")

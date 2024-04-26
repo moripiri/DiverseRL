@@ -76,13 +76,15 @@ class Trainer(ABC):
             MofNCompleteColumn(),
             console=self.console,
         )
-        if isinstance(self.env, gym.vector.SyncVectorEnv):
+
+        try:
             self.env_id = self.env.envs[0].spec.id.replace('ALE/', '')
             self.env_namespace = env_namespace(env.envs[0].spec)
 
-        else:
+        except:
             self.env_id = self.env.spec.id.replace('ALE/', '')
             self.env_namespace = env_namespace(env.spec)
+
 
         self.task = self.progress.add_task(
             description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env_id}[/grey42]...[/bold]",
