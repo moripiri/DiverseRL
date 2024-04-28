@@ -179,7 +179,7 @@ class SACv2(DeepRL):
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     @property
     def alpha(self):
@@ -412,7 +412,6 @@ class SACv1(DeepRL):
         :return: training results
         """
         self.training_count += 1
-        result_dict = {}
         self.actor.train()
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)

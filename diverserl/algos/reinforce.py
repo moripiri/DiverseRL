@@ -56,6 +56,9 @@ class REINFORCE(DeepRL):
             self.discrete = True
         elif isinstance(action_space, spaces.Box):
             self.action_dim = action_space.shape[0]
+            self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
+            self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
+
             self.discrete = False
         else:
             raise TypeError
@@ -79,6 +82,9 @@ class REINFORCE(DeepRL):
         network_class = self.network_list()[self.network_type]["Network"]["Discrete" if self.discrete else "Continuous"]
 
         network_config = self.network_config["Network"]
+        if not self.discrete:
+            network_config["action_scale"] = self.action_scale
+            network_config["action_bias"] = self.action_bias
 
         self.network = network_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **network_config
@@ -114,7 +120,7 @@ class REINFORCE(DeepRL):
         with torch.no_grad():
             action, _ = self.network(observation, deterministic=True)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     def train(self) -> Dict[str, Any]:
         """

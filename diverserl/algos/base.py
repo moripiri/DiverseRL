@@ -110,7 +110,7 @@ class DeepRL(ABC):
         pass
 
     @abstractmethod
-    def train(self) -> Dict[str, Any]:
+    def train(self, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Train the Deep RL policy.
 

@@ -91,7 +91,7 @@ class GaussianActor(MLP):
         if deterministic:
             sample = dist.mean
         else:
-            sample = dist.rsample()
+            sample = dist.sample()
 
         log_prob = dist.log_prob(sample)
 
@@ -119,7 +119,7 @@ class GaussianActor(MLP):
         output_mean = self.mean_layer(trunk_output)
 
         if self.independent_std:
-            output_std = self.std
+            output_std = self.std.expand_as(output_mean)
         else:
             output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
 

@@ -147,7 +147,7 @@ class DDPG(DeepRL):
 
         self.actor.eval()
         with torch.no_grad():
-            action = self.actor(observation).cpu().numpy()[0]
+            action = self.actor(observation).cpu().numpy()
 
         return action
 

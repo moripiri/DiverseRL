@@ -23,11 +23,13 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments.")
+
 
     # deep rl hyperparameters
     parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
     parser.add_argument(
-        "--network-config", default={"Actor":{'mid_activation': 'Tanh', 'kernel_initializer_kwargs': {'gain': np.sqrt(2)}}, "Critic":{'mid_activation': 'Tanh', 'kernel_initializer_kwargs': {'gain': np.sqrt(2)}}}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
+        "--network-config", default={"Actor":{'mid_activation': 'Tanh'}, "Critic": {'mid_activation': 'Tanh'}}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )
     parser.add_argument(
         "--mode",
@@ -37,11 +39,11 @@ def get_args():
         help="Type of surrogate objectives (clip, adaptive_kl, fixed_kl)",
     )
     parser.add_argument(
-        "--clip",
+        "--clip_coef",
         type=float,
         default=0.2,
         choices=range(0, 1),
-        help='The surrogate clipping value. Only used when the mode is "clip"',
+        help='The surrogate clipping value. Only used when the mode is "clip_coef"',
     )
     parser.add_argument(
         "--target-dist",
@@ -61,33 +63,25 @@ def get_args():
     parser.add_argument("--horizon", type=int, default=2048, help="The number of steps to gather in each policy rollout")
     parser.add_argument("--minibatch-size", type=int, default=64, help="Minibatch size for optimizer.")
     parser.add_argument("--num-epoch", type=int, default=10, help="The K epochs to update the policy")
-    parser.add_argument("--actor-lr", type=float, default=0.0003, help="Learning rate for actor.")
-    parser.add_argument("--actor-optimizer", type=str, default="Adam", help="Optimizer class (or name) for actor.")
+    parser.add_argument("--learning_rate", type=float, default=0.0003, help="Learning rate for network.")
+    parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or name) for actor.")
     parser.add_argument(
-        "--actor-optimizer-kwargs",
+        "--optimizer-kwargs",
         default={},
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Parameter dict for actor optimizer.",
     )
-    parser.add_argument("--critic-lr", type=float, default=0.0003, help="Learning rate for critic.")
-    parser.add_argument("--critic-optimizer", type=str, default="Adam", help="Optimizer class (or name) for critic.")
-    parser.add_argument(
-        "--critic-optimizer-kwargs",
-        default={},
-        action=StoreDictKeyPair,
-        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
-        help="Parameter dict for critic optimizer.",
-    )
-
+    parser.add_argument("--anneal-lr", type=bool, default=False, help="Linearly decay learning rate.")
+    parser.add_argument("--max-grad-norm", type=float, default=0.5, help="Max gradient norm for gradient clipping.")
     parser.add_argument(
         "--device", type=str, default="cpu", help="Device (cpu, cuda, ...) on which the code should be run"
     )
 
     # trainer hyperparameters
-    parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
+    parser.add_argument("--seed", type=int, default=1, help="Random seed.")
     parser.add_argument("--max-step", type=int, default=1000000, help="Maximum number of steps to run.")
-    parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
+    parser.add_argument("--do-eval", type=bool, default=False, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
@@ -116,7 +110,7 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(num_envs = 1, **config)
+    env, eval_env = make_envs(**config)
 
     algo = PPO(
         observation_space=env.single_observation_space,

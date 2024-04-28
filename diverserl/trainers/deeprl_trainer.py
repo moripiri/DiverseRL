@@ -82,20 +82,6 @@ class DeepRLTrainer(Trainer):
 
         self.max_step = max_step
 
-    def check_train(self, episode_end: bool) -> bool:
-        """
-        Whether to conduct training according to the designated training type.
-
-        :param episode_end: Whether the episode has ended
-        :return: Whether to conduct training by train_type
-        """
-        if self.train_type == "online":
-            return self.total_step % self.training_freq == 0
-        elif self.train_type == "offline":
-            return episode_end
-        else:
-            return False
-
     def evaluate(self) -> None:
         """
         Evaluate Deep RL algorithm.
@@ -118,7 +104,7 @@ class DeepRLTrainer(Trainer):
                     terminated,
                     truncated,
                     info,
-                ) = self.eval_env.step(action)
+                ) = self.eval_env.step(action[0])
 
                 observation = next_observation
                 episode_reward += reward
@@ -182,31 +168,12 @@ class DeepRLTrainer(Trainer):
                     self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
                 if any(terminated) or any(truncated):
-                    episode_infos = infos['final_info']
-                    for episode_info, episode_done in zip(episode_infos, infos['_final_info']):
-                        if episode_done:
-                            local_step = episode_info['episode']['l'].item()
-                            episode_reward = episode_info['episode']['r'].item()
+                    self.log_episodes(infos)
 
-                            progress.console.print(
-                                f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                            )
-                            self.log_scalar(
-                                {
-                                    "train/episode_reward": episode_reward,
-                                    "train/local_step": local_step,
-                                    "train/total_step": self.total_step,
-                                    "train/training_count": self.algo.training_count,
-                                },
-                                self.total_step,
-                            )
-
-                            self.episode += 1
-
-                if self.log_tensorboard:
-                    self.tensorboard.close()
-                if self.log_wandb:
-                    if self.save_model:
-                        self.wandb.save(f"{self.ckpt_folder}/*.pt")
+            if self.log_tensorboard:
+                self.tensorboard.close()
+            if self.log_wandb:
+                if self.save_model:
+                    self.wandb.save(f"{self.ckpt_folder}/*.pt")
 
             progress.console.print("=" * 100, style="bold")

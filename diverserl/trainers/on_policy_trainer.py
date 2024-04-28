@@ -64,11 +64,13 @@ class OnPolicyTrainer(Trainer):
         )
 
         assert self.algo.buffer.save_log_prob
-        self.seed = seed
-        self.max_step = max_step
 
         self.horizon = self.algo.horizon
         self.num_epochs = self.algo.num_epochs
+        self.num_envs = self.algo.num_envs
+
+        self.seed = seed
+        self.max_step = int(max_step // self.num_envs)
 
     def evaluate(self) -> None:
         """
@@ -92,7 +94,7 @@ class OnPolicyTrainer(Trainer):
                     terminated,
                     truncated,
                     info,
-                ) = self.eval_env.step(action)
+                ) = self.eval_env.step(action[0])
 
                 observation = next_observation
                 episode_reward += reward
@@ -122,9 +124,8 @@ class OnPolicyTrainer(Trainer):
 
         observation, info = self.env.reset(seed=self.seed)
 
-
         with self.progress as progress:
-            while True:
+            while self.total_step <= self.max_step:
                 for _ in range(self.horizon):
                     progress.advance(self.task)
 
@@ -142,7 +143,10 @@ class OnPolicyTrainer(Trainer):
 
                     observation = next_observation
 
-                    self.total_step += 1
+                    self.total_step += self.num_envs
+
+                    if any(terminated) or any(truncated):
+                        self.log_episodes(infos)
 
                     if self.do_eval and self.total_step % self.eval_every == 0:
                         self.evaluate()
@@ -150,39 +154,14 @@ class OnPolicyTrainer(Trainer):
                     if self.save_model and self.total_step % self.save_freq == 0:
                         self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
-                    if any(terminated) or any(truncated):
+                result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
+                self.log_scalar(result, self.total_step)
 
-                        episode_infos = infos['final_info']
-                        for episode_info, episode_done in zip(episode_infos, infos['_final_info']):
-                            if episode_done:
-                                local_step = episode_info['episode']['l'].item()
-                                episode_reward = episode_info['episode']['r'].item()
+            if self.log_tensorboard:
+                self.tensorboard.close()
 
-                                progress.console.print(
-                                    f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                                )
-                                self.log_scalar(
-                                    {
-                                        "train/episode_reward": episode_reward,
-                                        "train/local_step": local_step,
-                                        "train/total_step": self.total_step,
-                                        "train/training_count": self.algo.training_count,
-                                    },
-                                    self.total_step,
-                                )
-
-                                self.episode += 1
-
-                self.algo.train()
-
-                if self.total_step >= self.max_step:
-                    if self.log_tensorboard:
-                        self.tensorboard.close()
-                    if self.log_wandb:
-                        if self.save_model:
-                            self.wandb.save(f"{self.ckpt_folder}/*.pt")
-
-                        self.wandb.finish(quiet=True)
-                    break
+            if self.log_wandb:
+                if self.save_model:
+                    self.wandb.save(f"{self.ckpt_folder}/*.pt")
 
             progress.console.print("=" * 100, style="bold")

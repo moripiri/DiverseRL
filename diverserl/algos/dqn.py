@@ -169,7 +169,7 @@ class DQN(DeepRL):
 
         self.q_network.eval()
         with torch.no_grad():
-            action = self.q_network(observation).argmax(1).cpu().numpy()[0]
+            action = self.q_network(observation).argmax(1).cpu().numpy()
 
         return action
 

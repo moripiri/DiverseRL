@@ -202,6 +202,14 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, seed: in
                 env = gym.make(env_id, **option)
 
             env = gym.wrappers.RecordEpisodeStatistics(env)
+
+            #ppo env wrappers
+            env = gym.wrappers.ClipAction(env)
+            env = gym.wrappers.NormalizeObservation(env)
+            env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
+            env = gym.wrappers.NormalizeReward(env, gamma=0.99)
+            env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
+
             env.action_space.seed(seed)
 
             return env
