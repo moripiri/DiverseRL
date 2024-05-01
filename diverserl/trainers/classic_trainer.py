@@ -12,7 +12,6 @@ class ClassicTrainer(Trainer):
         self,
         algo: ClassicRL,
         env: gym.Env,
-        eval_env: gym.Env,
         seed: int = 1234,
         max_episode: int = 1000,
         do_eval: bool = True,
@@ -39,7 +38,7 @@ class ClassicTrainer(Trainer):
         :param record_video: Whether to record the evaluation procedure.
         """
         config = locals()
-        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+        for key in ['self', 'algo', 'env', '__class__']:
             del config[key]
         for key, value in config['kwargs'].items():
             config[key] = value
@@ -50,7 +49,6 @@ class ClassicTrainer(Trainer):
         super().__init__(
             algo=algo,
             env=env,
-            eval_env=eval_env,
             total=max_episode,
             do_eval=do_eval,
             eval_every=eval_every,

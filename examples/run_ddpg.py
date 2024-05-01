@@ -119,7 +119,7 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(**config)
+    env = make_envs(**config)
 
     algo = DDPG(
         observation_space=env.single_observation_space,
@@ -130,7 +130,6 @@ if __name__ == "__main__":
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

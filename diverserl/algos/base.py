@@ -1,25 +1,9 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, Union
 
 import numpy as np
 import torch
-
-
-def get_optimizer(
-    optimizer_network: List[torch.Tensor],
-    optimizer_lr: float,
-    optimizer_class: Union[str, Type[torch.optim.Optimizer]],
-    optimizer_kwargs: Union[None, Dict[str, Any]],
-) -> torch.optim.Optimizer:
-    optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
-
-    if optimizer_kwargs is None:
-        optimizer_kwargs = {}
-
-    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
-
-    return optimizer
 
 
 class DeepRL(ABC):

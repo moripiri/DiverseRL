@@ -12,7 +12,6 @@ class OnPolicyTrainer(Trainer):
         self,
         algo: DeepRL,
         env: gym.vector.SyncVectorEnv,
-        eval_env: gym.Env,
         seed: int,
         max_step: int = 1000000,
         do_eval: bool = True,
@@ -41,7 +40,7 @@ class OnPolicyTrainer(Trainer):
         """
 
         config = locals()
-        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+        for key in ['self', 'algo', 'env', '__class__']:
             del config[key]
         for key, value in config['kwargs'].items():
             config[key] = value
@@ -50,7 +49,6 @@ class OnPolicyTrainer(Trainer):
         super().__init__(
             algo=algo,
             env=env,
-            eval_env=eval_env,
             total=max_step,
             do_eval=do_eval,
             eval_every=eval_every,

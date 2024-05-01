@@ -118,9 +118,6 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -128,7 +125,7 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(**config)
+    env = make_envs(**config)
 
     algo = SACv2(
         observation_space=env.single_observation_space,
@@ -139,7 +136,6 @@ if __name__ == "__main__":
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

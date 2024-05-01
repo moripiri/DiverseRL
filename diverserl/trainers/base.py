@@ -22,7 +22,6 @@ class Trainer(ABC):
             self,
             algo,
             env: Union[gym.Env, gym.vector.SyncVectorEnv],
-            eval_env: gym.Env,
             total: int,
             do_eval: bool,
             eval_every: int,
@@ -49,11 +48,11 @@ class Trainer(ABC):
         :param wandb_group: Group name of the wandb
         :param save_model: Whether to save the RL model
         :param save_freq: How frequently save the RL model
-        :param configs: Configuration of the run.
+        :param config: Configuration of the run.
         """
+
         self.algo = algo
         self.env = env
-        self.eval_env = eval_env
 
         self.do_eval = do_eval
         self.eval_every = eval_every
@@ -77,14 +76,8 @@ class Trainer(ABC):
             console=self.console,
         )
 
-        try:
-            self.env_id = self.env.envs[0].spec.id.replace('ALE/', '')
-            self.env_namespace = env_namespace(env.envs[0].spec)
-
-        except:
-            self.env_id = self.env.spec.id.replace('ALE/', '')
-            self.env_namespace = env_namespace(env.spec)
-
+        self.env_id = gym.make(config['env_id']).spec.id.replace('ALE/', '')
+        self.env_namespace = env_namespace(gym.make(config['env_id']).spec)
 
         self.task = self.progress.add_task(
             description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env_id}[/grey42]...[/bold]",
@@ -93,9 +86,11 @@ class Trainer(ABC):
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
         self.run_name = f"{self.start_time}_{self.algo}_{self.env_id}"
 
-        if self.record_video:
-            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video",
-                                        name_prefix='eval_ep')
+        if self.do_eval:
+            self.eval_env = self.make_eval_env()
+        else:
+            assert not (self.config['render'] or self.config['record_video']),\
+                "Rendering or Recording video is only supported in Evaluation."
 
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
@@ -126,6 +121,24 @@ class Trainer(ABC):
         if self.save_model:
             self.ckpt_folder = f"{LOG_PATH}/{self.run_name}/ckpt"
             os.makedirs(self.ckpt_folder, exist_ok=True)
+
+    def make_eval_env(self):
+        from diverserl.common.utils import make_envs
+        assert not (self.config['render'] and self.config['record_video']), ValueError(
+            "Cannot specify both render and record_video")
+
+        if self.config['render']:
+            self.config['env_option']['render_mode'] = 'human'
+        elif self.config['record_video']:
+            self.config['env_option']['render_mode'] = 'rgb_array'
+        else:
+            self.config['env_option']['render_mode'] = None
+
+        eval_env = make_envs(**self.config, sync_vector_env=False)
+
+        if self.config['record_video']:
+            eval_env = RecordVideo(eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+        return eval_env
 
     @abstractmethod
     def evaluate(self):

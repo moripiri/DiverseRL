@@ -13,23 +13,24 @@ def get_args() -> argparse.Namespace:
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="CartPole-v1", help="Name of the gymnasium environment to run.")
-    parser.add_argument("--render", default=False, action="store_true")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-ram-v5", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--render", default=True, action="store_true")
     parser.add_argument(
         "--env-option",
-        default={},
+        default={"frame_skip": 4, "frame_stack": 4, "repeat_action_probability": 0.,
+                 },#"image_size": 84, "noop_max": 30, "terminal_on_life_loss": True, "grayscale_obs": True, },
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
     # atari env hyperparameters
-    parser.add_argument("--image-size", type=int, default=84)
-    parser.add_argument("--noop-max", type=int, default=30)
-    parser.add_argument("--frame-skip", type=int, default=4)
-    parser.add_argument("--frame-stack", type=int, default=4)
-    parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
-    parser.add_argument("--grayscale-obs", type=bool, default=True)
-    parser.add_argument("--repeat-action-probability", type=float, default=0.)
+    # parser.add_argument("--image-size", type=int, default=84)
+    # parser.add_argument("--noop-max", type=int, default=30)
+    # parser.add_argument("--frame-skip", type=int, default=4)
+    # parser.add_argument("--frame-stack", type=int, default=4)
+    # parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
+    # parser.add_argument("--grayscale-obs", type=bool, default=True)
+    # parser.add_argument("--repeat-action-probability", type=float, default=0.)
 
     # dqn hyperparameters
     parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
@@ -83,7 +84,7 @@ def get_args() -> argparse.Namespace:
         "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
-        "--training-freq", type=int, default=4, help="How often in total_step to perform training"
+        "--training-freq", type=int, default=1, help="How often in total_step to perform training"
     )
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"
@@ -97,7 +98,7 @@ def get_args() -> argparse.Namespace:
     )
     parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
@@ -123,7 +124,7 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(**config)
+    env = make_envs(**config)
 
     algo = DQN(observation_space=env.single_observation_space,
                action_space=env.single_action_space,
@@ -132,7 +133,6 @@ if __name__ == "__main__":
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

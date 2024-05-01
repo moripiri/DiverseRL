@@ -68,13 +68,12 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(sync_vector_env=False, **config)
+    env = make_envs(sync_vector_env=False, **config)
     algo = SARSA(env.observation_space, env.action_space, **config)
 
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

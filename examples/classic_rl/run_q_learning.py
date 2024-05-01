@@ -66,13 +66,12 @@ if __name__ == "__main__":
             config['config_path'] = args.config_path
     else:
         config = vars(args)
-    env, eval_env = make_envs(sync_vector_env=False, **config)
+    env = make_envs(sync_vector_env=False, **config)
 
     algo = QLearning(env.observation_space, env.action_space, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

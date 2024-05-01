@@ -59,7 +59,6 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -67,13 +66,12 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_envs(sync_vector_env=False, **config)
+    env = make_envs(sync_vector_env=False, **config)
 
     algo = MonteCarlo(env.observation_space, env.action_space, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 
