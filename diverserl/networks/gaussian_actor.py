@@ -96,7 +96,10 @@ class GaussianActor(MLP):
         if deterministic:
             sample = dist.mean
         else:
-            sample = dist.rsample()
+            if self.squash:
+                sample = dist.rsample()
+            else:
+                sample = dist.sample()
 
         log_prob = dist.log_prob(sample)
 
