@@ -8,7 +8,6 @@ Currently, the following Deep RL algorithms are supported
 * DDPG
 * TD3
 * SAC
-* REINFORCE
 * PPO
 
 
@@ -16,5 +15,6 @@ Currently, the following Deep RL algorithms are supported
 ## Environments
 
 ### Gymnasium
-
--
+- Classic Control: DQN, PPO
+- Atari: DQN, PPO
+- MuJoCo: DDPG, TD3, SAC, PPO~~~~
