@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos.classic_rl import DynaQ
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import ClassicTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -27,6 +27,13 @@ def get_args():
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
+    )
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
     )
     # algorithm setting
     parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor.")
@@ -63,22 +70,18 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
             config['config_path'] = args.config_path
     else:
         config = vars(args)
-    env, eval_env = make_env(**config)
+    env= make_envs(sync_vector_env=False, **config)
 
-    algo = DynaQ(env=env, **config)
+    algo = DynaQ(env, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

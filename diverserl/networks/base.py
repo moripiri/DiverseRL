@@ -1,25 +1,25 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
-import torch
+import numpy as np
 from torch import nn
 
 
 class Network(ABC, nn.Module):
     def __init__(
-        self,
-        input_dim: Union[int, Tuple[int, int, int]],
-        output_dim: int,
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        use_bias: bool = True,
-        device: str = "cpu",
+            self,
+            input_dim: Union[int, Tuple[int, int, int]],
+            output_dim: int,
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            last_activation: Optional[Union[str, Type[nn.Module]]] = None,
+            last_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            use_bias: bool = True,
+            device: str = "cpu",
     ):
         """
         Base Network
@@ -42,21 +42,13 @@ class Network(ABC, nn.Module):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-        self.mid_activation = getattr(nn, mid_activation) if isinstance(mid_activation, str) else mid_activation
-        self.last_activation = getattr(nn, last_activation) if isinstance(last_activation, str) else last_activation
+        self.mid_activation, self.mid_activation_kwargs = self.get_activation(mid_activation, mid_activation_kwargs)
+        self.last_activation, self.last_activation_kwargs = self.get_activation(last_activation, last_activation_kwargs)
 
-        self.mid_activation_kwargs = {} if mid_activation_kwargs is None else mid_activation_kwargs
-        self.last_activation_kwargs = {} if last_activation_kwargs is None else last_activation_kwargs
-
-        self.kernel_initializer = (
-            getattr(nn.init, kernel_initializer) if isinstance(kernel_initializer, str) else kernel_initializer
-        )
-        self.bias_initializer = (
-            getattr(nn.init, bias_initializer) if isinstance(bias_initializer, str) else bias_initializer
-        )
-
-        self.kernel_initializer_kwargs = {} if kernel_initializer_kwargs is None else kernel_initializer_kwargs
-        self.bias_initializer_kwargs = {} if bias_initializer_kwargs is None else bias_initializer_kwargs
+        self.kernel_initializer, self.kernel_initializer_kwargs = self.get_initializer(kernel_initializer,
+                                                                                       kernel_initializer_kwargs)
+        self.bias_initializer, self.bias_initializer_kwargs = self.get_initializer(bias_initializer,
+                                                                                   bias_initializer_kwargs)
 
         self.use_bias = use_bias
         self.device = device
@@ -64,6 +56,42 @@ class Network(ABC, nn.Module):
     @abstractmethod
     def _make_layers(self) -> None:
         pass
+
+    @staticmethod
+    def get_activation(activation: Union[str, Type[nn.Module]], activation_kwargs: Dict[str, Any]) -> Tuple[nn.Module, Dict[str, Any]]:
+        activation = getattr(nn, activation) if isinstance(activation, str) else activation
+
+        if activation_kwargs is None:
+            activation_kwargs = {}
+        else:
+            for key, value in activation_kwargs.items():
+                assert isinstance(value, Union[
+                    int, float, bool, str]), "Value of activation_kwargs must be set as int, float, boolean or string"
+                if isinstance(value, str):
+                    activation_kwargs[key] = eval(value)
+                else:
+                    activation_kwargs[key] = value
+
+        return activation, activation_kwargs
+
+    @staticmethod
+    def get_initializer(initializer: Union[str, Callable], initializer_kwargs: Optional[Dict[str, Any]]) -> Tuple[
+        Callable, Dict[str, Any]]:
+        initializer = (
+            getattr(nn.init, initializer) if isinstance(initializer, str) else initializer
+        )
+        if initializer_kwargs is None:
+            initializer_kwargs = {}
+        else:
+            for key, value in initializer_kwargs.items():
+                assert isinstance(value, Union[
+                    int, float, bool, str]), "Value of initializer_kwargs must be set as int, float, boolean or string"
+                if isinstance(value, str):
+                    initializer_kwargs[key] = eval(value)
+                else:
+                    initializer_kwargs[key] = value
+
+        return initializer, initializer_kwargs
 
     def _init_weights(self, m: nn.Module) -> None:
         """

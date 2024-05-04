@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -14,29 +15,27 @@ from diverserl.networks import GaussianActor, QNetwork, VNetwork
 
 class SACv2(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        gamma: float = 0.99,
-        alpha: float = 0.1,
-        train_alpha: bool = True,
-        target_alpha: Optional[float] = None,
-        tau: float = 0.05,
-        critic_update: int = 2,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        alpha_lr: float = 0.001,
-        alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
+            self,
+            env: gym.vector.SyncVectorEnv,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            gamma: float = 0.99,
+            alpha: float = 0.1,
+            train_alpha: bool = True,
+            target_alpha: Optional[float] = None,
+            target_critic_update: int = 2,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            alpha_lr: float = 0.001,
+            alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
 
     ) -> None:
@@ -54,7 +53,7 @@ class SACv2(DeepRL):
         :param train_alpha: Whether to train the parameter alpha.
         :param target_alpha: Target entropy value (usually set as -|action_dim|).
         :param tau: Interpolation factor in polyak averaging for target networks.
-        :param critic_update: Critic will only be updated once for every critic_update steps.
+        :param target_critic_update: Critic will only be updated once for every target_critic_update steps.
         :param batch_size: Minibatch size for optimizer.
         :param buffer_size: Maximum length of replay buffer.
         :param actor_lr: Learning rate for actor.
@@ -69,17 +68,8 @@ class SACv2(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
-
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Box
-        ), f"{self} supports only Box type observation space and action space."
-
-        self.state_dim = observation_space.shape[0]
-        self.action_dim = action_space.shape[0]
-        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
-        self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
         self.buffer_size = buffer_size
 
@@ -89,7 +79,7 @@ class SACv2(DeepRL):
         self.target_alpha = -self.action_dim if target_alpha is None else target_alpha
         self.train_alpha = train_alpha
 
-        self.critic_update = critic_update
+        self.target_critic_update = target_critic_update
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
@@ -147,8 +137,8 @@ class SACv2(DeepRL):
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
-        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
-
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device,
+                                   **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -157,13 +147,13 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -172,13 +162,14 @@ class SACv2(DeepRL):
         :param observation: The input observation
         :return: The SACv2 agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     @property
     def alpha(self):
@@ -187,7 +178,7 @@ class SACv2(DeepRL):
         """
         return self.log_alpha.exp().detach()
 
-    def train(self) -> Dict[str, Any]:
+    def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
         Train SACv2 policy.
         :return: training results
@@ -220,6 +211,7 @@ class SACv2(DeepRL):
         # actor training
         s_action, s_logprob = self.actor(s)
         min_aq_rep = torch.minimum(self.critic((s, s_action)), self.critic2((s, s_action)))
+
         actor_loss = (self.alpha * s_logprob - min_aq_rep).mean()
 
         self.actor_optimizer.zero_grad()
@@ -237,7 +229,7 @@ class SACv2(DeepRL):
             result_dict["loss/alpha_loss"] = alpha_loss.detach().cpu().numpy()
 
         # critic update
-        if self.training_count % self.critic_update == 0:
+        if self.training_count % self.target_critic_update == 0:
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
 
@@ -251,26 +243,25 @@ class SACv2(DeepRL):
 
 class SACv1(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        gamma: float = 0.99,
-        alpha: float = 0.1,
-        tau: float = 0.05,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        v_lr: float = 0.001,
-        v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
+            self,
+            env: gym.vector.SyncVectorEnv,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            gamma: float = 0.99,
+            alpha: float = 0.1,
+            tau: float = 0.05,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            v_lr: float = 0.001,
+            v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
 
     ) -> None:
@@ -300,17 +291,12 @@ class SACv1(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Box
+        assert isinstance(self.observation_space, spaces.Box) and isinstance(
+            self.action_space, spaces.Box
         ), f"{self} supports only Box type observation space and action space."
-
-        self.state_dim = observation_space.shape[0]
-        self.action_dim = action_space.shape[0]
-        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
-        self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
         self.buffer_size = buffer_size
         self.gamma = gamma
@@ -371,7 +357,8 @@ class SACv1(DeepRL):
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
-        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device, **buffer_config)
+        self.buffer = buffer_class(self.state_dim, self.action_dim, self.buffer_size, device=self.device,
+                                   **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -380,13 +367,13 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
@@ -395,21 +382,21 @@ class SACv1(DeepRL):
         :param observation: The input observation
         :return: The SACv1 agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():
             action, _ = self.actor(observation)
 
-        return action.cpu().numpy()[0]
+        return action.cpu().numpy()
 
-    def train(self) -> Dict[str, Any]:
+    def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
         Train SACv1 policy.
         :return: training results
         """
         self.training_count += 1
-        result_dict = {}
         self.actor.train()
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
@@ -417,6 +404,7 @@ class SACv1(DeepRL):
         # v_network training
         with torch.no_grad():
             s_action, s_logprob = self.actor(s)
+
             min_aq = torch.minimum(self.critic((s, s_action)), self.critic2((s, s_action)))
 
             target_v = min_aq - self.alpha * s_logprob

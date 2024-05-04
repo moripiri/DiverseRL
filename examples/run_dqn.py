@@ -3,34 +3,33 @@ import argparse
 import yaml
 
 from diverserl.algos import DQN
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
 
-def get_args():
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="DQN Learning Example")
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="CartPole-v1", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="ALE/Pong-v5", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
-        default={},
+        default={"frame_skip": 4, "frame_stack": 4, "repeat_action_probability": 0.,
+                 "image_size": 84, "noop_max": 30, "terminal_on_life_loss": True, "grayscale_obs": True, },
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
-    # atari env hyperparameters
-    parser.add_argument("--image-size", type=int, default=84)
-    parser.add_argument("--noop-max", type=int, default=30)
-    parser.add_argument("--frame-skip", type=int, default=4)
-    parser.add_argument("--frame-stack", type=int, default=4)
-    parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
-    parser.add_argument("--grayscale-obs", type=bool, default=True)
-    parser.add_argument("--repeat-action-probability", type=float, default=0.)
-
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
+    )
     # dqn hyperparameters
     parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
     parser.add_argument(
@@ -59,7 +58,7 @@ def get_args():
     )
     parser.add_argument("--gamma", type=float, default=0.99, choices=range(0, 1), help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=32, help="Minibatch size for optimizer.")
-    parser.add_argument("--buffer-size", type=int, default=10**6, help="Maximum length of replay buffer.")
+    parser.add_argument("--buffer-size", type=int, default=10 ** 6, help="Maximum length of replay buffer.")
     parser.add_argument("--learning-rate", type=float, default=0.0005, help="Learning rate of the Q-network")
     parser.add_argument("--optimizer", type=str, default="Adam", help="Optimizer class (or str) for the Q-network")
     parser.add_argument(
@@ -69,6 +68,8 @@ def get_args():
         metavar="KEY1=VAL1,KEY2=VAL2...",
         help="Parameter dict for the optimizer",
     )
+    parser.add_argument("--anneal-lr", type=bool, default=False, help="Linearly decay learning rate.")
+
     parser.add_argument(
         "--target-copy-freq", type=int, default=1000, help="N step to pass to copy Q-network to target Q-network"
     )
@@ -80,7 +81,7 @@ def get_args():
     parser.add_argument("--seed", type=int, default=1234, help="Random seed.")
 
     parser.add_argument(
-        "--training-start", type=int, default=1000, help="Number of steps to perform exploartion of environment"
+        "--training-start", type=int, default=10000, help="Number of steps to perform exploartion of environment"
     )
     parser.add_argument(
         "--training-freq", type=int, default=4, help="How often in total_step to perform training"
@@ -88,22 +89,15 @@ def get_args():
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"
     )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
-    )
     parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
-    parser.add_argument("--eval-every", type=int, default=100, help="When to run evaulation in every n episodes.")
+    parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
     parser.add_argument("--eval-ep", type=int, default=1, help="Number of episodes to run evaulation.")
     parser.add_argument(
         "--log-tensorboard", action="store_true", default=False, help="Whether to save the run in tensorboard"
     )
-    parser.add_argument("--log-wandb", action="store_true", default=True, help="Whether to save the run in wandb.")
-    parser.add_argument("--record-video", action="store_true", default=True, help="Whether to record the evaluation.")
+    parser.add_argument("--log-wandb", action="store_true", default=False, help="Whether to save the run in wandb.")
+    parser.add_argument("--record-video", action="store_true", default=False, help="Whether to record the evaluation.")
     parser.add_argument("--save-model", action="store_true", default=False, help="Whether to save the model")
     parser.add_argument("--save-freq", type=int, default=100000, help="Frequency of model saving.")
 
@@ -123,14 +117,14 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env = make_envs(**config)
 
-    algo = DQN(observation_space=env.observation_space, action_space=env.action_space, **config)
+    algo = DQN(env=env,
+               **config)
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

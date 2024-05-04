@@ -1,30 +1,15 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 
 
-def get_optimizer(
-    optimizer_network: List[torch.Tensor],
-    optimizer_lr: float,
-    optimizer_class: Union[str, Type[torch.optim.Optimizer]],
-    optimizer_kwargs: Union[None, Dict[str, Any]],
-) -> torch.optim.Optimizer:
-    optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
-
-    if optimizer_kwargs is None:
-        optimizer_kwargs = {}
-
-    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
-
-    return optimizer
-
-
 class DeepRL(ABC):
     def __init__(
-        self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
+        self, env: gym.Env, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
     ) -> None:
         """
         The base of Deep RL algorithms
@@ -34,18 +19,8 @@ class DeepRL(ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-
-        assert network_type in network_list.keys()
-        if network_config is None:
-            network_config = dict()
-
-        assert set(network_config.keys()).issubset(network_list[network_type].keys())
-        for network in network_list[network_type].keys():
-            if network not in network_config.keys():
-                network_config[network] = dict()
-
-        self.network_type = network_type
-        self.network_config = network_config
+        self._find_env_space(env)
+        self._set_network_configs(network_type, network_list, network_config)
 
         self.device = device
         self.training_count = 0
@@ -70,9 +45,46 @@ class DeepRL(ABC):
         """
         pass
 
-    def _fix_ob_shape(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
+    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any],) -> None:
+        assert network_type in network_list.keys()
+        if network_config is None:
+            network_config = dict()
+
+        assert set(network_config.keys()).issubset(network_list[network_type].keys())
+        for network in network_list[network_type].keys():
+            if network not in network_config.keys():
+                network_config[network] = dict()
+
+        self.network_type = network_type
+        self.network_config = network_config
+
+    def _find_env_space(self, env: gym.Env):
+        self.observation_space = env.single_observation_space if isinstance(env, gym.vector.SyncVectorEnv) else env.observation_space
+        self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
+
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
+            self.state_dim = self.observation_space.shape[0] if len(self.observation_space.shape) == 1 else self.observation_space.shape
+        else:
+            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
+
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            self.action_dim = self.action_space.n
+            self.discrete = True
+
+        elif isinstance(self.action_space, gym.spaces.Box):
+            self.action_dim = self.action_space.shape[0]
+            self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
+            self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
+
+            self.discrete = False
+        else:
+            raise TypeError(f"{self.action_space} action_space is currently not supported.")
+
+
+    def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """
-        Fix observation appropriate for torch neural network module.
+        Fix observation appropriate to torch neural network module.
 
         :param observation: The input observation
         :return: The input observation in the form of two dimension tensor
@@ -80,12 +92,9 @@ class DeepRL(ABC):
 
         if isinstance(observation, torch.Tensor):
             observation = observation.to(dtype=torch.float32)
-            observation = torch.unsqueeze(observation, dim=0)
 
         else:
             observation = np.asarray(observation).astype(np.float32)
-
-            observation = np.expand_dims(observation, axis=0)
             observation = torch.from_numpy(observation)
 
         observation = observation.to(self.device)
@@ -113,7 +122,7 @@ class DeepRL(ABC):
         pass
 
     @abstractmethod
-    def train(self) -> Dict[str, Any]:
+    def train(self, **kwargs: Dict[str, Any]) -> Dict[str, Any]:
         """
         Train the Deep RL policy.
 

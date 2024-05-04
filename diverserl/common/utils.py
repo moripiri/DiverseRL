@@ -8,7 +8,7 @@ import numpy as np
 import torch.optim
 from gymnasium import Env
 from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
-                                FrameStack, TransformObservation)
+                                FrameStack)
 from torch import nn
 
 
@@ -41,13 +41,37 @@ def get_optimizer(
         optimizer_kwargs: Union[None, Dict[str, Any]],
 ) -> torch.optim.Optimizer:
     optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
+    optimizer_option = {}
 
-    if optimizer_kwargs is None:
-        optimizer_kwargs = {}
+    if optimizer_kwargs is not None:
+        for key, value in optimizer_kwargs.items():
+            assert isinstance(value, Union[
+                int, float, bool, str]), "Value of optimizer_kwargs must be set as int, float, boolean or string"
+            if isinstance(value, str):
+                optimizer_option[key] = eval(value)
+            else:
+                optimizer_option[key] = value
 
-    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
+    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_option)
 
     return optimizer
+
+
+def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> Tuple[
+    Type[gym.Wrapper], Dict[str, Any]]:
+    wrapper_class = getattr(gym.wrappers, wrapper_name)
+    wrapper_option = {}
+
+    if wrapper_kwargs is not None:
+        for key, value in wrapper_kwargs.items():
+            assert isinstance(value, Union[
+                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
+            if isinstance(value, str):
+                wrapper_option[key] = eval(value)
+            else:
+                wrapper_option[key] = value
+
+    return wrapper_class, wrapper_option
 
 
 def set_seed(seed: int) -> None:
@@ -60,6 +84,19 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+
+class ScaleObservation(gym.ObservationWrapper):
+    def __init__(self, env):
+        """
+        Scale Atari Ram's uint8 observations([0, 255]) to float32 observations([0, 1])
+        :param env: gym environment
+        """
+        super().__init__(env)
+        self.observation_space = gym.spaces.Box(0, 1, env.observation_space.shape, dtype=np.float32)
+
+    def observation(self, obs):
+        return obs / 255.
 
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
@@ -89,70 +126,126 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     return ns
 
 
-
-def make_env(env_id: str, env_option: Dict[str, Any] = {}, seed: int = 0, render: bool = False, record_video: bool = False,
-             image_size: int = 84, noop_max: int = 30, frame_skip: int = 4, frame_stack: int = 4,
-             terminal_on_life_loss: bool = True, grayscale_obs: bool = True, repeat_action_probability: float = 0., **kwargs: Optional[Dict[str, Any]]
-) -> \
-Tuple[Env, Env]:
+def make_atari_ram_env(env_id: str, env_option: Dict[str, Any], frame_skip: int = 4, frame_stack: int = 4,
+                       repeat_action_probability: float = 0.):
     """
-    Creates gym environment for deep RL training.
+    Return Gymnasium's Atari-Ram enviornment with appropriate wrappers.
 
     :param env_id: name of the gymnasium environment.
     :param env_option: additional arguments for environment creation.
-    :param seed: random seed.
-    :param render: Whether to render the video. Doing both rendering and recording is not available.
-    :param record_video: Whether to record the video. Doing both rendering and recording is not available.
-    :param image_size: size of the image_type observation (image_size, image_size)
-    :param noop_max: used for atari image type observation
-    :param frame_skip:
-    :param frame_stack:
-    :param terminal_on_life_loss:
-    :param grayscale_obs:
-    :param repeat_action_probability:
+    :param frame_skip: number of frames to skip before observation.
+    :param frame_stack: number of frames to stack before observation.
+    :param repeat_action_probability: probability of taking previous actions instead of taking current action.
 
-    :return: environments for training and evaluation
+    :return: Gymnasium's atari_ram environment.
+    """
+    env_option['repeat_action_probability'] = repeat_action_probability
+    env_option['frameskip'] = frame_skip
+
+    env = gym.make(env_id, **env_option)
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+    env = ScaleObservation(FlattenObservation(FrameStack(env, num_stack=frame_stack)))
+
+    return env
+
+
+def make_atari_env(env_id: str, env_option: Dict[str, Any], image_size: int = 84, noop_max: int = 30,
+                   frame_skip: int = 4, frame_stack: int = 4,
+                   terminal_on_life_loss: bool = True, grayscale_obs: bool = True,
+                   repeat_action_probability: float = 0., ):
+    """
+    Return Gymnasium's Atari environment.
+
+    :param env_id: name of the gymnasium environment.
+    :param env_option: additional arguments for environment creation.
+    :param image_size: size of the image_type observation (image_size, image_size)
+    :param noop_max: For No-op reset, the max number no-ops actions are taken at reset, to turn off, set to 0.
+    :param frame_skip: number of frames to skip before observation.
+    :param frame_stack: number of frames to stack before observation.
+    :param terminal_on_life_loss: `if True`, then :meth:`step()` returns `terminated=True` whenever a life is lost.
+    :param grayscale_obs: Whether to use grayscale observation.
+    :param repeat_action_probability: probability of taking previous actions instead of taking current action.
+    :return:
+    """
+    env_option['repeat_action_probability'] = repeat_action_probability
+    env_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
+
+    env = gym.make(env_id, **env_option)
+    env = gym.wrappers.RecordEpisodeStatistics(env)
+
+    env = FrameStack(
+        AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
+                           terminal_on_life_loss=terminal_on_life_loss,
+                           grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
+
+    return env
+
+
+def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_option: Optional[Dict[str, Any]] = None,
+              seed: int = 0, num_envs: int = 1, sync_vector_env: bool = True,
+              **kwargs: Optional[Dict[str, Any]]
+              ) -> \
+        Union[gym.Env, gym.vector.SyncVectorEnv]:
+    """
+    Creates gymnasium environments for training or evaluation.
+
+    :param env_id: name of the gymnasium environment.
+    :param env_option: additional arguments for environment creation.
+    :param wrapper_option: additional arguments for wrapper creation.
+    :param seed: random seed.
+    :param num_envs: number of environments to generate if sync_vector_env is True.
+    :param sync_vector_env: whether to return env as sync_vector_env.
+
+    :return: generated gymnasium environment
     """
 
     namespace = env_namespace(gym.make(env_id).spec)
 
-    def thunk(render: bool = False, record_video: bool = False, seed: int = 0,
-    ) -> Env:
-        option = deepcopy(env_option)
-        assert not (render and record_video), ValueError("Cannot specify both render and record_video")
+    env_option = {} if env_option is None else env_option
+    wrapper_option = {} if wrapper_option is None else wrapper_option
 
-        if render:
-            option['render_mode'] = 'human'
-        elif record_video: # RecordVideo Wrapper will be set in trainer class.
-            option['render_mode'] = 'rgb_array'
-        else:
-            option['render_mode'] = None
+    def make_env(random_seed: int = 0):
+        def thunk() -> Env:
+            nonlocal env_option
+            nonlocal wrapper_option
 
-        if namespace == 'atari_env':
-            option[
-                'repeat_action_probability'] = repeat_action_probability  # add repeat_action_probability in env_option
+            env_option = deepcopy(env_option)
+            wrapper_option = deepcopy(wrapper_option)
 
-            if '-ram' in env_id:
-                option['frameskip'] = frame_skip
-                env = TransformObservation(
-                    FlattenObservation(FrameStack(gym.make(env_id, **option), num_stack=frame_stack)),
-                    lambda obs: obs / 255.)
+            if namespace == 'atari_env':
+                atari_option = {}
+                for key in ['image_size', 'noop_max', 'frame_skip', 'frame_stack', 'repeat_action_probability',
+                            'terminal_on_life_loss', 'grayscale_obs', 'repeat_action_probability']:
+                    try:
+                        atari_option[key] = env_option[key]
+                        del env_option[key]
+                    except:
+                        continue
+
+                if '-ram' in env_id:
+                    env = make_atari_ram_env(env_id, env_option, **atari_option)
+
+                else:
+                    env = make_atari_env(env_id, env_option, **atari_option)
+
             else:
-                option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
-                env = gym.make(env_id, **option)
+                env = gym.make(env_id, **env_option)
+                env = gym.wrappers.RecordEpisodeStatistics(env)
 
-                env = FrameStack(AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
-                                                    terminal_on_life_loss=terminal_on_life_loss,
-                                                    grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
+            for wrapper_name, wrapper_kwargs in wrapper_option.items():
+                wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs)
+                env = wrapper_class(env, **wrapper_kwargs)
 
-        else:
-            env = gym.make(env_id, **option)
+            env.action_space.seed(random_seed)
 
-        env.action_space.seed(seed)
+            return env
 
-        return env
+        return thunk
 
-    train_env = thunk(False, False, seed) #Rendering or recording all training env is bothersome.
-    eval_env = thunk(render, record_video, seed - 1) #Only render or record evaluation env.
+    if sync_vector_env:
+        env = gym.vector.SyncVectorEnv([make_env(seed + i) for i in
+                                        range(num_envs)])
+    else:
+        env = make_env(seed)()
 
-    return train_env, eval_env
+    return env

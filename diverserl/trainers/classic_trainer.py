@@ -9,26 +9,24 @@ from diverserl.trainers.base import Trainer
 
 class ClassicTrainer(Trainer):
     def __init__(
-        self,
-        algo: ClassicRL,
-        env: gym.Env,
-        eval_env: gym.Env,
-        seed: int = 1234,
-        max_episode: int = 1000,
-        do_eval: bool = True,
-        eval_every: int = 1000,
-        eval_ep: int = 10,
-        log_tensorboard: bool=False,
-        log_wandb: bool = False,
-        record_video: bool = False,
-        **kwargs: Optional[Dict[str, Any]]
+            self,
+            algo: ClassicRL,
+            env: gym.Env,
+            seed: int = 1234,
+            max_episode: int = 1000,
+            do_eval: bool = True,
+            eval_every: int = 1000,
+            eval_ep: int = 10,
+            log_tensorboard: bool = False,
+            log_wandb: bool = False,
+            record_video: bool = False,
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Trainer for Classic RL algorithms.
 
         :param algo: RL algorithm
         :param env: The environment for RL agent to learn from
-        :param eval_env: The environment for RL agent to evaluate from
         :param seed: The random seed
         :param max_episode: Maximum episode to train the classic RL algorithm
         :param do_eval: Whether to perform evaluation during training
@@ -39,16 +37,17 @@ class ClassicTrainer(Trainer):
         :param record_video: Whether to record the evaluation procedure.
         """
         config = locals()
-        for key in ['self', 'algo', 'env', 'eval_env', '__class__']:
+        for key in ['self', 'algo', 'env', '__class__']:
             del config[key]
         for key, value in config['kwargs'].items():
             config[key] = value
         del config['kwargs']
 
+        assert not isinstance(env, gym.vector.SyncVectorEnv), "For Classic RL, Env must not be vectorized."
+
         super().__init__(
             algo=algo,
             env=env,
-            eval_env=eval_env,
             total=max_episode,
             do_eval=do_eval,
             eval_every=eval_every,
@@ -78,6 +77,7 @@ class ClassicTrainer(Trainer):
 
             while not (terminated or truncated):
                 action = self.algo.eval_action(observation)
+
                 (
                     next_observation,
                     env_reward,
@@ -131,6 +131,7 @@ class ClassicTrainer(Trainer):
 
                 while not (terminated or truncated):
                     action = self.algo.get_action(observation)
+
                     (
                         next_observation,
                         env_reward,
@@ -161,7 +162,7 @@ class ClassicTrainer(Trainer):
 
                 success_num += int(success)
                 progress.console.print(
-                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward}, success: {success}",
+                    f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:.4f}, success: {success}",
                 )
 
                 self.log_scalar(
@@ -181,7 +182,6 @@ class ClassicTrainer(Trainer):
             if self.log_tensorboard:
                 self.tensorboard.close()
 
-
     def process_reward(self, step_result: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """
         Post-process reward for better training of gymnasium toy_text environment
@@ -191,10 +191,11 @@ class ClassicTrainer(Trainer):
         """
 
         s, a, r, ns, d, t, info = step_result
-        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1"] and r == 0:
+
+        if self.env_id in ["FrozenLake-v1", "FrozenLake8x8-v1"] and r == 0:
             r -= 0.001
 
-        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
+        if self.env_id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
             if s == ns:
                 r -= 1
 
@@ -211,11 +212,11 @@ class ClassicTrainer(Trainer):
         :param ns: Next state
         :return: Whether the agent succeeded
         """
-        if self.env.spec.id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
+        if self.env_id in ["FrozenLake-v1", "FrozenLake8x8-v1", "CliffWalking-v0"]:
             if ns == self.algo.state_dim - 1:
                 return True
 
-        elif self.env.spec.id in ["Blackjack-v1", "Taxi-v3"]:
+        elif self.env_id in ["Blackjack-v1", "Taxi-v3"]:
             if r > 0.0:
                 return True
         else:

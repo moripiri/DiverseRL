@@ -60,9 +60,9 @@ Training requires two gymnasium environments(for training and evaluation), algor
 import gymnasium as gym
 from diverserl.algos import DQN
 from diverserl.trainers import DeepRLTrainer
-from diverserl.common.utils import make_env
+from diverserl.common.utils import make_envs
 
-env, eval_env = make_env(env_id='CartPole-v1')
+env, eval_env = make_envs(env_id='CartPole-v1')
 
 algo = DQN(observation_space=env.observation_space, action_space=env.action_space, **config)
 

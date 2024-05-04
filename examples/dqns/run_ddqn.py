@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos.dqns import DDQN
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -22,14 +22,13 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
-    # atari env hyperparameters
-    parser.add_argument("--image-size", type=int, default=84)
-    parser.add_argument("--noop-max", type=int, default=30)
-    parser.add_argument("--frame-skip", type=int, default=4)
-    parser.add_argument("--frame-stack", type=int, default=4)
-    parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
-    parser.add_argument("--grayscale-obs", type=bool, default=True)
-    parser.add_argument("--repeat-action-probability", type=float, default=0.)
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
+    )
 
     # dqn hyperparameters
     parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
@@ -69,6 +68,8 @@ def get_args():
         metavar="KEY1=VAL1,KEY2=VAL2...",
         help="Parameter dict for the optimizer",
     )
+    parser.add_argument("--anneal-lr", type=bool, default=False, help="Linearly decay learning rate.")
+
     parser.add_argument(
         "--target-copy-freq", type=int, default=100, help="N step to pass to copy Q-network to target Q-network"
     )
@@ -88,13 +89,7 @@ def get_args():
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"
     )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
-    )
+
     parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
@@ -117,9 +112,6 @@ if __name__ == "__main__":
     args = get_args()
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
-
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -127,18 +119,16 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env = make_envs(**config)
 
     algo = DDQN(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        env=env,
         **config
     )
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

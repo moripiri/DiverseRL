@@ -16,14 +16,12 @@ class DynaQ(ClassicRL):
 
         Reinforcement Learning: An Introduction Chapter 8, Richard S. Sutton and Andrew G. Barto
 
-        :param env: The environment for Dyna-Q agent to learn from
         :param gamma: The discount factor
         :param alpha: Step-size parameter (learning rate)
         :param model_n: Number of times to train from simulated experiences for every train.
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env)
-        assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
+        super().__init__(env=env)
 
         self.gamma = gamma
         self.alpha = alpha
@@ -44,18 +42,19 @@ class DynaQ(ClassicRL):
     def __repr__(self) -> str:
         return "Dyna-Q"
 
-    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
+    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> np.ndarray:
         """
         Get the Dyna-Q action in probability 1-self.eps from an observation (in training mode)
 
         :param observation: The input observation
         :return: The Dyna-Q agent's action
         """
+
         if np.random.random() < self.eps:
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
         else:
-            action = np.argmax(self.q[observation])
+            action = np.argmax(self.q[observation],axis=-1)
 
         return action
 
@@ -66,7 +65,7 @@ class DynaQ(ClassicRL):
         :param observation: The input observation
         :return: The Dyna-Q agent's action (in evaluation mode)
         """
-        action = np.argmax(self.q[observation])
+        action = np.argmax(self.q[observation], axis=-1)
 
         return action
 

@@ -25,7 +25,6 @@ seed: 4
 training_start: 10000
 training_freq: 1
 training_num: 1
-train_type: online
 max_step: 200000
 do_eval: true
 eval_every: 10000

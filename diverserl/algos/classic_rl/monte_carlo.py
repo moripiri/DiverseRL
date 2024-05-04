@@ -2,6 +2,7 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
+from gymnasium import spaces
 
 from diverserl.algos.classic_rl.base import ClassicRL
 
@@ -17,8 +18,8 @@ class MonteCarlo(ClassicRL):
         :param gamma: The discount factor
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env)
-        assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
+        super().__init__(env=env)
+        #assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
 
         self.gamma = gamma
         self.eps = eps
@@ -53,7 +54,7 @@ class MonteCarlo(ClassicRL):
         :param observation: The input observation
         :return: The MC control agent's action
         """
-        action = np.argmax(self.pi[observation])
+        action = np.argmax(self.pi[observation], axis=-1)
 
         return action
 

@@ -49,18 +49,22 @@ class DuelingNetwork(MLP):
             if self.mid_activation is not None:
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        self.layers = nn.Sequential(*layers)
+        self.trunk = nn.Sequential(*layers)
 
         self.value = nn.Linear(layer_units[-1], 1, bias=self.use_bias, device=self.device)
         self.advantage = nn.Linear(layer_units[-1], self.output_dim, bias=self.use_bias, device=self.device)
 
+        self.layers = nn.ModuleDict({'trunk': self.trunk, 'value': self.value, 'advantage': self.advantage})
         self.layers.apply(self._init_weights)
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
+            if detach_encoder:
+                input = input.detach()
 
-        output = self.layers(input)
+        output = self.trunk(input)
 
         value = self.value(output)
         advantage = self.advantage(output)

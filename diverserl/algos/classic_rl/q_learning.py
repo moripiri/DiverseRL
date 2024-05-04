@@ -8,7 +8,7 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class QLearning(ClassicRL):
-    def __init__(self, env: gym.Env, gamma: float = 0.9, alpha: float = 0.1, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, env:  gym.Env, gamma: float = 0.9, alpha: float = 0.1, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
         """
         Tabular Q-learning algorithm.
 
@@ -19,7 +19,7 @@ class QLearning(ClassicRL):
         :param alpha: Step-size parameter (learning rate)
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env)
+        super().__init__(env=env)
 
         self.alpha = alpha
         self.gamma = gamma
@@ -45,7 +45,7 @@ class QLearning(ClassicRL):
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
         else:
-            action = np.argmax(self.q[observation])
+            action = np.argmax(self.q[observation], axis=-1)
 
         return action
 
@@ -56,7 +56,7 @@ class QLearning(ClassicRL):
         :param observation: The input observation
         :return: The Q-learning agent's action (in evaluation mode)
         """
-        action = np.argmax(self.q[observation])
+        action = np.argmax(self.q[observation], axis=-1)
 
         return action
 

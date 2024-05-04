@@ -1,42 +1,44 @@
+import itertools
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
-import torch.nn.functional as F
 from gymnasium import spaces
+from torch import nn
 
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import CategoricalActor, GaussianActor, VNetwork
+from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
+                                VNetwork)
 
 
 class PPO(DeepRL):
     def __init__(
-        self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        horizon: int = 128,
-        minibatch_size: int = 64,
-        num_epochs: int = 4,
-        gamma: float = 0.99,
-        lambda_gae: float = 0.96,
-        mode: str = "clip",
-        clip: float = 0.2,
-        target_dist: float = 0.01,
-        beta: float = 3.0,
-        vf_coef: float = 0.5,
-        entropy_coef: float = 0.01,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
-        **kwargs: Optional[Dict[str, Any]]
+            self,
+            env: gym.vector.SyncVectorEnv,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            num_envs: int = 1,
+            horizon: int = 128,
+            minibatch_size: int = 64,
+            num_epochs: int = 4,
+            gamma: float = 0.99,
+            lambda_gae: float = 0.96,
+            mode: str = "clip",
+            target_dist: float = 0.01,
+            beta: float = 3.0,
+            clip_coef: float = 0.2,
+            vf_coef: float = 0.5,
+            entropy_coef: float = 0.01,
+            max_grad_norm: float = 0.5,
+            learning_rate: float = 0.001,
+            optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            anneal_lr: bool = True,
+            device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         PPO(Proximal Policy Gradients)
@@ -48,7 +50,7 @@ class PPO(DeepRL):
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param mode: Type of surrogate objectives (clip, adaptive_kl, fixed_kl)
-        :param clip: The surrogate clipping value. Only used when the mode is 'clip'
+        :param clip_coef: The surrogate clipping value. Only used when the mode is 'clip'
         :param target_dist: Target KL divergence between the old policy and the current policy. Only used when the mode is 'adaptive_kl'.
         :param beta: Hyperparameter for the KL divergence in the surrogate.
         :param gamma: The discount factor
@@ -56,59 +58,57 @@ class PPO(DeepRL):
         :param horizon: The number of steps to gather in each policy rollout
         :param minibatch_size: Minibatch size for optimizer.
         :param buffer_size: Maximum length of replay buffer.
-        :param actor_lr: Learning rate for actor.
-        :param actor_optimizer: Optimizer class (or name) for actor.
-        :param actor_optimizer_kwargs: Parameter dict for actor optimizer.
+        :param learning_rate: Learning rate for actor.
+        :param optimizer: Optimizer class (or name) for actor.
+        :param optimizer_kwargs: Parameter dict for actor optimizer.
         :param critic_lr: Learning rate of the critic
         :param critic_optimizer: Optimizer class (or str) for the critic
         :param critic_optimizer_kwargs: Parameter dict for the critic optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
         assert mode.lower() in ["clip", "adaptive_kl", "fixed_kl"]
-        assert isinstance(observation_space, spaces.Box), f"{self} supports only Box type observation space."
-
-        self.state_dim = observation_space.shape[0]
-
-        # REINFORCE supports both discrete and continuous action space.
-        if isinstance(action_space, spaces.Discrete):
-            self.action_dim = action_space.n
-            self.discrete = True
-        elif isinstance(action_space, spaces.Box):
-            self.action_dim = action_space.shape[0]
-            self.discrete = False
-        else:
-            raise TypeError
-        self.buffer_size = horizon
-
-        self._build_network()
-
-        self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
-        self.critic_optimizer = get_optimizer(
-            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
-        )
+        assert isinstance(self.observation_space, spaces.Box), f"{self} supports only Box type observation space."
 
         self.mode = mode.lower()
 
-        self.clip = clip
+        self.clip_coef = clip_coef
         self.target_dist = target_dist
         self.beta = beta
 
         self.vf_coef = vf_coef
         self.entropy_coef = entropy_coef
+        self.max_grad_norm = max_grad_norm
 
         self.gamma = gamma
         self.lambda_gae = lambda_gae
 
-        self.minibatch_size = minibatch_size
+        self.num_envs = num_envs
         self.horizon = horizon
         self.num_epochs = num_epochs
 
-        assert horizon >= minibatch_size
+        self.batch_size = self.num_envs * self.horizon
+        self.minibatch_size = minibatch_size
 
-        self.num_epochs = int(horizon // minibatch_size)
+        self.buffer_size = horizon
+        self._build_network()
+
+        self.learning_rate = learning_rate
+
+        if self.encoder is None:
+            #strangely, other methods except itertools.chain degrades the performance!
+            self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
+        else:
+            self.params = itertools.chain(*[self.actor.layers.parameters(), self.critic.layers.parameters(), self.encoder.parameters()])
+
+        self.optimizer = get_optimizer(self.params, learning_rate, optimizer, optimizer_kwargs)
+
+        self.anneal_lr = anneal_lr
+
+        assert self.num_epochs > 0
+        assert self.horizon >= self.minibatch_size
 
     def __repr__(self) -> str:
         return "PPO"
@@ -116,25 +116,44 @@ class PPO(DeepRL):
     @staticmethod
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
-            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork, "Buffer": ReplayBuffer}
+            "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork,
+                        "Encoder": PixelEncoder, "Buffer": ReplayBuffer}
         }
         return ppo_network_list
 
     def _build_network(self) -> None:
+
+        if not isinstance(self.state_dim, int):
+            encoder_class = self.network_list()[self.network_type]["Encoder"]
+            encoder_config = self.network_config["Encoder"]
+            self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
+
+            feature_dim = self.encoder.feature_dim
+
+        else:
+            self.encoder = None
+            feature_dim = self.state_dim
+
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
         actor_config = self.network_config["Actor"]
 
         if not self.discrete:  # Fix GaussianActor setting for PPO.
             actor_config["squash"] = False
             actor_config["independent_std"] = True
+            actor_config["action_scale"] = self.action_scale
+            actor_config["action_bias"] = self.action_bias
 
         critic_class = self.network_list()[self.network_type]["Critic"]
         critic_config = self.network_config["Critic"]
 
         self.actor = actor_class(
-            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **actor_config
+            state_dim=feature_dim, action_dim=self.action_dim, device=self.device, feature_encoder=self.encoder, **actor_config
         ).train()
-        self.critic = critic_class(state_dim=self.state_dim, device=self.device, **critic_config).train()
+
+        self.critic = critic_class(state_dim=feature_dim, device=self.device, feature_encoder=self.encoder, **critic_config).train()
+
+        # if not self.discrete:
+        #     self.init_network_weight()
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
@@ -143,82 +162,127 @@ class PPO(DeepRL):
             state_dim=self.state_dim,
             action_dim=1 if self.discrete else self.action_dim,
             save_log_prob=True,
+            num_envs=self.num_envs,
             max_size=self.buffer_size,
             device=self.device,
             **buffer_config
         )
+
+    def init_network_weight(self) -> None:
+        """
+        Initialize network weights for only for PPO networks in continuous action.
+
+        source: https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
+        """
+        def layer_init(m: nn.Module, std=np.sqrt(2), bias_const=0.0):
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+                torch.nn.init.orthogonal_(m.weight, std)
+                if m.bias is not None:
+                    torch.nn.init.constant_(m.bias, bias_const)
+
+            return m
+
+        self.actor.apply(layer_init)
+        self.critic.apply(layer_init)
+        layer_init(self.actor.mean_layer, std=0.01)
+        layer_init(self.critic.layers[-1], std=1.0)
+
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
 
         with torch.no_grad():
             action, log_prob = self.actor(observation)
 
-        return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
+        return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_ob_shape(observation)
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
 
         with torch.no_grad():
             action, log_prob = self.actor(observation, deterministic=True)
 
-        return action.cpu().numpy()[0], log_prob.cpu().numpy()[0]
+        return action.cpu().numpy(), log_prob.cpu().numpy()
 
-    def train(self) -> Dict[str, Any]:
-        total_a_loss, total_c_loss = 0.0, 0.0
+    def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
+        result_dict = {}
+
+        if self.anneal_lr:
+            self.optimizer.param_groups[0]['lr'] = (1 - total_step / max_step) * self.learning_rate
+
         s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
 
-        dones = torch.logical_or(d, t).to(torch.float32)
+        with torch.no_grad():
+            dones = torch.logical_or(d, t).to(torch.float32)
 
-        old_values = self.critic(s).detach()
-        returns = torch.zeros_like(r)
-        advantages = torch.zeros_like(r)
+            if isinstance(self.state_dim, int):
+                old_values = self.critic(s)
+                previous_value = self.critic(ns)[-1]
 
-        running_return = torch.zeros(1)
-        previous_value = self.critic(ns).detach()[-1]
-        running_advantage = torch.zeros(1)
+            else:
+                old_values = self.critic(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)
+                previous_value = self.critic(ns.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)[-1]
 
-        # Generalized Advantage Estimation(GAE)
-        for t in reversed(range(len(r))):
-            running_return = r[t] + self.gamma * running_return * (1 - dones[t])
-            running_tderror = r[t] + self.gamma * previous_value * (1 - dones[t]) - old_values[t]
-            running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - dones[t])
+            advantages = torch.zeros_like(r)
+            running_advantage = torch.zeros((self.num_envs, 1))
 
-            returns[t] = running_return
-            previous_value = old_values[t]
-            advantages[t] = running_advantage
+            # Generalized Advantage Estimation(GAE)
+            for t in reversed(range(self.horizon)):
+                running_tderror = r[t] + self.gamma * previous_value * (1 - dones[t]) - old_values[t]
+                running_advantage = running_tderror + (self.gamma * self.lambda_gae) * running_advantage * (1 - dones[t])
 
-        horizon_idxes = np.arange(self.horizon)
+                previous_value = old_values[t]
+                advantages[t] = running_advantage
 
+            returns = advantages + old_values
+
+        if isinstance(self.state_dim, int):
+            s = s.reshape(-1, self.state_dim)
+        else:
+            s = s.reshape(-1, *self.state_dim)
+
+        a = a.reshape(-1, 1 if self.discrete else self.action_dim)
+        log_prob = log_prob.reshape(-1, 1)
+        advantages = advantages.reshape(-1, 1)
+        returns = returns.reshape(-1, 1)
+        old_values = old_values.reshape(-1, 1)
+
+        batch_idxes = np.arange(self.batch_size)
+        clip_fracs = []
         for epoch in range(self.num_epochs):
-            np.random.shuffle(horizon_idxes)
+            np.random.shuffle(batch_idxes)
 
-            for start in range(int(self.horizon // self.minibatch_size)):
-                minibatch_idxes = horizon_idxes[start * self.minibatch_size: (start + 1) * self.minibatch_size]
+            for start in range(int(self.batch_size // self.minibatch_size)):
+                minibatch_idxes = batch_idxes[start * self.minibatch_size: (start + 1) * self.minibatch_size]
 
                 batch_s = s[minibatch_idxes]
                 batch_a = a[minibatch_idxes]
                 batch_log_prob = log_prob[minibatch_idxes]
                 batch_advantages = advantages[minibatch_idxes]
                 batch_returns = returns[minibatch_idxes]
+                batch_old_values = old_values[minibatch_idxes]
 
+                # advantages normalization
                 batch_advantages = (batch_advantages - batch_advantages.mean()) / (batch_advantages.std() + 1e-8)
 
+                # actor loss
                 log_policy = self.actor.log_prob(batch_s, batch_a)
                 log_ratio = log_policy - batch_log_prob
                 ratio = log_ratio.exp()
+                kl = (ratio - 1) - log_ratio
 
                 surrogate = ratio * batch_advantages
 
+                # different actor loss by ppo mode
                 if self.mode == "clip":
-                    clipped_surrogate = torch.clamp(ratio, 1 - self.clip, 1 + self.clip) * batch_advantages
+                    clipped_surrogate = torch.clamp(ratio, 1 - self.clip_coef, 1 + self.clip_coef) * batch_advantages
                     actor_loss = -torch.minimum(clipped_surrogate, surrogate).mean()
                 else:
                     # http://joschu.net/blog/kl-approx.html
-                    kl = (ratio - 1) - log_ratio
 
                     actor_loss = -(surrogate - self.beta * kl).mean()
 
@@ -228,20 +292,40 @@ class PPO(DeepRL):
                         elif kl.mean().item() > self.target_dist * 1.5:
                             self.beta *= 2
 
-                actor_loss -= self.entropy_coef * self.actor.entropy(batch_s).mean()
-                critic_loss = self.vf_coef * F.mse_loss(self.critic(batch_s), batch_returns)
+                entropy_loss = self.actor.entropy(batch_s).mean()
+                actor_loss -= self.entropy_coef * entropy_loss
 
-                self.actor_optimizer.zero_grad()
-                actor_loss.backward()
-                self.actor_optimizer.step()
+                #critic loss
+                new_values = self.critic(batch_s)
 
-                self.critic_optimizer.zero_grad()
-                critic_loss.backward()
-                self.critic_optimizer.step()
+                critic_loss_unclipped = (new_values - batch_returns) ** 2
+                clipped_values = batch_old_values + torch.clamp(new_values - batch_old_values, -self.clip_coef, self.clip_coef)
+                critic_loss_clipped = (clipped_values - batch_returns) ** 2
 
-                total_a_loss += actor_loss.detach().cpu().numpy()
-                total_c_loss += critic_loss.detach().cpu().numpy()
+                critic_loss = self.vf_coef * 0.5 * (torch.max(critic_loss_unclipped, critic_loss_clipped).mean())
 
-        self.buffer.delete()
+                loss = actor_loss + critic_loss
 
-        return {"loss/actor_loss": total_a_loss, "loss/critic_loss": total_c_loss}
+                self.optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(self.params, self.max_grad_norm)
+                self.optimizer.step()
+
+                #calculate debug variables
+                with torch.no_grad():
+                    old_kl = (-log_ratio).mean()
+                    clip_fracs += [((ratio - 1.0).abs() > self.clip_coef).float().mean().item()]
+
+
+        self.buffer.reset()
+
+        # record last minibatch training result
+        result_dict['loss/actor_loss'] = actor_loss.detach().cpu().numpy()
+        result_dict['loss/critic_loss'] = critic_loss.detach().cpu().numpy()
+        result_dict['loss/entropy_loss'] = entropy_loss.detach().cpu().numpy()
+        result_dict['loss/kl'] = kl.mean().detach().cpu().numpy()
+        result_dict['old_kl'] = old_kl.detach().cpu().numpy()
+        result_dict['clip_frac'] = np.mean(clip_fracs)
+        result_dict['learning_rate'] = self.optimizer.param_groups[0]['lr']
+
+        return result_dict

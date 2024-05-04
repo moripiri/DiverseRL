@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from diverserl.algos import TD3
-from diverserl.common.utils import make_env, set_seed
+from diverserl.common.utils import make_envs, set_seed
 from diverserl.trainers import DeepRLTrainer
 from examples.utils import StoreDictKeyPair
 
@@ -21,6 +21,13 @@ def get_args():
         action=StoreDictKeyPair,
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
+    )
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
     )
 
     # deep rl hyperparameters
@@ -89,13 +96,7 @@ def get_args():
     parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
     )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
-    )
+
     parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
@@ -119,8 +120,6 @@ if __name__ == "__main__":
 
     set_seed(args.seed)
 
-    if args.render:
-        args.env_option["render_mode"] = "human"
     if args.config_path is not None:
         with open(args.config_path, "r") as f:
             config = yaml.safe_load(f)
@@ -128,18 +127,16 @@ if __name__ == "__main__":
     else:
         config = vars(args)
 
-    env, eval_env = make_env(**config)
+    env = make_envs(**config)
 
     algo = TD3(
-        observation_space=env.observation_space,
-        action_space=env.action_space,
+        env=env,
         **config
     )
 
     trainer = DeepRLTrainer(
         algo=algo,
         env=env,
-        eval_env=eval_env,
         **config
     )
 

@@ -1,5 +1,6 @@
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
+import gymnasium as gym
 import torch
 from gymnasium import spaces
 
@@ -13,8 +14,7 @@ from diverserl.networks.noisy_networks import NoisyDuelingNetwork
 class DuelingDQN(DDQN):
     def __init__(
             self,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
+            env: gym.vector.SyncVectorEnv,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
@@ -26,6 +26,7 @@ class DuelingDQN(DDQN):
             learning_rate: float = 0.001,
             optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            anneal_lr: bool = False,
             target_copy_freq: int = 10,
             training_start: int = 1000,
             max_step: int = 1000000,
@@ -33,8 +34,7 @@ class DuelingDQN(DDQN):
             **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         super().__init__(
-            observation_space=observation_space,
-            action_space=action_space,
+            env=env,
             network_type=network_type,
             network_config=network_config,
             eps_initial=eps_initial,
@@ -46,6 +46,7 @@ class DuelingDQN(DDQN):
             learning_rate=learning_rate,
             optimizer=optimizer,
             optimizer_kwargs=optimizer_kwargs,
+            anneal_lr=anneal_lr,
             target_copy_freq=target_copy_freq,
             training_start=training_start,
             max_step=max_step,

@@ -1,6 +1,8 @@
 from copy import deepcopy
+from itertools import chain
 from typing import Any, Dict, List, Optional, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -16,8 +18,7 @@ from diverserl.networks.noisy_networks import NoisyDeterministicActor
 class DQN(DeepRL):
     def __init__(
         self,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
+            env: gym.vector.SyncVectorEnv,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
@@ -29,6 +30,7 @@ class DQN(DeepRL):
             learning_rate: float = 0.001,
             optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            anneal_lr: bool = False,
             target_copy_freq: int = 10,
             training_start: int = 1000,
             max_step: int = 1000000,
@@ -60,21 +62,19 @@ class DQN(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Discrete
+        assert isinstance(self.observation_space, spaces.Box) and isinstance(
+            self.action_space, spaces.Discrete
         ), f"{self} supports only Box type state observation space and Discrete type action space."
-
-        self.state_dim = observation_space.shape[0] if len(observation_space.shape) == 1 else observation_space.shape
-        self.action_dim = action_space.n
 
         self.buffer_size = buffer_size
 
         self._build_network()
 
         self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
+        self.anneal_lr = anneal_lr
 
         self.gamma = gamma
         self.batch_size = batch_size
@@ -104,17 +104,17 @@ class DQN(DeepRL):
             encoder_config = self.network_config["Encoder"]
             self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
 
-            q_input_dim = self.encoder.feature_dim
+            feature_dim = self.encoder.feature_dim
 
         else:
             self.encoder = None
-            q_input_dim = self.state_dim
+            feature_dim = self.state_dim
 
         q_network_class = self.network_list()[self.network_type]["Q_network"]
         q_network_config = self.network_config["Q_network"]
 
         self.q_network = q_network_class(
-            state_dim=q_input_dim,
+            state_dim=feature_dim,
             action_dim=self.action_dim,
             device=self.device,
             feature_encoder=self.encoder,
@@ -148,12 +148,11 @@ class DQN(DeepRL):
         self.update_eps()
 
         if np.random.rand() < self.eps:
-            return np.random.randint(self.action_dim)
+            return np.array([np.random.randint(self.action_dim)])
         else:
-            observation = self._fix_ob_shape(observation)
-
+            observation = self._fix_observation(observation)
             with torch.no_grad():
-                action = self.q_network(observation).argmax(1).cpu().numpy()[0]
+                action = self.q_network(observation).argmax(1).cpu().numpy()
 
             return action
 
@@ -164,19 +163,24 @@ class DQN(DeepRL):
         :param observation: The input observation
         :return: The DQN agent's action (in evaluation mode)
         """
-        observation = self._fix_ob_shape(observation)
+
+        observation = self._fix_observation(observation)
+        observation = torch.unsqueeze(observation, dim=0)
+
         self.q_network.eval()
         with torch.no_grad():
-            action = self.q_network(observation).argmax(1).cpu().numpy()[0]
+            action = self.q_network(observation).argmax(1).cpu().numpy()
 
         return action
 
-    def train(self) -> Dict[str, Any]:
+    def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
         Train the DQN policy.
 
         :return: Training result (loss)
         """
+        if self.anneal_lr:
+            self.optimizer.param_groups[0]['lr'] = (1 - total_step / max_step) * self.learning_rate
 
         self.training_count += 1
         self.q_network.train()
@@ -196,4 +200,4 @@ class DQN(DeepRL):
         if self.training_count % self.target_copy_freq == 0:
             hard_update(self.q_network, self.target_q_network)
 
-        return {"loss/loss": loss.detach().cpu().numpy(), "eps": self.eps}
+        return {"loss/loss": loss.detach().cpu().numpy(), "eps": self.eps, "learning_rate": self.optimizer.param_groups[0]['lr']}
