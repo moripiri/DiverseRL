@@ -69,6 +69,8 @@ class Network(ABC, nn.Module):
                     int, float, bool, str]), "Value of activation_kwargs must be set as int, float, boolean or string"
                 if isinstance(value, str):
                     activation_kwargs[key] = eval(value)
+                else:
+                    activation_kwargs[key] = value
 
         return activation, activation_kwargs
 
@@ -86,6 +88,8 @@ class Network(ABC, nn.Module):
                     int, float, bool, str]), "Value of initializer_kwargs must be set as int, float, boolean or string"
                 if isinstance(value, str):
                     initializer_kwargs[key] = eval(value)
+                else:
+                    initializer_kwargs[key] = value
 
         return initializer, initializer_kwargs
 

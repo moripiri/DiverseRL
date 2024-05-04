@@ -1,6 +1,7 @@
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -15,8 +16,7 @@ from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 class DDPG(DeepRL):
     def __init__(
         self,
-        observation_space: spaces.Space,
-        action_space: spaces.Space,
+        env: gym.vector.SyncVectorEnv,
         network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
@@ -56,17 +56,13 @@ class DDPG(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
-        assert isinstance(observation_space, spaces.Box) and isinstance(
-            action_space, spaces.Box
+        assert isinstance(self.observation_space, spaces.Box) and isinstance(
+            self.action_space, spaces.Box
         ), f"{self} supports only Box type observation space and action space."
 
-        self.state_dim = observation_space.shape[0]
-        self.action_dim = action_space.shape[0]
-        self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
-        self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
 
         self.buffer_size = buffer_size
 
@@ -151,7 +147,7 @@ class DDPG(DeepRL):
 
         return action
 
-    def train(self) -> Dict[str, Any]:
+    def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
         Train the DDPG policy.
 

@@ -1,6 +1,7 @@
 import itertools
 from typing import Any, Dict, Optional, Tuple, Type, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 from gymnasium import spaces
@@ -9,14 +10,14 @@ from torch import nn
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import CategoricalActor, GaussianActor, VNetwork
+from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
+                                VNetwork)
 
 
 class PPO(DeepRL):
     def __init__(
             self,
-            observation_space: spaces.Space,
-            action_space: spaces.Space,
+            env: gym.vector.SyncVectorEnv,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             num_envs: int = 1,
@@ -66,25 +67,10 @@ class PPO(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
         assert mode.lower() in ["clip", "adaptive_kl", "fixed_kl"]
-        assert isinstance(observation_space, spaces.Box), f"{self} supports only Box type observation space."
-
-        self.state_dim = observation_space.shape[0]
-
-        # REINFORCE supports both discrete and continuous action space.
-        if isinstance(action_space, spaces.Discrete):
-            self.action_dim = action_space.n
-            self.discrete = True
-        elif isinstance(action_space, spaces.Box):
-            self.action_dim = action_space.shape[0]
-            self.action_scale = (action_space.high[0] - action_space.low[0]) / 2
-            self.action_bias = (action_space.high[0] + action_space.low[0]) / 2
-
-            self.discrete = False
-        else:
-            raise TypeError
+        assert isinstance(self.observation_space, spaces.Box), f"{self} supports only Box type observation space."
 
         self.mode = mode.lower()
 
@@ -109,9 +95,16 @@ class PPO(DeepRL):
         self.buffer_size = horizon
         self._build_network()
 
-        self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
         self.learning_rate = learning_rate
+
+        if self.encoder is None:
+            #strangely, other methods except itertools.chain degrades the performance!
+            self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
+        else:
+            self.params = itertools.chain(*[self.actor.layers.parameters(), self.critic.layers.parameters(), self.encoder.parameters()])
+
         self.optimizer = get_optimizer(self.params, learning_rate, optimizer, optimizer_kwargs)
+
         self.anneal_lr = anneal_lr
 
         assert self.num_epochs > 0
@@ -124,11 +117,23 @@ class PPO(DeepRL):
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
             "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork,
-                        "Buffer": ReplayBuffer}
+                        "Encoder": PixelEncoder, "Buffer": ReplayBuffer}
         }
         return ppo_network_list
 
     def _build_network(self) -> None:
+
+        if not isinstance(self.state_dim, int):
+            encoder_class = self.network_list()[self.network_type]["Encoder"]
+            encoder_config = self.network_config["Encoder"]
+            self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
+
+            feature_dim = self.encoder.feature_dim
+
+        else:
+            self.encoder = None
+            feature_dim = self.state_dim
+
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
         actor_config = self.network_config["Actor"]
 
@@ -140,11 +145,15 @@ class PPO(DeepRL):
 
         critic_class = self.network_list()[self.network_type]["Critic"]
         critic_config = self.network_config["Critic"]
+
         self.actor = actor_class(
-            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **actor_config
+            state_dim=feature_dim, action_dim=self.action_dim, device=self.device, feature_encoder=self.encoder, **actor_config
         ).train()
-        self.critic = critic_class(state_dim=self.state_dim, device=self.device, **critic_config).train()
-        self.init_network_weight()
+
+        self.critic = critic_class(state_dim=feature_dim, device=self.device, feature_encoder=self.encoder, **critic_config).train()
+
+        # if not self.discrete:
+        #     self.init_network_weight()
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
@@ -161,7 +170,7 @@ class PPO(DeepRL):
 
     def init_network_weight(self) -> None:
         """
-        Initialize network weights for only for PPO networks.
+        Initialize network weights for only for PPO networks in continuous action.
 
         source: https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
         """
@@ -209,10 +218,16 @@ class PPO(DeepRL):
 
         with torch.no_grad():
             dones = torch.logical_or(d, t).to(torch.float32)
-            old_values = self.critic(s)
+
+            if isinstance(self.state_dim, int):
+                old_values = self.critic(s)
+                previous_value = self.critic(ns)[-1]
+
+            else:
+                old_values = self.critic(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)
+                previous_value = self.critic(ns.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)[-1]
 
             advantages = torch.zeros_like(r)
-            previous_value = self.critic(ns)[-1]
             running_advantage = torch.zeros((self.num_envs, 1))
 
             # Generalized Advantage Estimation(GAE)
@@ -225,9 +240,12 @@ class PPO(DeepRL):
 
             returns = advantages + old_values
 
-        s = s.reshape(-1, self.state_dim)
-        a = a.reshape(-1, 1 if self.discrete else self.action_dim)
+        if isinstance(self.state_dim, int):
+            s = s.reshape(-1, self.state_dim)
+        else:
+            s = s.reshape(-1, *self.state_dim)
 
+        a = a.reshape(-1, 1 if self.discrete else self.action_dim)
         log_prob = log_prob.reshape(-1, 1)
         advantages = advantages.reshape(-1, 1)
         returns = returns.reshape(-1, 1)
@@ -299,7 +317,7 @@ class PPO(DeepRL):
                     clip_fracs += [((ratio - 1.0).abs() > self.clip_coef).float().mean().item()]
 
 
-        self.buffer.delete()
+        self.buffer.reset()
 
         # record last minibatch training result
         result_dict['loss/actor_loss'] = actor_loss.detach().cpu().numpy()

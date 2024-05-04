@@ -22,6 +22,13 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
+    )
 
     # deep rl hyperparameters
     parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
@@ -89,13 +96,7 @@ def get_args():
     parser.add_argument(
         "--training_num", type=int, default=1, help="Number of times to run algo.train() in every training iteration"
     )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
-    )
+
     parser.add_argument("--max-step", type=int, default=100000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=1000, help="When to run evaulation in every n episodes.")
@@ -129,8 +130,7 @@ if __name__ == "__main__":
     env = make_envs(**config)
 
     algo = TD3(
-        observation_space=env.single_observation_space,
-        action_space=env.single_action_space,
+        env=env,
         **config
     )
 

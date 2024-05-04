@@ -8,7 +8,7 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class MonteCarlo(ClassicRL):
-    def __init__(self, observation_space: spaces.Space, action_space: spaces.Space,  gamma: float = 0.9, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, env: gym.Env, gamma: float = 0.9, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
         """
         Tabular Model-free Monte-Carlo control algorithm.
 
@@ -18,7 +18,7 @@ class MonteCarlo(ClassicRL):
         :param gamma: The discount factor
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(observation_space, action_space)
+        super().__init__(env=env)
         #assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
 
         self.gamma = gamma

@@ -25,18 +25,7 @@ class ReplayBuffer:
 
         self.a_size = (self.max_size, num_envs, action_dim)
 
-        self.s = np.empty(self.s_size, dtype=np.float32)
-        self.a = np.empty(self.a_size, dtype=np.float32)
-        self.r = np.empty((self.max_size, num_envs, 1), dtype=np.float32)
-        self.ns = np.empty(self.s_size, dtype=np.float32)
-        self.d = np.empty((self.max_size, num_envs, 1), dtype=np.float32)
-        self.t = np.empty((self.max_size, num_envs, 1), dtype=np.float32)
-
-        if save_log_prob:
-            self.log_prob = np.empty((self.max_size, num_envs, 1), dtype=np.float32)
-
-        self.idx = 0
-        self.full = False
+        self.reset()
 
     def __len__(self) -> int:
         return self.idx
@@ -45,7 +34,7 @@ class ReplayBuffer:
     def size(self) -> int:
         return self.max_size if self.full else self.idx
 
-    def delete(self):
+    def reset(self):
         self.s = np.empty(self.s_size, dtype=np.float32)
         self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)

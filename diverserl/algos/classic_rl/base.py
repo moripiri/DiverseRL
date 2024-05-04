@@ -6,28 +6,27 @@ from gymnasium import spaces
 
 
 class ClassicRL(ABC):
-    def __init__(self, observation_space: spaces.Space,
-            action_space: spaces.Space,) -> None:
+    def __init__(self, env: gym.Env) -> None:
         """
         The base of Classic RL algorithms.
         Check environment validity for Classic RL algorithms.
 
         :param env: The environment for RL agent to learn from
         """
-        assert isinstance(observation_space, (spaces.Discrete, spaces.Tuple))
-        if isinstance(observation_space, spaces.Tuple):
-            for item in observation_space:
+        assert isinstance(env.observation_space, (spaces.Discrete, spaces.Tuple))
+        if isinstance(env.observation_space, spaces.Tuple):
+            for item in env.observation_space:
                 assert isinstance(item, spaces.Discrete)
 
-        assert isinstance(action_space, spaces.Discrete)
+        assert isinstance(env.action_space, spaces.Discrete)
 
         self.state_dim = (
-            int(observation_space.n)
-            if isinstance(observation_space, spaces.Discrete)
-            else tuple(map(lambda x: x.n, observation_space))
+            int(env.observation_space.n)
+            if isinstance(env.observation_space, spaces.Discrete)
+            else tuple(map(lambda x: x.n, env.observation_space))
         )
 
-        self.action_dim = int(action_space.n)
+        self.action_dim = int(env.action_space.n)
 
     @abstractmethod
     def __repr__(self) -> str:

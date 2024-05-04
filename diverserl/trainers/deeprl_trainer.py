@@ -16,7 +16,6 @@ class DeepRLTrainer(Trainer):
         training_start: int = 1000,
         training_freq: int = 1,
         training_num: int = 1,
-        train_type: str = "online",
         max_step: int = 100000,
         do_eval: bool = True,
         eval_every: int = 1000,
@@ -33,11 +32,9 @@ class DeepRLTrainer(Trainer):
 
         :param algo: Deep RL algorithm (Off policy)
         :param env: The environment for RL agent to learn from
-        :param eval_env: Then environment for RL agent to evaluate from
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param training_freq: How frequently train the algorithm (in total_step)
         :param training_num: How many times to run training function in the algorithm each time
-        :param train_type: Type of training methods
         :param max_step: Maximum step to run the training
         :param do_eval: Whether to perform the evaluation
         :param eval_every: Do evaluation every N step
@@ -76,7 +73,6 @@ class DeepRLTrainer(Trainer):
         self.training_start = training_start
         self.training_freq = training_freq
         self.training_num = training_num
-        self.train_type = train_type
 
         self.max_step = max_step
 
@@ -88,7 +84,7 @@ class DeepRLTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset()
+            observation, info = self.eval_env.reset(seed=self.seed - 1)
             terminated, truncated = False, False
             episode_reward = 0
             local_step = 0
@@ -153,7 +149,7 @@ class DeepRLTrainer(Trainer):
                 # train algorithm
                 if self.total_step >= self.training_start and (self.total_step % self.training_freq == 0):
                     for _ in range(int(self.training_num)):
-                        result = self.algo.train()
+                        result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
                         self.log_scalar(result, self.total_step)
 
                 observation = next_observation

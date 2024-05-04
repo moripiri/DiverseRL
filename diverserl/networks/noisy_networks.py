@@ -131,9 +131,11 @@ class NoisyDeterministicActor(NoisyMLP):
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
+            if detach_encoder:
+                input = input.detach()
 
         output = super().forward(input)
 
@@ -187,13 +189,14 @@ class NoisyDuelingNetwork(DuelingNetwork):
             if self.mid_activation is not None:
                 layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        self.layers = nn.Sequential(*layers)
+        self.trunk = nn.Sequential(*layers)
 
         self.value = NoisyLinear(layer_units[-1], 1, bias=self.use_bias, std_init=self.std_init,
                                  noise_type=self.noise_type, device=self.device)
         self.advantage = NoisyLinear(layer_units[-1], self.output_dim, std_init=self.std_init,
                                      noise_type=self.noise_type, bias=self.use_bias, device=self.device)
 
+        self.layers = nn.ModuleDict({"trunk": self.trunk, "value": self.value, "advantage": self.advantage})
         self.layers.apply(self._init_weights)
 
 

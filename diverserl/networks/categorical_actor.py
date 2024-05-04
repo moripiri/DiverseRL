@@ -20,6 +20,7 @@ class CategoricalActor(MLP):
         bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
         use_bias: bool = True,
+        feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ) -> None:
         super().__init__(
@@ -38,15 +39,19 @@ class CategoricalActor(MLP):
             device=device,
         )
 
-    def forward(self, state: torch.Tensor, deterministic=False) -> Tuple[torch.Tensor, torch.Tensor]:
+        self.feature_encoder = feature_encoder
+
+    def forward(self, state: torch.Tensor, deterministic: bool = False, detach_encoder: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Return output of the Categorical Actor for the given state.
 
         :param state: state (1 torch tensor)
         :param deterministic: whether to sample action from the computed distribution.
+        :param detach_encoder: whether to detach encoder weights while training.
         :return: output
         """
-        dist = self.compute_dist(state)
+
+        dist = self.compute_dist(state, detach_encoder)
 
         if deterministic:
             action = dist.logits.argmax(axis=-1)
@@ -57,53 +62,59 @@ class CategoricalActor(MLP):
 
         return action, log_prob
 
-    def compute_dist(self, state: torch.Tensor) -> Categorical:
+    def compute_dist(self, state: torch.Tensor, detach_encoder: bool = False) -> Categorical:
         """
         Return Categorical distribution of the Categorical actor for the given state.
 
         :param state: state(a torch tensor)
         :return: Categorical distribution
         """
-
         state = state.to(self.device)
+
+        if self.feature_encoder is not None:
+            state = self.feature_encoder(state)
+            if detach_encoder:
+                state = state.detach()
 
         probs = self.layers(state)
         dist = Categorical(probs=probs)
 
         return dist
 
-    def prob(self, state: torch.Tensor) -> torch.Tensor:
+    def prob(self, state: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
         """
         Return probability of the Categorical actor for the given state.
 
         :param state: state(a torch tensor)
         :return: prob
         """
-        dist = self.compute_dist(state)
+        dist = self.compute_dist(state, detach_encoder)
 
         return dist.logits
 
-    def log_prob(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+    def log_prob(self, state: torch.Tensor, action: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
         """
         Return log_probability of the Categorical actor for the given state.
 
+        :param detach_encoder:
         :param state: state(a torch tensor)
         :param action: wanted action to calculate its log_probability
         :return: log_prob
         """
 
-        dist = self.compute_dist(state)
+        dist = self.compute_dist(state, detach_encoder)
 
         return dist.log_prob(torch.squeeze(action)).reshape(len(state), -1)
 
-    def entropy(self, state: torch.Tensor) -> torch.Tensor:
+    def entropy(self, state: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
         """
         Return entropy of the Categorical actor for the given state.
 
+        :param detach_encoder:
         :param state: state(a torch tensor)
         :return: entropy
         """
-        dist = self.compute_dist(state)
+        dist = self.compute_dist(state, detach_encoder)
         return dist.entropy().sum(dim=-1)
 
 

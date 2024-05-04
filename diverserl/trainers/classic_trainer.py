@@ -9,25 +9,24 @@ from diverserl.trainers.base import Trainer
 
 class ClassicTrainer(Trainer):
     def __init__(
-        self,
-        algo: ClassicRL,
-        env: gym.Env,
-        seed: int = 1234,
-        max_episode: int = 1000,
-        do_eval: bool = True,
-        eval_every: int = 1000,
-        eval_ep: int = 10,
-        log_tensorboard: bool=False,
-        log_wandb: bool = False,
-        record_video: bool = False,
-        **kwargs: Optional[Dict[str, Any]]
+            self,
+            algo: ClassicRL,
+            env: gym.Env,
+            seed: int = 1234,
+            max_episode: int = 1000,
+            do_eval: bool = True,
+            eval_every: int = 1000,
+            eval_ep: int = 10,
+            log_tensorboard: bool = False,
+            log_wandb: bool = False,
+            record_video: bool = False,
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Trainer for Classic RL algorithms.
 
         :param algo: RL algorithm
         :param env: The environment for RL agent to learn from
-        :param eval_env: The environment for RL agent to evaluate from
         :param seed: The random seed
         :param max_episode: Maximum episode to train the classic RL algorithm
         :param do_eval: Whether to perform evaluation during training
@@ -182,7 +181,6 @@ class ClassicTrainer(Trainer):
 
             if self.log_tensorboard:
                 self.tensorboard.close()
-
 
     def process_reward(self, step_result: Tuple[Any, ...]) -> Tuple[Any, ...]:
         """

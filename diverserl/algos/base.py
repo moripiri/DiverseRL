@@ -2,13 +2,14 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, Union
 
+import gymnasium as gym
 import numpy as np
 import torch
 
 
 class DeepRL(ABC):
     def __init__(
-        self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
+        self, env: gym.Env, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
     ) -> None:
         """
         The base of Deep RL algorithms
@@ -18,18 +19,8 @@ class DeepRL(ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-
-        assert network_type in network_list.keys()
-        if network_config is None:
-            network_config = dict()
-
-        assert set(network_config.keys()).issubset(network_list[network_type].keys())
-        for network in network_list[network_type].keys():
-            if network not in network_config.keys():
-                network_config[network] = dict()
-
-        self.network_type = network_type
-        self.network_config = network_config
+        self._find_env_space(env)
+        self._set_network_configs(network_type, network_list, network_config)
 
         self.device = device
         self.training_count = 0
@@ -53,6 +44,43 @@ class DeepRL(ABC):
         :return:
         """
         pass
+
+    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any],) -> None:
+        assert network_type in network_list.keys()
+        if network_config is None:
+            network_config = dict()
+
+        assert set(network_config.keys()).issubset(network_list[network_type].keys())
+        for network in network_list[network_type].keys():
+            if network not in network_config.keys():
+                network_config[network] = dict()
+
+        self.network_type = network_type
+        self.network_config = network_config
+
+    def _find_env_space(self, env: gym.Env):
+        self.observation_space = env.single_observation_space if isinstance(env, gym.vector.SyncVectorEnv) else env.observation_space
+        self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
+
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
+            self.state_dim = self.observation_space.shape[0] if len(self.observation_space.shape) == 1 else self.observation_space.shape
+        else:
+            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
+
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            self.action_dim = self.action_space.n
+            self.discrete = True
+
+        elif isinstance(self.action_space, gym.spaces.Box):
+            self.action_dim = self.action_space.shape[0]
+            self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
+            self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
+
+            self.discrete = False
+        else:
+            raise TypeError(f"{self.action_space} action_space is currently not supported.")
+
 
     def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """

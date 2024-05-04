@@ -2,7 +2,7 @@ import os
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, Union
+from typing import Any, Dict
 
 import gymnasium as gym
 import yaml
@@ -21,7 +21,7 @@ class Trainer(ABC):
     def __init__(
             self,
             algo,
-            env: Union[gym.Env, gym.vector.SyncVectorEnv],
+            env: gym.Env,
             total: int,
             do_eval: bool,
             eval_every: int,
@@ -171,6 +171,7 @@ class Trainer(ABC):
         :return:
         """
         episode_infos = infos['final_info']
+
         for episode_info, episode_done in zip(episode_infos, infos['_final_info']):
             if episode_done:
                 local_step = episode_info['episode']['l'].item()

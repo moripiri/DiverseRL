@@ -8,7 +8,7 @@ import numpy as np
 import torch.optim
 from gymnasium import Env
 from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
-                                FrameStack, TransformObservation)
+                                FrameStack)
 from torch import nn
 
 
@@ -41,36 +41,37 @@ def get_optimizer(
         optimizer_kwargs: Union[None, Dict[str, Any]],
 ) -> torch.optim.Optimizer:
     optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
+    optimizer_option = {}
 
-    if optimizer_kwargs is None:
-        optimizer_kwargs = {}
-    else:
+    if optimizer_kwargs is not None:
         for key, value in optimizer_kwargs.items():
             assert isinstance(value, Union[
                 int, float, bool, str]), "Value of optimizer_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
-                optimizer_kwargs[key] = eval(value)
+                optimizer_option[key] = eval(value)
+            else:
+                optimizer_option[key] = value
 
-    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_kwargs)
+    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_option)
 
     return optimizer
 
 
 def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> Tuple[
     Type[gym.Wrapper], Dict[str, Any]]:
-    #print(wrapper_name, wrapper_kwargs)
     wrapper_class = getattr(gym.wrappers, wrapper_name)
+    wrapper_option = {}
 
-    if wrapper_kwargs is None:
-        wrapper_kwargs = {}
-    else:
+    if wrapper_kwargs is not None:
         for key, value in wrapper_kwargs.items():
             assert isinstance(value, Union[
                 int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
-                wrapper_kwargs[key] = eval(value)
+                wrapper_option[key] = eval(value)
+            else:
+                wrapper_option[key] = value
 
-    return wrapper_class, wrapper_kwargs
+    return wrapper_class, wrapper_option
 
 
 def set_seed(seed: int) -> None:
@@ -231,7 +232,6 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
                 env = gym.make(env_id, **env_option)
                 env = gym.wrappers.RecordEpisodeStatistics(env)
 
-            #ppo env wrappers
             for wrapper_name, wrapper_kwargs in wrapper_option.items():
                 wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs)
                 env = wrapper_class(env, **wrapper_kwargs)

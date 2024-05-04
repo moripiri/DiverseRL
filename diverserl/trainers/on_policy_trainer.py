@@ -30,7 +30,6 @@ class OnPolicyTrainer(Trainer):
 
         :param algo: Deep RL algorithm (Off policy)
         :param env: The environment for RL agent to learn from
-        :param eval_env: Then environment for RL agent to evaluate from
         :param max_step: Maximum step to run the training
         :param do_eval: Whether to perform the evaluation.
         :param eval_every: Do evaluation every N step.
@@ -68,7 +67,7 @@ class OnPolicyTrainer(Trainer):
         self.num_envs = self.algo.num_envs
 
         self.seed = seed
-        self.max_step = int(max_step // self.num_envs)
+        self.max_step = max_step
 
     def evaluate(self) -> None:
         """

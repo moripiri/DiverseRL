@@ -129,8 +129,7 @@ if __name__ == "__main__":
     env = make_envs(**config)
 
     algo = PPO(
-        observation_space=env.single_observation_space,
-        action_space=env.single_action_space,
+        env=env,
         **config
 
     )

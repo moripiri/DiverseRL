@@ -22,15 +22,13 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
-    # atari env hyperparameters
-    parser.add_argument("--image-size", type=int, default=84)
-    parser.add_argument("--noop-max", type=int, default=30)
-    parser.add_argument("--frame-skip", type=int, default=4)
-    parser.add_argument("--frame-stack", type=int, default=4)
-    parser.add_argument("--terminal-on-life-loss", type=bool, default=True)
-    parser.add_argument("--grayscale-obs", type=bool, default=True)
-    parser.add_argument("--repeat-action-probability", type=float, default=0.)
-
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
+    )
     # dqn hyperparameters
     parser.add_argument("--network-type", type=str, default="Noisy", choices=["Default", "Noisy"])
     parser.add_argument(
@@ -69,6 +67,8 @@ def get_args():
         metavar="KEY1=VAL1,KEY2=VAL2...",
         help="Parameter dict for the optimizer",
     )
+    parser.add_argument("--anneal-lr", type=bool, default=False, help="Linearly decay learning rate.")
+
     parser.add_argument(
         "--target-copy-freq", type=int, default=10, help="N step to pass to copy Q-network to target Q-network"
     )
@@ -88,13 +88,7 @@ def get_args():
     parser.add_argument(
         "--training_num", type=float, default=1, help="Number of times to run algo.train() in every training iteration"
     )
-    parser.add_argument(
-        "--train-type",
-        type=str,
-        default="online",
-        choices=["online", "offline"],
-        help="Type of algorithm training strategy (online, offline)",
-    )
+
     parser.add_argument("--max-step", type=int, default=3000000, help="Maximum number of steps to run.")
     parser.add_argument("--do-eval", type=bool, default=True, help="Whether to run evaluation during training.")
     parser.add_argument("--eval-every", type=int, default=10000, help="When to run evaulation in every n episodes.")
@@ -127,8 +121,7 @@ if __name__ == "__main__":
     env = make_envs(**config)
 
     algo = DuelingDQN(
-        observation_space=env.single_observation_space,
-        action_space=env.single_action_space,
+        env=env,
         **config
     )
 

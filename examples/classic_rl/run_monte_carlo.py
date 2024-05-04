@@ -28,6 +28,13 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional options to pass into the environment.",
     )
+    parser.add_argument(
+        "--wrapper-option",
+        default={},
+        action=StoreDictKeyPair,
+        metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
+        help="Additional wrappers to be applied to the environment.",
+    )
     # algorithm setting
     parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor.")
     parser.add_argument(
@@ -68,7 +75,7 @@ if __name__ == "__main__":
 
     env = make_envs(sync_vector_env=False, **config)
 
-    algo = MonteCarlo(env.observation_space, env.action_space, **config)
+    algo = MonteCarlo(env, **config)
     trainer = ClassicTrainer(
         algo=algo,
         env=env,
