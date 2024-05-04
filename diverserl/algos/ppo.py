@@ -152,9 +152,6 @@ class PPO(DeepRL):
 
         self.critic = critic_class(state_dim=feature_dim, device=self.device, feature_encoder=self.encoder, **critic_config).train()
 
-        # if not self.discrete:
-        #     self.init_network_weight()
-
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
 
@@ -209,6 +206,7 @@ class PPO(DeepRL):
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
+        self.training_count += 1
         result_dict = {}
 
         if self.anneal_lr:

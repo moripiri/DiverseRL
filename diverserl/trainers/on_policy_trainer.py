@@ -77,7 +77,7 @@ class OnPolicyTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset(seed=self.seed - 1)
+            observation, info = self.eval_env.reset()
             terminated, truncated = False, False
             episode_reward = 0
             local_step = 0
@@ -119,7 +119,7 @@ class OnPolicyTrainer(Trainer):
         Train On policy RL algorithm.
         """
 
-        observation, info = self.env.reset(seed=self.seed)
+        observation, info = self.env.reset()
 
         with self.progress as progress:
             while self.total_step <= self.max_step:

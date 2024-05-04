@@ -69,7 +69,7 @@ class ClassicTrainer(Trainer):
         local_step_list = []
 
         for episode in range(self.eval_ep):
-            observation, info = self.eval_env.reset(seed=self.seed - 1)
+            observation, info = self.eval_env.reset()
             terminated, truncated = False, False
             success = False
             episode_reward = 0
@@ -123,7 +123,7 @@ class ClassicTrainer(Trainer):
                 progress.advance(self.task)
                 self.current_episode = episode
 
-                observation, info = self.env.reset(seed=self.seed)
+                observation, info = self.env.reset()
                 terminated, truncated = False, False
                 success = False
                 episode_reward = 0

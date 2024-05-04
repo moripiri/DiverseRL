@@ -44,7 +44,7 @@ max_grad_norm: 0.5
 device: cpu
 seed: 1
 
-max_step: 2000000
+max_step: 1000000
 do_eval: false
 eval_every: 10000
 eval_ep: 1
