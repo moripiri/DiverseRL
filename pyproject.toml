@@ -10,7 +10,7 @@ python = ">=3.10.13,<3.13"
 torch = "^2.1.0"
 jax = {extras = ["cpu"], version = "^0.4.18"}
 
-gymnasium = {version="^0.29.1", extras = ['all']}
+gymnasium = {version="^0.29.1", extras=['atari', 'box2d', 'classic-control', 'mujoco', 'toy-text', 'jax', 'torch', 'other']}
 AutoROM = {version = ">=0.4.2,<0.5.0", extras = ["accept-rom-license"]}
 jupyter = "^1.0.0"
 rich = "^13.6.0"
