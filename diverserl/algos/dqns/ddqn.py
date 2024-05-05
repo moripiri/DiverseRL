@@ -30,6 +30,27 @@ class DDQN(DQN):
             device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
     ) -> None:
+        """
+        Deep Reinforcement Learning with Double Q-learning, Hasselt et al 2015.
+
+        :param env: Gymnasium environment to train the DDQN algorithm
+        :param network_type: Type of the DDQN networks to be used.
+        :param network_config: Configurations of the DDQN networks.
+        :param eps_initial: Initial probability to conduct random action during training
+        :param eps_final: Final probability to conduct random action during training
+        :param decay_fraction: Fraction of max_step to perform epsilon linear decay during training.
+        :param gamma: The discount factor
+        :param batch_size: Minibatch size for optimizer.
+        :param buffer_size: Maximum length of replay buffer.
+        :param learning_rate: Learning rate of the Q-network
+        :param optimizer: Optimizer class (or str) for the Q-network
+        :param optimizer_kwargs: Parameter dict for the optimizer
+        :param anneal_lr: Whether to linearly decrease the learning rate during training.
+        :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
+        :param training_start: In which total_step to start the training of the Deep RL algorithm
+        :param max_step: Maximum step to run the training
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(env=env,
                          network_type=network_type,
                          network_config=network_config,
@@ -47,7 +68,7 @@ class DDQN(DQN):
                          training_start=training_start,
                          max_step=max_step,
                          device=device,
-                         **kwargs)
+                         )
 
     def __repr__(self) -> str:
         return "DDQN"

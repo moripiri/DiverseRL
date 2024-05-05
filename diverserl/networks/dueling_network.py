@@ -23,6 +23,23 @@ class DuelingNetwork(MLP):
             feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
+        """
+        Dueling Network for Dueling Deep Q-Network(Dueling DQN) Algorithm.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param hidden_units: Size of the hidden layers in CategoricalActor
+        :param estimator: Type of the advantage estimator.
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
@@ -58,7 +75,13 @@ class DuelingNetwork(MLP):
         self.layers.apply(self._init_weights)
 
     def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+        """
+        Return modified value from the Dueling Network
 
+        :param input: input tensor
+        :param detach_encoder: whether to detach feature encoder from training
+        :return: modified value from the Dueling Network
+        """
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
             if detach_encoder:

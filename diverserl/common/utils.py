@@ -40,6 +40,16 @@ def get_optimizer(
         optimizer_class: Union[str, Type[torch.optim.Optimizer]],
         optimizer_kwargs: Union[None, Dict[str, Any]],
 ) -> torch.optim.Optimizer:
+    """
+    Return optimizer with wanted network, learning rate, optimizer class, and optimizer kwargs.
+
+    :param optimizer_network: Network to be optimized by the designated optimizer.
+    :param optimizer_lr: Learning rate of the optimizer.
+    :param optimizer_class: Class name, or class of the optimizer.
+    :param optimizer_kwargs: Additional arguments to be passed to the optimizer.
+
+    :return: An optimizer with wanted network, learning rate, optimizer class, and optimizer kwargs.
+    """
     optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
     optimizer_option = {}
 
@@ -59,6 +69,14 @@ def get_optimizer(
 
 def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> Tuple[
     Type[gym.Wrapper], Dict[str, Any]]:
+    """
+    Return Gymnasium's wrapper class and wrapper arguments.
+
+    :param wrapper_name: Name of the gymnasium wrapper.
+    :param wrapper_kwargs: Additional arguments to be passed to the gymnasium wrapper.
+
+    :return: Gymnasium's wrapper class and wrapper arguments.
+    """
     wrapper_class = getattr(gym.wrappers, wrapper_name)
     wrapper_option = {}
 
@@ -77,8 +95,8 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> 
 def set_seed(seed: int) -> None:
     """
     Sets random seed for deep RL training.
+
     :param seed: random seed
-    :return:
     """
     random.seed(seed)
     np.random.seed(seed)
@@ -205,7 +223,18 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
     wrapper_option = {} if wrapper_option is None else wrapper_option
 
     def make_env(random_seed: int = 0):
+        """
+        Create a gymnasium environment generating function.
+
+        :param random_seed: random seed to apply to the environment.
+        :return: Function that returns Gymnasium environment.
+        """
         def thunk() -> Env:
+            """
+            Create a Gymnasium environment.
+
+            :return: Gymnasium environment.
+            """
             nonlocal env_option
             nonlocal wrapper_option
 
@@ -219,6 +248,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
                     try:
                         atari_option[key] = env_option[key]
                         del env_option[key]
+
                     except:
                         continue
 

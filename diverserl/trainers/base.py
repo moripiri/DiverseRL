@@ -18,6 +18,10 @@ WANDB_PATH = f"{ROOT_PATH}/wandb"  # Wandb in LOG_PATH causes error.
 
 
 class Trainer(ABC):
+    """
+    Base trainer class for RL algorithms.
+    """
+
     def __init__(
             self,
             algo,
@@ -89,7 +93,7 @@ class Trainer(ABC):
         if self.do_eval:
             self.eval_env = self.make_eval_env()
         else:
-            assert not (self.config['render'] or self.config['record_video']),\
+            assert not (self.config['render'] or self.config['record_video']), \
                 "Rendering or Recording video is only supported in Evaluation."
 
         if self.log_tensorboard:
@@ -161,7 +165,6 @@ class Trainer(ABC):
 
         if self.log_wandb:
             self.wandb.log(result, step=step)
-
 
     def log_episodes(self, infos: Dict[str, Any]) -> None:
         """

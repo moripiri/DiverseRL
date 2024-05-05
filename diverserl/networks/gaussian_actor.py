@@ -12,25 +12,46 @@ LOG_STD_MAX = 2.0
 
 class GaussianActor(MLP):
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        squash: bool = True,
-        independent_std: bool = False,
-        logstd_init: float = 0.0,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        action_scale: float = 1.0,
-        action_bias: float = 0.0,
-        use_bias: bool = True,
-        feature_encoder: Optional[nn.Module] = None,
-        device: str = "cpu",
+            self,
+            state_dim: int,
+            action_dim: int,
+            squash: bool = True,
+            independent_std: bool = False,
+            logstd_init: float = 0.0,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            action_scale: float = 1.0,
+            action_bias: float = 0.0,
+            use_bias: bool = True,
+            feature_encoder: Optional[nn.Module] = None,
+            device: str = "cpu",
     ):
+        """
+        Actor that generates stochastic actions from Gaussian distributions.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param squash: Whether to apply invertible squashing function (tanh) to the Gaussian samples,
+        :param independent_std: Whether to use fixed independent standard deviation
+        :param logstd_init: Initial log standard deviation(if not using fixed independent standard deviation)
+        :param hidden_units: Size of the hidden layers in Q-network
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param action_scale: How much to scale the output action
+        :param action_bias: How much to bias the output action
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         self.squash = squash
         self.independent_std = independent_std
         assert not (self.independent_std and self.squash)
@@ -81,8 +102,8 @@ class GaussianActor(MLP):
             torch.nn.init.constant_(self.logstd_layer.weight, val=self.logstd_init)
             self.layers['logstd'] = self.logstd_layer
 
-
-    def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
+        torch.Tensor, torch.Tensor]:
         """
         Return action and its log_probability of the Gaussian actor for the given state.
 

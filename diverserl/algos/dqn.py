@@ -42,11 +42,9 @@ class DQN(DeepRL):
 
         Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al., 2013.
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
+        :param env: Gymnasium environment to train the DQN algorithm
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
-        :param eps: Probability to conduct random action during training.
         :param eps_initial: Initial probability to conduct random action during training
         :param eps_final: Final probability to conduct random action during training
         :param decay_fraction: Fraction of max_step to perform epsilon linear decay during training.
@@ -56,6 +54,7 @@ class DQN(DeepRL):
         :param learning_rate: Learning rate of the Q-network
         :param optimizer: Optimizer class (or str) for the Q-network
         :param optimizer_kwargs: Parameter dict for the optimizer
+        :param anneal_lr: Whether to linearly decrease the learning rate during training.
         :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param max_step: Maximum step to run the training

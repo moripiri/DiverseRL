@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Type, TypeVar, Union
+from typing import Tuple, TypeVar, Union
 
 T = TypeVar("T")
 _t_or_tuple_2_t = Union[T, Tuple[T, T]]

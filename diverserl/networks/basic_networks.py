@@ -37,8 +37,6 @@ class MLP(Network):
         :param kernel_initializer_kwargs: Parameters for the kernel initializer
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
-        :param output_scale: How much to scale the output of the MLP
-        :param output_bias: How much to bias the output of the MLP
         :param use_bias: Whether to use bias in linear layer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
@@ -116,6 +114,26 @@ class DeterministicActor(MLP):
         feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
+        """
+        Deterministic Actor class for Deep Reinforcement Learning.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param hidden_units: Size of the hidden layers in Deterministic Actor
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param last_activation: Activation function of the last layer
+        :param last_activation_kwargs: Parameters for the last activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param action_scale: How much to scale the output action
+        :param action_bias: How much to bias the output action
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
             input_dim=state_dim,
             output_dim=action_dim,
@@ -136,9 +154,18 @@ class DeterministicActor(MLP):
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+        """
+        Return output of the Deterministic Actor for the given input.
+
+        :param input: state tensor
+        :param detach_encoder: whether to detach the encoder from training
+        :return: action tensor
+        """
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
+            if detach_encoder:
+                input = input.detach()
 
         output = super().forward(input)
 
@@ -161,6 +188,22 @@ class QNetwork(MLP):
         feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
+        """
+        Q-Network class for Deep Reinforcement Learning.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param hidden_units: Size of the hidden layers in Q-network
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
             input_dim=state_dim + action_dim,
             output_dim=1,
@@ -176,9 +219,21 @@ class QNetwork(MLP):
         )
         self.feature_encoder = feature_encoder
 
-    def forward(self, input: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+    def forward(self, input: Tuple[torch.Tensor, torch.Tensor], detach_encoder: bool = False) -> torch.Tensor:
+        """
+        Return Q-value for the given input.
+
+        :param input: state and action tensors
+        :param detach_encoder: whether to detach the encoder from training
+        :return: Q-value
+        """
         if self.feature_encoder is not None:
-            input = (self.feature_encoder(input[0].to(self.device)), input[1])
+            feature = self.feature_encoder(input[0].to(self.device))
+
+            if detach_encoder:
+                feature = feature.detach()
+
+            input = (feature, input[1])
 
         return super().forward(input)
 
@@ -198,6 +253,21 @@ class VNetwork(MLP):
         feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",
     ):
+        """
+        V-Network class for Deep Reinforcement Learning.
+
+        :param state_dim: Dimension of the state
+        :param hidden_units: Size of the hidden layers in Value network
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
             input_dim=state_dim,
             output_dim=1,
@@ -213,9 +283,18 @@ class VNetwork(MLP):
         )
         self.feature_encoder = feature_encoder
 
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
+    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+        """
+        Return value for the given input.
+
+        :param input: state tensor
+        :param detach_encoder: whether to detach the encoder from training
+        :return: Value for the given input
+        """
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
+            if detach_encoder:
+                input = input.detach()
 
         output = super().forward(input)
 

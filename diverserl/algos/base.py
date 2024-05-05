@@ -8,8 +8,13 @@ import torch
 
 
 class DeepRL(ABC):
+    """
+    Abstract base class for Deep RL algorithms.
+    """
+
     def __init__(
-        self, env: gym.Env, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any], device: str = "cpu"
+            self, env: gym.Env, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any],
+            device: str = "cpu"
     ) -> None:
         """
         The base of Deep RL algorithms
@@ -45,7 +50,8 @@ class DeepRL(ABC):
         """
         pass
 
-    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any],) -> None:
+    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any],
+                             network_config: Dict[str, Any], ) -> None:
         assert network_type in network_list.keys()
         if network_config is None:
             network_config = dict()
@@ -59,12 +65,14 @@ class DeepRL(ABC):
         self.network_config = network_config
 
     def _find_env_space(self, env: gym.Env):
-        self.observation_space = env.single_observation_space if isinstance(env, gym.vector.SyncVectorEnv) else env.observation_space
+        self.observation_space = env.single_observation_space if isinstance(env,
+                                                                            gym.vector.SyncVectorEnv) else env.observation_space
         self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
 
         if isinstance(self.observation_space, gym.spaces.Box):
             # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
-            self.state_dim = self.observation_space.shape[0] if len(self.observation_space.shape) == 1 else self.observation_space.shape
+            self.state_dim = self.observation_space.shape[0] if len(
+                self.observation_space.shape) == 1 else self.observation_space.shape
         else:
             raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
 
@@ -80,7 +88,6 @@ class DeepRL(ABC):
             self.discrete = False
         else:
             raise TypeError(f"{self.action_space} action_space is currently not supported.")
-
 
     def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """

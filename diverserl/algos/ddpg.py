@@ -15,54 +15,53 @@ from diverserl.networks.basic_networks import DeterministicActor, QNetwork
 
 class DDPG(DeepRL):
     def __init__(
-        self,
-        env: gym.vector.SyncVectorEnv,
-        network_type: str = "Default",
-        network_config: Optional[Dict[str, Any]] = None,
-        gamma: float = 0.99,
-        tau: float = 0.05,
-        noise_scale: float = 0.1,
-        batch_size: int = 256,
-        buffer_size: int = 10**6,
-        actor_lr: float = 0.001,
-        actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        critic_lr: float = 0.001,
-        critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-        critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
-        **kwargs: Optional[Dict[str, Any]]
+            self,
+            env: gym.vector.SyncVectorEnv,
+            network_type: str = "Default",
+            network_config: Optional[Dict[str, Any]] = None,
+            gamma: float = 0.99,
+            tau: float = 0.05,
+            noise_scale: float = 0.1,
+            batch_size: int = 256,
+            buffer_size: int = 10 ** 6,
+            actor_lr: float = 0.001,
+            actor_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            actor_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            critic_lr: float = 0.001,
+            critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+            critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+            device: str = "cpu",
+            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         DDPG(Deep Deterministic Policy Gradients)
 
         Paper: Continuous Control With Deep Reinforcement Learning, Lillicrap et al., 2015.
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
-        :param network_type: Type of the DDPG networks to be used.
-        :param network_config: Configurations of the DDPG networks.
+        :param env: Gymnasium environment to train the DDPG algorithm
+        :param network_type: Type of the DDPG networks to be used
+        :param network_config: Configurations of the DDPG networks
         :param gamma: The discount factor
-        :param tau: Interpolation factor in polyak averaging for target networks.
-        :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
-        :param batch_size: Minibatch size for optimizer.
-        :param buffer_size: Maximum length of replay buffer.
-        :param actor_lr: Learning rate for actor.
-        :param actor_optimizer: Optimizer class (or name) for actor.
-        :param actor_optimizer_kwargs: Parameter dict for actor optimizer.
+        :param tau: Interpolation factor in polyak averaging for target networks
+        :param noise_scale: Stddev for Gaussian noise added to policy action at training time
+        :param batch_size: Minibatch size for optimizer
+        :param buffer_size: Maximum length of replay buffer
+        :param actor_lr: Learning rate for actor
+        :param actor_optimizer: Optimizer class (or name) for actor
+        :param actor_optimizer_kwargs: Parameter dict for actor optimizer
         :param critic_lr: Learning rate of the critic
         :param critic_optimizer: Optimizer class (or str) for the critic
         :param critic_optimizer_kwargs: Parameter dict for the critic optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config,
+            device=device
         )
 
         assert isinstance(self.observation_space, spaces.Box) and isinstance(
             self.action_space, spaces.Box
         ), f"{self} supports only Box type observation space and action space."
-
 
         self.buffer_size = buffer_size
 
@@ -112,7 +111,7 @@ class DDPG(DeepRL):
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
 
-        self.buffer = buffer_class(state_dim = self.state_dim, action_dim = self.action_dim,
+        self.buffer = buffer_class(state_dim=self.state_dim, action_dim=self.action_dim,
                                    max_size=self.buffer_size, device=self.device, **buffer_config)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
@@ -158,6 +157,7 @@ class DDPG(DeepRL):
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
 
+        #critic training
         with torch.no_grad():
             target_value = r + self.gamma * (1 - d) * self.target_critic((ns, self.target_actor(ns)))
 
@@ -167,6 +167,7 @@ class DDPG(DeepRL):
         critic_loss.backward()
         self.critic_optimizer.step()
 
+        #actor training
         actor_loss = -self.critic((s, self.actor(s))).mean()
 
         self.actor_optimizer.zero_grad()

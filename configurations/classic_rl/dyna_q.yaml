@@ -1,6 +1,7 @@
 env_id: Taxi-v3
 render: false
-env_option: {}
+env_option:
+  sync_vector_env: false
 
 gamma: 0.9
 alpha: 0.1

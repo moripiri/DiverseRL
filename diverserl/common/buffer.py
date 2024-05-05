@@ -1,5 +1,4 @@
-import random
-from typing import Any, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -7,10 +6,21 @@ from torch import Tensor
 
 
 class ReplayBuffer:
+    """
+    Simple Buffer to store environment transitions and trajectories for Deep RL training.
+    """
     def __init__(self, state_dim: Union[int, Tuple[int, ...]], action_dim: int, max_size: int = 10 ** 6,
                  save_log_prob: bool = False, num_envs: int = 1, device: str = "cpu") -> None:
+        """
+        Initialize buffer with given dimensions and settings.
 
-        # super().__init__(state_dim, action_dim, max_size, save_log_prob, device)
+        :param state_dim: state dimension of the environment
+        :param action_dim: action dimension of the environment
+        :param max_size: max size of the ReplayBuffer
+        :param save_log_prob: Whether to save the log probabilities of the trajectories
+        :param num_envs: Number of the parallel environments
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         self.state_dim = state_dim
         self.action_dim = action_dim
 
@@ -32,9 +42,16 @@ class ReplayBuffer:
 
     @property
     def size(self) -> int:
+        """
+        Size of the stored transitions. Not equal to the buffer's length.
+        :return: Current ReplayBuffer size.
+        """
         return self.max_size if self.full else self.idx
 
     def reset(self):
+        """
+        Resets the ReplayBuffer to the initial state.
+        """
         self.s = np.empty(self.s_size, dtype=np.float32)
         self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
@@ -57,7 +74,17 @@ class ReplayBuffer:
             t: np.ndarray,
             log_prob: Optional[np.ndarray] = None,
             ) -> None:
+        """
+        Add a single transition to the ReplayBuffer.
 
+        :param s: state
+        :param a: action
+        :param r: reward
+        :param ns: next state
+        :param d: terminated
+        :param t: truncated
+        :param log_prob: log probability of the action
+        """
         if isinstance(self.state_dim, tuple):
             s = s.reshape((self.num_envs, *self.state_dim))
             ns = ns.reshape((self.num_envs, *self.state_dim))
@@ -82,6 +109,12 @@ class ReplayBuffer:
             self.full = True
 
     def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
+        """
+        Randomly sample a batch of transitions.
+        :param batch_size: Size of the sampled batch.
+
+        :return: Sampled states, actions, rewards, next states, terminateds, truncateds, (log_probabilities)
+        """
         batch_ids = np.random.randint(0, self.size, size=batch_size)
         env_ids = np.random.randint(0, high=self.num_envs, size=(batch_size,))
 

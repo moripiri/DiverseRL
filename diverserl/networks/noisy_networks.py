@@ -28,7 +28,7 @@ class NoisyMLP(MLP):
             device: str = "cpu",
     ):
         """
-        Multi layered perceptron (MLP), a collection of fully-connected layers each followed by an activation function.
+        Noisy Networks for Exploration, Fortunato et al, 2019.
 
         :param input_dim: Dimension of the input
         :param output_dim: Dimension of the output
@@ -41,9 +41,9 @@ class NoisyMLP(MLP):
         :param kernel_initializer_kwargs: Parameters for the kernel initializer
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
-        :param output_scale: How much to scale the output of the MLP
-        :param output_bias: How much to bias the output of the MLP
         :param use_bias: Whether to use bias in linear layer
+        :param std_init: Initial standard deviation of the NoisyLinear layer.
+        :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         self.std_init = std_init
@@ -109,29 +109,58 @@ class NoisyDeterministicActor(NoisyMLP):
             noise_type: str = 'factorized',
             device: str = "cpu",
     ):
+        """
+        Deterministic Actor with NoisyNet layers.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param hidden_units: Size of the hidden layers in Deterministic Actor
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param last_activation: Activation function of the last layer
+        :param last_activation_kwargs: Parameters for the last activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param action_scale: How much to scale the output action
+        :param action_bias: How much to bias the output action
+        :param use_bias: Whether to use bias in linear layer
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param std_init: Initial standard deviation of the NoisyLinear layer.
+        :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
-                          input_dim=state_dim,
-                          output_dim=action_dim,
-                          hidden_units=hidden_units,
-                          mid_activation=mid_activation,
-                          mid_activation_kwargs=mid_activation_kwargs,
-                          last_activation=last_activation,
-                          last_activation_kwargs=last_activation_kwargs,
-                          kernel_initializer=kernel_initializer,
-                          kernel_initializer_kwargs=kernel_initializer_kwargs,
-                          bias_initializer=bias_initializer,
-                          bias_initializer_kwargs=bias_initializer_kwargs,
-                          use_bias=use_bias,
-                          std_init=std_init,
-                          noise_type=noise_type,
-                          device=device,
-                          )
+            input_dim=state_dim,
+            output_dim=action_dim,
+            hidden_units=hidden_units,
+            mid_activation=mid_activation,
+            mid_activation_kwargs=mid_activation_kwargs,
+            last_activation=last_activation,
+            last_activation_kwargs=last_activation_kwargs,
+            kernel_initializer=kernel_initializer,
+            kernel_initializer_kwargs=kernel_initializer_kwargs,
+            bias_initializer=bias_initializer,
+            bias_initializer_kwargs=bias_initializer_kwargs,
+            use_bias=use_bias,
+            std_init=std_init,
+            noise_type=noise_type,
+            device=device,
+        )
         self.feature_encoder = feature_encoder
 
         self.action_scale = action_scale
         self.action_bias = action_bias
 
     def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+        """
+        Return output of the NoisyNet Deterministic Actor for the given input.
+
+        :param input: state tensor
+        :param detach_encoder: whether to detach the encoder from training
+        :return: action tensor
+        """
         if self.feature_encoder is not None:
             input = self.feature_encoder(input.to(self.device))
             if detach_encoder:
@@ -140,6 +169,7 @@ class NoisyDeterministicActor(NoisyMLP):
         output = super().forward(input)
 
         return self.action_scale * output + self.action_bias
+
 
 class NoisyDuelingNetwork(DuelingNetwork):
     def __init__(
@@ -160,6 +190,25 @@ class NoisyDuelingNetwork(DuelingNetwork):
             feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
+        """
+        Dueling Network with NoisyNet layers.
+
+        :param state_dim: Dimension of the state
+        :param action_dim: Dimension of the action
+        :param hidden_units: Size of the hidden layers in CategoricalActor
+        :param estimator: Type of the advantage estimator.
+        :param mid_activation: Activation function of hidden layers
+        :param mid_activation_kwargs: Parameters for the middle activation
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param use_bias: Whether to use bias in linear layer
+        :param std_init: Initial standard deviation of the NoisyLinear layer.
+        :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
+        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         self.std_init = std_init
         self.noise_type = noise_type
 
@@ -211,6 +260,17 @@ class NoisyLinear(nn.Linear):
             std_init: float = 0.05,
             noise_type: str = 'factorized'
     ):
+        """
+        Linear layer for NoisyNet.
+
+        :param in_features: size of each input sample
+        :param out_features: size of each output sample
+        :param bias: If set to False, the layer will not learn an additive bias. Default: True
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        :param dtype: Data type (float16, float32, int8, int16, int32, int64, uint8, uint16) of the layer
+        :param std_init: Initial standard deviation value for the weight initialization.
+        :param noise_type: Type of noise proposed in NoisyNet.
+        """
         nn.Module.__init__(self)
         self.in_features = int(in_features)
         self.out_features = int(out_features)
@@ -269,6 +329,9 @@ class NoisyLinear(nn.Linear):
         self.reset_noise()
 
     def reset_parameters(self) -> None:
+        """
+        Reset NoisyLinear weight parameters.
+        """
         if self.noise_type == 'factorized':
             mu_range = 1 / math.sqrt(self.in_features)
             self.weight_mu.data.uniform_(-mu_range, mu_range)
@@ -285,6 +348,9 @@ class NoisyLinear(nn.Linear):
                 self.bias_sigma.data.fill_(self.std_init)
 
     def reset_noise(self) -> None:
+        """
+        Reset NoisyLinear noise parameters.
+        """
         if self.noise_type == 'factorized':
             epsilon_in = self._scale_noise(self.in_features)
             epsilon_out = self._scale_noise(self.out_features)
@@ -309,6 +375,10 @@ class NoisyLinear(nn.Linear):
 
     @property
     def weight(self) -> torch.Tensor:
+        """
+        Returns the weight of the noisy layer.
+        :return: weight
+        """
         if self.training:
             return self.weight_mu + self.weight_sigma * self.weight_epsilon
         else:
@@ -316,6 +386,10 @@ class NoisyLinear(nn.Linear):
 
     @property
     def bias(self) -> Optional[torch.Tensor]:
+        """
+        Returns the bias of the noisy layer.
+        :return: bias
+        """
         if self.bias_mu is not None:
             if self.training:
                 return self.bias_mu + self.bias_sigma * self.bias_epsilon

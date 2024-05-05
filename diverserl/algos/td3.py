@@ -42,8 +42,7 @@ class TD3(DeepRL):
 
         Paper: Addressing Function Approximation Error in Actor-Critic Methods, Fujimoto et al, 2018
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
+        :param env: Gymnasium environment to train the TD3 algorithm
         :param network_type: Type of the TD3 networks to be used.
         :param network_config: Configurations of the TD3 networks.
         :param gamma: Discount factor.
@@ -129,10 +128,10 @@ class TD3(DeepRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the DDPG action from an observation (in training mode)
+        Get the TD3 action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The DDPG agent's action
+        :return: The TD3 agent's action
         """
         observation = self._fix_observation(observation)
 
@@ -145,10 +144,10 @@ class TD3(DeepRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the DDPG action from an observation (in evaluation mode)
+        Get the TD3 action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The DDPG agent's action (in evaluation mode)
+        :return: The TD3 agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)

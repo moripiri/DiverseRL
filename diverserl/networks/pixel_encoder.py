@@ -28,6 +28,26 @@ class PixelEncoder(Network):
         use_bias: bool = True,
         device: str = "cpu",
     ):
+        """
+        Encoder to compress the input image into a latent space representation.
+
+        :param state_dim: state(image) dimension
+        :param feature_dim: feature dimension
+        :param layer_num: number of layers
+        :param channel_num: number of channels of the convolutional layers
+        :param kernel_size: kernel sizes of the convolutional layers
+        :param strides: strides of the convolutional layers
+        :param mid_activation: activation function of the hidden convolutional layers
+        :param mid_activation_kwargs: keyword arguments of the middle activation function
+        :param last_activation: activation function of the last layer
+        :param last_activation_kwargs: keyword arguments of the last activation function
+        :param kernel_initializer: Kernel initializer function for the network layers
+        :param kernel_initializer_kwargs: Parameters for the kernel initializer
+        :param bias_initializer: Bias initializer function for the network bias
+        :param bias_initializer_kwargs: Parameters for the bias initializer
+        :param use_bias: whether to use bias in the network layers
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         # Todo: add padding and other conv2d settings
         assert last_activation is not None
 
@@ -86,7 +106,13 @@ class PixelEncoder(Network):
 
         self.layers.apply(self._init_weights)
 
-    def forward(self, input):
+    def forward(self, input: torch.tensor) -> torch.tensor:
+        """
+        Return feature of the given input.
+
+        :param input: input image tensor (B, C, H, W)
+        :return: feature tensor
+        """
         input = input.to(self.device)
         output = self.layers(input)
 

@@ -23,6 +23,7 @@ class SACv2(DeepRL):
             alpha: float = 0.1,
             train_alpha: bool = True,
             target_alpha: Optional[float] = None,
+            tau: float = 0.05,
             target_critic_update: int = 2,
             batch_size: int = 256,
             buffer_size: int = 10 ** 6,
@@ -44,8 +45,7 @@ class SACv2(DeepRL):
 
         Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al., 2018
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
+        :param env: Gymnasium environment to train the SAC algorithm
         :param network_type: Type of the SACv2 networks to be used.
         :param network_config: Configurations of the SACv2 networks.
         :param gamma: The discount factor.
@@ -270,8 +270,7 @@ class SACv1(DeepRL):
 
         Paper: Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor, Haarnoja et al., 2018.
 
-        :param observation_space: Observation space of the environment for RL agent to learn from
-        :param action_space: Action space of the environment for RL agent to learn from
+        :param env: Gymnasium environment to train the SAC algorithm
         :param network_type: Type of the SACv1 networks to be used.
         :param network_config: Configurations of the SACv1 networks.
         :param gamma: The discount factor.
@@ -416,7 +415,6 @@ class SACv1(DeepRL):
         self.v_optimizer.step()
 
         # critic training
-
         with torch.no_grad():
             target_q = r + self.gamma * (1 - d) * self.target_v_network(ns)
 

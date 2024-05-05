@@ -19,9 +19,9 @@ class OnPolicyTrainer(Trainer):
         eval_ep: int = 10,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
+        record_video: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
-        record_video: bool = False,
         **kwargs: Optional[Dict[str, Any]],
 
     ) -> None:
@@ -36,6 +36,9 @@ class OnPolicyTrainer(Trainer):
         :param eval_ep: Number of episodes to run evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
+        :param record_video: Whether to record the evaluation procedure.
+        :param save_model: Whether to save the model (both in local and wandb)
+        :param save_freq: How often to save the model
         """
 
         config = locals()

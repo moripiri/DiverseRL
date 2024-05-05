@@ -58,7 +58,15 @@ class Network(ABC, nn.Module):
         pass
 
     @staticmethod
-    def get_activation(activation: Union[str, Type[nn.Module]], activation_kwargs: Dict[str, Any]) -> Tuple[nn.Module, Dict[str, Any]]:
+    def get_activation(activation: Union[str, Type[nn.Module]], activation_kwargs: Dict[str, Any]) -> Tuple[
+        nn.Module, Dict[str, Any]]:
+        """
+        Returns activation function and activation kwargs from given arguments.
+
+        :param activation: Name, or class of the activation function.
+        :param activation_kwargs: Arguments for the activation function.
+        :return:
+        """
         activation = getattr(nn, activation) if isinstance(activation, str) else activation
 
         if activation_kwargs is None:
@@ -77,6 +85,13 @@ class Network(ABC, nn.Module):
     @staticmethod
     def get_initializer(initializer: Union[str, Callable], initializer_kwargs: Optional[Dict[str, Any]]) -> Tuple[
         Callable, Dict[str, Any]]:
+        """
+        Returns initializer function and initializer kwargs from given arguments.
+
+        :param initializer: Name or class of the initializer function.
+        :param initializer_kwargs: Arguments for the initializer function.
+        :return: Initializer function and initializer kwargs.
+        """
         initializer = (
             getattr(nn.init, initializer) if isinstance(initializer, str) else initializer
         )
@@ -98,7 +113,6 @@ class Network(ABC, nn.Module):
         Initialize layer weights and biases from wanted initializer specs.
 
         :param m: a single torch layer
-        :return:
         """
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
             self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)

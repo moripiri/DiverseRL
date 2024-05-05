@@ -6,6 +6,9 @@ from gymnasium import spaces
 
 
 class ClassicRL(ABC):
+    """
+    Abstract base class for classic RL algorithms.
+    """
     def __init__(self, env: gym.Env) -> None:
         """
         The base of Classic RL algorithms.

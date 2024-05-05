@@ -1,6 +1,7 @@
 env_id: CliffWalking-v0
 render: false
-env_option: {}
+env_option:
+  sync_vector_env: false
 
 gamma: 0.9
 eps: 0.1

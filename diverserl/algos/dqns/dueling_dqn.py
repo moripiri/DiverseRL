@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional, Type, Union
 
 import gymnasium as gym
 import torch
-from gymnasium import spaces
 
 from diverserl.algos.dqns import DDQN
 from diverserl.common.buffer import ReplayBuffer
@@ -33,6 +32,27 @@ class DuelingDQN(DDQN):
             device: str = "cpu",
             **kwargs: Optional[Dict[str, Any]]
     ) -> None:
+        """
+        Dueling Network Architectures for Deep Reinforcement Learning, Wang et al, 2015.
+
+        :param env: Gymnasium environment to train the Dueling DQN algorithm
+        :param network_type: Type of the Dueling DQN networks to be used.
+        :param network_config: Configurations of the Dueling DQN networks.
+        :param eps_initial: Initial probability to conduct random action during training
+        :param eps_final: Final probability to conduct random action during training
+        :param decay_fraction: Fraction of max_step to perform epsilon linear decay during training.
+        :param gamma: The discount factor
+        :param batch_size: Minibatch size for optimizer.
+        :param buffer_size: Maximum length of replay buffer.
+        :param learning_rate: Learning rate of the Q-network
+        :param optimizer: Optimizer class (or str) for the Q-network
+        :param optimizer_kwargs: Parameter dict for the optimizer
+        :param anneal_lr: Whether to linearly decrease the learning rate during training.
+        :param target_copy_freq: How many training step to pass to copy Q-network to target Q-network
+        :param training_start: In which total_step to start the training of the Deep RL algorithm
+        :param max_step: Maximum step to run the training
+        :param device: Device (cpu, cuda, ...) on which the code should be run
+        """
         super().__init__(
             env=env,
             network_type=network_type,
@@ -51,7 +71,7 @@ class DuelingDQN(DDQN):
             training_start=training_start,
             max_step=max_step,
             device=device,
-            **kwargs)
+            )
 
     def __repr__(self) -> str:
         return "Dueling_DQN"

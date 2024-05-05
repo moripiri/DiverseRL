@@ -121,10 +121,7 @@ if __name__ == "__main__":
 
     env = make_envs(**config)
 
-    algo = DDPG(
-        env=env,
-        **config
-    )
+    algo = DDPG(env=env, **config)
 
     trainer = DeepRLTrainer(
         algo=algo,
