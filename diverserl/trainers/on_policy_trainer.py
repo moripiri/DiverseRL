@@ -127,7 +127,7 @@ class OnPolicyTrainer(Trainer):
         with self.progress as progress:
             while self.total_step <= self.max_step:
                 for _ in range(self.horizon):
-                    progress.advance(self.task)
+                    progress.advance(self.task, advance=self.num_envs)
 
                     action, log_prob = self.algo.get_action(observation)
 
