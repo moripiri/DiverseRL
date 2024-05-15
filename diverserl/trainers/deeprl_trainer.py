@@ -32,6 +32,7 @@ class DeepRLTrainer(Trainer):
 
         :param algo: Deep RL algorithm (Off policy)
         :param env: The environment for RL agent to learn from
+        :param seed: Random seed
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param training_freq: How frequently train the algorithm (in total_step)
         :param training_num: How many times to run training function in the algorithm each time
@@ -73,7 +74,6 @@ class DeepRLTrainer(Trainer):
         self.training_start = training_start
         self.training_freq = training_freq
         self.training_num = training_num
-
         self.max_step = max_step
 
     def evaluate(self) -> None:

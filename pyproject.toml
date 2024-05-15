@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "diverserl"
 version = "0.0.1"
-description = "Diverse deep Reinforcement Learning algorithms that can be applied to wide variety of environments"
+description = "Diverse Reinforcement Learning algorithms that can be applied to wide variety of environments"
 authors = ["Yoonhee Gil <moripiri1234@gmail.com>"]
 readme = "README.md"
 

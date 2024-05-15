@@ -28,6 +28,8 @@ network_config:
     bias_initializer_kwargs: {"val": 0.0}
   Encoder:
     feature_dim: 512
+  Buffer:
+    optimize_memory_usage: True
 mode: clip
 clip_coef: 0.1
 target_dist: 0.01
