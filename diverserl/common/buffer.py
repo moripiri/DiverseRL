@@ -10,7 +10,7 @@ class ReplayBuffer:
     Simple Buffer to store environment transitions and trajectories for Deep RL training.
     """
     def __init__(self, state_dim: Union[int, Tuple[int, ...]], action_dim: int, max_size: int = 10 ** 6,
-                 save_log_prob: bool = False, num_envs: int = 1, device: str = "cpu") -> None:
+                 save_log_prob: bool = False, optimize_memory_usage: bool = False, num_envs: int = 1, device: str = "cpu") -> None:
         """
         Initialize buffer with given dimensions and settings.
 
@@ -18,6 +18,7 @@ class ReplayBuffer:
         :param action_dim: action dimension of the environment
         :param max_size: max size of the ReplayBuffer
         :param save_log_prob: Whether to save the log probabilities of the trajectories
+        :param optimize_memory_usage: Enable a memory efficient variant of the replay buffer(source: https://github.com/DLR-RM/stable-baselines3/pull/28#issuecomment-637559274)
         :param num_envs: Number of the parallel environments
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
@@ -28,10 +29,16 @@ class ReplayBuffer:
         self.device = device
 
         self.save_log_prob = save_log_prob
+        self.optimize_memory_usage = optimize_memory_usage
         self.num_envs = num_envs
 
-        self.s_size = (self.max_size, num_envs, state_dim) if isinstance(state_dim, int) else (
-            self.max_size, num_envs, *state_dim)
+        if self.optimize_memory_usage:
+            max_s_size = self.max_size + 1
+        else:
+            max_s_size = self.max_size
+
+        self.s_size = (max_s_size, num_envs, state_dim) if isinstance(state_dim, int) else (
+            max_s_size, num_envs, *state_dim)
 
         self.a_size = (self.max_size, num_envs, action_dim)
 
@@ -55,7 +62,10 @@ class ReplayBuffer:
         self.s = np.empty(self.s_size, dtype=np.float32)
         self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
-        self.ns = np.empty(self.s_size, dtype=np.float32)
+
+        if not self.optimize_memory_usage:
+            self.ns = np.empty(self.s_size, dtype=np.float32)
+
         self.d = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
         self.t = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
 
@@ -95,12 +105,16 @@ class ReplayBuffer:
         self.s[self.idx] = s
         self.a[self.idx] = a.reshape((self.num_envs, self.action_dim))
         self.r[self.idx] = r.reshape((self.num_envs, 1))
-        self.ns[self.idx] = ns
+
+        if not self.optimize_memory_usage:
+            self.ns[self.idx] = ns
+        else:
+            self.s[self.idx + 1] = ns
+
         self.d[self.idx] = d.reshape((self.num_envs, 1))
         self.t[self.idx] = t.reshape((self.num_envs, 1))
 
         if self.save_log_prob:
-
             log_prob = log_prob.reshape((self.num_envs, 1))
             self.log_prob[self.idx] = log_prob
 
@@ -115,13 +129,23 @@ class ReplayBuffer:
 
         :return: Sampled states, actions, rewards, next states, terminateds, truncateds, (log_probabilities)
         """
-        batch_ids = np.random.randint(0, self.size, size=batch_size)
+        if self.optimize_memory_usage and self.full:
+            # don't sample idx in batch_ids
+            batch_ids = (np.random.randint(1, self.max_size, size=batch_size) + self.idx) % self.max_size
+        else:
+            batch_ids = np.random.randint(0, self.size, size=batch_size)
+
         env_ids = np.random.randint(0, high=self.num_envs, size=(batch_size,))
 
         states = torch.from_numpy(self.s[batch_ids, env_ids, :]).to(self.device)
         actions = torch.from_numpy(self.a[batch_ids, env_ids, :]).to(self.device)
         rewards = torch.from_numpy(self.r[batch_ids, env_ids, :]).to(self.device)
-        next_states = torch.from_numpy(self.ns[batch_ids, env_ids, :]).to(self.device)
+        if not self.optimize_memory_usage:
+            next_states = torch.from_numpy(self.ns[batch_ids, env_ids, :]).to(self.device)
+        else:
+            # for trajectory sampling, it's not (batch_ids + 1) % self.max_size
+            next_states = torch.from_numpy(self.s[batch_ids + 1, env_ids, :]).to(self.device)
+
         dones = torch.from_numpy(self.d[batch_ids, env_ids, :]).to(self.device)
         terminates = torch.from_numpy(self.t[batch_ids, env_ids, :]).to(self.device)
 
@@ -143,7 +167,12 @@ class ReplayBuffer:
         states = torch.from_numpy(self.s[ids]).to(self.device)
         actions = torch.from_numpy(self.a[ids]).to(self.device)
         rewards = torch.from_numpy(self.r[ids]).to(self.device)
-        next_states = torch.from_numpy(self.ns[ids]).to(self.device)
+
+        if not self.optimize_memory_usage:
+            next_states = torch.from_numpy(self.ns[ids]).to(self.device)
+        else:
+            next_states = torch.from_numpy(self.s[ids + 1]).to(self.device)
+
         dones = torch.from_numpy(self.d[ids]).to(self.device)
         terminates = torch.from_numpy(self.t[ids]).to(self.device)
 

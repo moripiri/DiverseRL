@@ -218,6 +218,7 @@ class PPO(DeepRL):
             self.optimizer.param_groups[0]['lr'] = (1 - total_step / max_step) * self.learning_rate
 
         s, a, r, ns, d, t, log_prob = self.buffer.all_sample()
+        ns = ns[-1] # only last ns is used in ppo.
 
         # Generalized Advantage Estimation(GAE)
         with torch.no_grad():
@@ -225,12 +226,11 @@ class PPO(DeepRL):
 
             if isinstance(self.state_dim, int):
                 old_values = self.critic(s)
-                previous_value = self.critic(ns)[-1]
+                previous_value = self.critic(ns)
 
             else:
                 old_values = self.critic(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)
-                previous_value = self.critic(ns.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)[
-                    -1]
+                previous_value = self.critic(ns)
 
             advantages = torch.zeros_like(r)
             running_advantage = torch.zeros((self.num_envs, 1))
