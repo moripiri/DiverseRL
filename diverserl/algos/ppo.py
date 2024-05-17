@@ -136,10 +136,10 @@ class PPO(DeepRL):
             self.encoder = None
             feature_dim = self.state_dim
 
-        actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete else "Continuous"]
+        actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete_action else "Continuous"]
         actor_config = self.network_config["Actor"]
 
-        if not self.discrete:  # Fix GaussianActor setting for PPO.
+        if not self.discrete_action:  # Fix GaussianActor setting for PPO.
             actor_config["squash"] = False
             actor_config["independent_std"] = True
             actor_config["action_scale"] = self.action_scale
@@ -161,7 +161,7 @@ class PPO(DeepRL):
 
         self.buffer = buffer_class(
             state_dim=self.state_dim,
-            action_dim=1 if self.discrete else self.action_dim,
+            action_dim=1 if self.discrete_action else self.action_dim,
             save_log_prob=True,
             num_envs=self.num_envs,
             max_size=self.buffer_size,
@@ -250,7 +250,7 @@ class PPO(DeepRL):
         else:
             s = s.reshape(-1, *self.state_dim)
 
-        a = a.reshape(-1, 1 if self.discrete else self.action_dim)
+        a = a.reshape(-1, 1 if self.discrete_action else self.action_dim)
         log_prob = log_prob.reshape(-1, 1)
         advantages = advantages.reshape(-1, 1)
         returns = returns.reshape(-1, 1)
