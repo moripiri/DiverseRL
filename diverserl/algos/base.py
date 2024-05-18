@@ -7,7 +7,61 @@ import numpy as np
 import torch
 
 
-class DeepRL(ABC):
+class BaseRL(ABC):
+    def __init__(self, env: gym.Env) -> None:
+        """
+        Base class for all algorithms in DiverseRL.
+
+        :param env: Gymnasium environment to train the algorithm.
+        """
+        self._find_env_space(env)
+
+    @abstractmethod
+    def __repr__(self) -> str:
+        return "BaseRL"
+
+    def _find_env_space(self, env: gym.Env) -> None:
+        """
+        Find environment's observation_space and action_space, action space's discreteness and action scale, bias
+        :param env:
+        :return:
+        """
+        self.observation_space = env.single_observation_space if isinstance(env,
+                                                                            gym.vector.SyncVectorEnv) else env.observation_space
+        self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
+
+        # state_dim
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
+            self.state_dim = int(self.observation_space.shape[0]) if len(
+                self.observation_space.shape) == 1 else self.observation_space.shape
+
+        elif isinstance(self.observation_space, gym.spaces.Discrete):
+            self.state_dim = int(self.observation_space.n)
+
+        elif isinstance(self.observation_space, gym.spaces.Tuple):
+            # currently only supports tuple observation_space that consist of discrete spaces (toy_text environment)
+            self.state_dim = tuple(map(lambda x: int(x.n), self.observation_space))
+
+        else:
+            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
+
+        # action_dim
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            self.action_dim = int(self.action_space.n)
+            self.discrete_action = True
+
+        elif isinstance(self.action_space, gym.spaces.Box):
+            self.action_dim = int(self.action_space.shape[0])
+            self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
+            self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
+
+            self.discrete_action = False
+        else:
+            raise TypeError(f"{self.action_space} action_space is currently not supported.")
+
+
+class DeepRL(BaseRL, ABC):
     """
     Abstract base class for Deep RL algorithms.
     """
@@ -24,7 +78,8 @@ class DeepRL(ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        self._find_env_space(env)
+        super().__init__(env)
+
         self._set_network_configs(network_type, network_list, network_config)
 
         self.device = device
@@ -64,30 +119,6 @@ class DeepRL(ABC):
         self.network_type = network_type
         self.network_config = network_config
 
-    def _find_env_space(self, env: gym.Env):
-        self.observation_space = env.single_observation_space if isinstance(env,
-                                                                            gym.vector.SyncVectorEnv) else env.observation_space
-        self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
-
-        if isinstance(self.observation_space, gym.spaces.Box):
-            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
-            self.state_dim = self.observation_space.shape[0] if len(
-                self.observation_space.shape) == 1 else self.observation_space.shape
-        else:
-            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
-
-        if isinstance(self.action_space, gym.spaces.Discrete):
-            self.action_dim = self.action_space.n
-            self.discrete = True
-
-        elif isinstance(self.action_space, gym.spaces.Box):
-            self.action_dim = self.action_space.shape[0]
-            self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
-            self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
-
-            self.discrete = False
-        else:
-            raise TypeError(f"{self.action_space} action_space is currently not supported.")
 
     def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """

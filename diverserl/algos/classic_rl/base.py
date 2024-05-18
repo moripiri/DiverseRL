@@ -2,13 +2,15 @@ from abc import ABC, abstractmethod
 from typing import Any, Tuple, Union
 
 import gymnasium as gym
-from gymnasium import spaces
+
+from diverserl.algos.base import BaseRL
 
 
-class ClassicRL(ABC):
+class ClassicRL(BaseRL, ABC):
     """
     Abstract base class for classic RL algorithms.
     """
+
     def __init__(self, env: gym.Env) -> None:
         """
         The base of Classic RL algorithms.
@@ -16,24 +18,11 @@ class ClassicRL(ABC):
 
         :param env: The environment for RL agent to learn from
         """
-        assert isinstance(env.observation_space, (spaces.Discrete, spaces.Tuple))
-        if isinstance(env.observation_space, spaces.Tuple):
-            for item in env.observation_space:
-                assert isinstance(item, spaces.Discrete)
-
-        assert isinstance(env.action_space, spaces.Discrete)
-
-        self.state_dim = (
-            int(env.observation_space.n)
-            if isinstance(env.observation_space, spaces.Discrete)
-            else tuple(map(lambda x: x.n, env.observation_space))
-        )
-
-        self.action_dim = int(env.action_space.n)
+        super().__init__(env)
 
     @abstractmethod
     def __repr__(self) -> str:
-        return "ClassicRLAlgorithm"
+        return "ClassicRL"
 
     @abstractmethod
     def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:
