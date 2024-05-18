@@ -1,6 +1,7 @@
 import random
 import re
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gymnasium as gym
@@ -10,6 +11,10 @@ from gymnasium import Env
 from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
                                 FrameStack)
 from torch import nn
+
+
+def get_project_root() -> Path:
+    return Path(__file__).parent.parent.parent #./DiverseRL
 
 
 def soft_update(network: nn.Module, target_network: nn.Module, tau: float) -> None:
