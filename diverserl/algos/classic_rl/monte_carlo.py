@@ -1,8 +1,9 @@
+from functools import reduce
+from itertools import product
 from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
 
 from diverserl.algos.classic_rl.base import ClassicRL
 
@@ -19,16 +20,25 @@ class MonteCarlo(ClassicRL):
         :param eps: Probability to conduct random action during training.
         """
         super().__init__(env=env)
-        #assert env.spec.id != "Blackjack-v1", f"Currently {self.__repr__()} does not support {env.spec.id}."
+        assert isinstance(env.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(env.action_space, gym.spaces.Discrete)
 
         self.gamma = gamma
         self.eps = eps
 
-        self.pi = np.ones([self.state_dim, self.action_dim]) / self.action_dim
-        self.q = np.zeros([self.state_dim, self.action_dim])
-
         self.trajectory = []
-        self.returns = [[[] for _ in range(self.action_dim)] for _ in range(self.state_dim)]
+        if isinstance(env.observation_space, gym.spaces.Discrete):
+            self.pi = np.ones([self.state_dim, self.action_dim]) / self.action_dim
+            self.q = np.zeros([self.state_dim, self.action_dim])
+            self.returns = [[[] for _ in range(self.action_dim)] for _ in range(self.state_dim)]
+
+        else:
+            # Needs improvement
+            self.pi = np.ones([*self.state_dim, self.action_dim]) / self.action_dim
+            self.q = np.zeros([*self.state_dim, self.action_dim])
+
+            return_list = lambda x, y: [x for _ in range(y)]
+            self.returns = list(reduce(return_list, reversed(self.state_dim), [[] for _ in range(self.action_dim)]))
+            self.state_index = product(*[range(i) for i in self.state_dim])
 
     def __repr__(self) -> str:
         return "Monte-Carlo Control"
@@ -77,18 +87,30 @@ class MonteCarlo(ClassicRL):
                 cur_s = self.trajectory[i]["s"]
                 cur_a = self.trajectory[i]["a"]
 
-                if [cur_s, cur_a] not in traj_sa_list[i + 1 :]:
-                    self.returns[cur_s][cur_a].append(G)
+                if [cur_s, cur_a] not in traj_sa_list[i + 1:]:
+                    if isinstance(self.observation_space, gym.spaces.Discrete):
+                        self.returns[cur_s][cur_a].append(G)
+                        self.q[cur_s][cur_a] = sum(self.returns[cur_s][cur_a]) / len(self.returns[cur_s][cur_a])
+                        optimal_action = np.argmax(self.q, axis=-1)
 
-                    self.q[cur_s][cur_a] = sum(self.returns[cur_s][cur_a]) / len(self.returns[cur_s][cur_a])
+                        for i in range(self.state_dim):
+                            for j in range(self.action_dim):
+                                if optimal_action[i] == j:
+                                    self.pi[i][j] = 1 - self.eps + self.eps / self.action_dim
+                                else:
+                                    self.pi[i][j] = self.eps / self.action_dim
 
-                    optimal_action = np.argmax(self.q, axis=1)
+                    else:
+                        s1, s2, s3 = cur_s
+                        self.returns[s1][s2][s3][cur_a].append(G)
+                        self.q[cur_s][cur_a] = sum(self.returns[s1][s2][s3][cur_a]) / len(
+                            self.returns[s1][s2][s3][cur_a])
+                        optimal_action = np.argmax(self.q, axis=-1)
 
-                    for i in range(self.state_dim):
-                        for j in range(self.action_dim):
-                            if optimal_action[i] == j:
-                                self.pi[i][j] = 1 - self.eps + self.eps / self.action_dim
-                            else:
-                                self.pi[i][j] = self.eps / self.action_dim
-
+                        for i1, i2, i3 in list(self.state_index):
+                            for j in range(self.action_dim):
+                                if optimal_action[i1][i2][i3] == j:
+                                    self.pi[i1][i2][i3][j] = 1 - self.eps + self.eps / self.action_dim
+                                else:
+                                    self.pi[i1][i2][i3][j] = self.eps / self.action_dim
             self.trajectory = []

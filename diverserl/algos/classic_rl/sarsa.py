@@ -26,7 +26,7 @@ class SARSA(ClassicRL):
 
         self.q = (
             np.zeros([self.state_dim, self.action_dim])
-            if isinstance(self.state_dim, int)
+            if isinstance(env.observation_space, gym.spaces.Discrete)
             else np.zeros([*self.state_dim, self.action_dim])
         )
 

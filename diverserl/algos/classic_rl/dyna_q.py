@@ -22,6 +22,7 @@ class DynaQ(ClassicRL):
         :param eps: Probability to conduct random action during training.
         """
         super().__init__(env=env)
+        assert isinstance(env.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(env.action_space, gym.spaces.Discrete)
 
         self.gamma = gamma
         self.alpha = alpha
@@ -30,7 +31,7 @@ class DynaQ(ClassicRL):
 
         self.q = (
             np.zeros([self.state_dim, self.action_dim])
-            if isinstance(self.state_dim, int)
+            if isinstance(env.observation_space, gym.spaces.Discrete)
             else np.zeros([*self.state_dim, self.action_dim])
         )
         self.model_r = np.zeros_like(self.q)
