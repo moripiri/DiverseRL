@@ -10,11 +10,10 @@ from gymnasium.wrappers import RecordVideo
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
-from diverserl.common.utils import env_namespace
+from diverserl.common.utils import env_namespace, get_project_root
 
-ROOT_PATH = sys.path[1]
+ROOT_PATH = get_project_root() #./DiverseRL
 LOG_PATH = f"{ROOT_PATH}/logs"
-WANDB_PATH = f"{ROOT_PATH}/wandb"  # Wandb in LOG_PATH causes error.
 
 
 class Trainer(ABC):
