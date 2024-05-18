@@ -8,14 +8,19 @@ import torch
 
 
 class BaseRL(ABC):
-    def __init__(self, env: gym.Env):
+    def __init__(self, env: gym.Env) -> None:
+        """
+        Base class for all algorithms in DiverseRL.
+
+        :param env: Gymnasium environment to train the algorithm.
+        """
         self._find_env_space(env)
 
     @abstractmethod
     def __repr__(self) -> str:
         return "BaseRL"
 
-    def _find_env_space(self, env: gym.Env):
+    def _find_env_space(self, env: gym.Env) -> None:
         """
         Find environment's observation_space and action_space, action space's discreteness and action scale, bias
         :param env:
