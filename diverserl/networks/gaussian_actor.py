@@ -1,10 +1,11 @@
 from collections import OrderedDict
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
 from torch.distributions.normal import Normal
 
+from diverserl.common.type_aliases import _activation, _initializer, _kwargs
 from diverserl.networks.basic_networks import MLP
 
 LOG_STD_MIN = -20.0
@@ -20,12 +21,12 @@ class GaussianActor(MLP):
             independent_std: bool = False,
             logstd_init: float = 0.0,
             hidden_units: Tuple[int, ...] = (64, 64),
-            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,

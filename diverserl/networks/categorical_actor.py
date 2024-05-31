@@ -1,9 +1,10 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
 from torch.distributions.categorical import Categorical
 
+from diverserl.common.type_aliases import _activation, _initializer, _kwargs
 from diverserl.networks.basic_networks import MLP
 
 
@@ -13,12 +14,12 @@ class CategoricalActor(MLP):
         state_dim: int,
         action_dim: int,
         hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+        mid_activation: Optional[_activation] = nn.ReLU,
+        mid_activation_kwargs: Optional[_kwargs] = None,
+        kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+        kernel_initializer_kwargs: Optional[_kwargs] = None,
+        bias_initializer: Optional[_initializer] = nn.init.zeros_,
+        bias_initializer_kwargs: Optional[_kwargs] = None,
         use_bias: bool = True,
         feature_encoder: Optional[nn.Module] = None,
         device: str = "cpu",

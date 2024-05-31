@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from typing import Optional, Tuple
 
 import torch
 from torch import nn
@@ -101,7 +101,7 @@ class PixelEncoder(nn.Module):
 
         with torch.no_grad():
             temp = nn.Sequential(layers)
-            flatten_dim = temp(torch.randn(1, *self.input_dim)).shape[1]
+            flatten_dim = temp(torch.zeros(1, *self.input_dim)).shape[1]
 
         layers['linear'] = nn.Linear(flatten_dim, self.output_dim, bias=self.use_bias, device=self.device)
 

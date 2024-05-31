@@ -2,7 +2,6 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
 
 from diverserl.algos.classic_rl.base import ClassicRL
 
