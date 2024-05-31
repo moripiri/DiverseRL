@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 import torch
@@ -83,24 +84,24 @@ class GaussianActor(MLP):
         """
         Make Gaussian Actor layers from layer dimensions and activations and initialize its weights and biases.
         """
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
+        trunks = OrderedDict()
+        trunk_units = [self.input_dim, *self.hidden_units]
 
-        for i in range(len(layer_units) - 1):
-            layers.append(nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+        for i in range(len(trunk_units) - 1):
+            trunks[f'linear{i}'] = nn.Linear(trunk_units[i], trunk_units[i + 1], bias=self.use_bias, device=self.device)
 
-        self.trunks = nn.Sequential(*layers)
-        self.mean_layer = nn.Linear(layer_units[-1], self.output_dim, bias=False, device=self.device)
+            if self.mid_activation is not None and i < len(trunk_units) - 2:
+                trunks[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
 
-        self.layers = nn.ModuleDict({"trunk": self.trunks, "mean": self.mean_layer})
+        mean_layer = nn.Linear(trunk_units[-1], self.output_dim, bias=False, device=self.device)
+
+        self.layers = nn.ModuleDict({"trunk": nn.Sequential(trunks), "mean": mean_layer})
         self.layers.apply(self._init_weights)
 
         if not self.independent_std:
-            self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
-            torch.nn.init.constant_(self.logstd_layer.weight, val=self.logstd_init)
-            self.layers['logstd'] = self.logstd_layer
+            logstd_layer = nn.Linear(trunk_units[-1], self.output_dim, bias=False, device=self.device)
+            torch.nn.init.constant_(logstd_layer.weight, val=self.logstd_init)
+            self.layers['logstd'] = logstd_layer
 
     def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
@@ -151,13 +152,13 @@ class GaussianActor(MLP):
             if detach_encoder:
                 state = state.detach()
 
-        trunk_output = self.trunks(state)
-        output_mean = self.mean_layer(trunk_output)
+        trunk_output = self.layers['trunk'](state)
+        output_mean = self.layers['mean'](trunk_output)
 
         if self.independent_std:
             output_std = self.std.expand_as(output_mean)
         else:
-            output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
+            output_std = torch.clamp(self.layers['logstd'](trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
 
         dist = Normal(loc=output_mean, scale=output_std)
 

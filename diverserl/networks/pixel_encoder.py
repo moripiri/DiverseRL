@@ -1,14 +1,16 @@
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 import torch
 from torch import nn
 
-from diverserl.common.type_aliases import (_int_or_tuple_any_int,
+from diverserl.common.type_aliases import (_activation, _initializer,
+                                           _int_or_tuple_any_int, _kwargs,
                                            _layers_size_any_int)
-from diverserl.networks.base import Network
+from diverserl.networks.utils import get_activation, get_initializer
 
 
-class PixelEncoder(Network):
+class PixelEncoder(nn.Module):
     def __init__(
         self,
         state_dim: Tuple[int, int, int],
@@ -17,14 +19,14 @@ class PixelEncoder(Network):
         channel_num: _int_or_tuple_any_int = (32, 64, 64),
         kernel_size: _int_or_tuple_any_int = (8, 4, 3),
         strides: Optional[_layers_size_any_int] = (4, 2, 1),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+        mid_activation: Optional[_activation] = nn.ReLU,
+        mid_activation_kwargs: Optional[_kwargs] = None,
+        last_activation: Optional[_activation] = nn.ReLU,
+        last_activation_kwargs: Optional[_kwargs] = None,
+        kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+        kernel_initializer_kwargs: Optional[_kwargs] = None,
+        bias_initializer: Optional[_initializer] = nn.init.zeros_,
+        bias_initializer_kwargs: Optional[_kwargs] = None,
         use_bias: bool = True,
         device: str = "cpu",
     ):
@@ -51,60 +53,74 @@ class PixelEncoder(Network):
         # Todo: add padding and other conv2d settings
         assert last_activation is not None
 
-        super().__init__(
-            input_dim=state_dim,
-            output_dim=feature_dim,
-            mid_activation=mid_activation,
-            mid_activation_kwargs=mid_activation_kwargs,
-            last_activation=last_activation,
-            last_activation_kwargs=last_activation_kwargs,
-            kernel_initializer=kernel_initializer,
-            kernel_initializer_kwargs=kernel_initializer_kwargs,
-            bias_initializer=bias_initializer,
-            bias_initializer_kwargs=bias_initializer_kwargs,
-            use_bias=use_bias,
-            device=device,
-        )
+        super().__init__()
+
+        self.input_dim = state_dim
+        self.output_dim = feature_dim
         self.feature_dim = feature_dim
+
+        self.mid_activation, self.mid_activation_kwargs = get_activation(mid_activation, mid_activation_kwargs)
+        self.last_activation, self.last_activation_kwargs = get_activation(last_activation, last_activation_kwargs)
+
+        self.kernel_initializer, self.kernel_initializer_kwargs = get_initializer(kernel_initializer,
+                                                                                  kernel_initializer_kwargs)
+        self.bias_initializer, self.bias_initializer_kwargs = get_initializer(bias_initializer,
+                                                                              bias_initializer_kwargs)
+        self.use_bias = use_bias
+        self.device = device
+
         self.layer_num = layer_num
-        self.correct = (
+
+        correct = (
             lambda x: [x for _ in range(self.layer_num)] if (isinstance(x, int) or len(x) != self.layer_num) else x
         )
-
-        self.channel_num = self.correct(channel_num)
-        self.kernel_size = self.correct(kernel_size)
-        self.strides = self.correct(strides)
+        self.channel_num = correct(channel_num)
+        self.kernel_size = correct(kernel_size)
+        self.strides = correct(strides)
 
         self._make_layers()
         self.to(torch.device(device))
 
     def _make_layers(self) -> None:
         layers = []
+        layers = OrderedDict()
         layer_units = [self.input_dim[0], *self.channel_num]
 
-        for i in range(self.layer_num):
-            layers.append(
-                nn.Conv2d(
+        for i in range(len(layer_units) - 1):
+            layers[f'conv{i}'] = nn.Conv2d(
                     in_channels=layer_units[i],
                     out_channels=layer_units[i + 1],
                     kernel_size=self.kernel_size[i],
                     stride=self.strides[i],
                 )
-            )
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
 
-        layers.append(nn.Flatten())
-        self.layers = nn.Sequential(*layers)
+            if self.mid_activation is not None:
+                layers[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
+
+        layers['flatten'] = nn.Flatten()
 
         with torch.no_grad():
-            flatten_dim = self.layers(torch.randn(1, *self.input_dim)).shape[1]
+            temp = nn.Sequential(layers)
+            flatten_dim = temp(torch.randn(1, *self.input_dim)).shape[1]
 
-        self.layers.append(nn.Linear(flatten_dim, self.output_dim, bias=self.use_bias, device=self.device))
+        layers['linear'] = nn.Linear(flatten_dim, self.output_dim, bias=self.use_bias, device=self.device)
+
         if self.last_activation is not None:
-            self.layers.append(self.last_activation(**self.last_activation_kwargs))
+            layers[f'activation{len(layer_units) - 1}'] = self.last_activation(**self.last_activation_kwargs)
 
+        self.layers = nn.Sequential(layers)
         self.layers.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        """
+        Initialize layer weights and biases from wanted initializer specs.
+
+        :param m: a single torch layer
+        """
+        if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
+            if m.bias is not None:
+                self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
 
     def forward(self, input: torch.tensor) -> torch.tensor:
         """

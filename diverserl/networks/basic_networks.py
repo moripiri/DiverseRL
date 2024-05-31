@@ -1,27 +1,30 @@
+from abc import ABC
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 import torch
 from torch import nn
 
-from diverserl.networks.base import Network
+from diverserl.common.type_aliases import _activation, _initializer, _kwargs
+from diverserl.networks.utils import get_activation, get_initializer
 
 
-class MLP(Network):
+class MLP(ABC, nn.Module):
     def __init__(
-        self,
-        input_dim: int,
-        output_dim: int,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        use_bias: bool = True,
-        device: str = "cpu",
+            self,
+            input_dim: int,
+            output_dim: int,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[Union[_kwargs]] = None,
+            last_activation: Optional[_activation] = None,
+            last_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
+            use_bias: bool = True,
+            device: str = "cpu",
     ):
         """
         Multi layered perceptron (MLP), a collection of fully-connected layers each followed by an activation function.
@@ -40,21 +43,23 @@ class MLP(Network):
         :param use_bias: Whether to use bias in linear layer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
-            input_dim=input_dim,
-            output_dim=output_dim,
-            mid_activation=mid_activation,
-            mid_activation_kwargs=mid_activation_kwargs,
-            last_activation=last_activation,
-            last_activation_kwargs=last_activation_kwargs,
-            kernel_initializer=kernel_initializer,
-            kernel_initializer_kwargs=kernel_initializer_kwargs,
-            bias_initializer=bias_initializer,
-            bias_initializer_kwargs=bias_initializer_kwargs,
-            use_bias=use_bias,
-            device=device,
-        )
+        super().__init__()
+
+        self.input_dim = input_dim
+        self.output_dim = output_dim
+
         self.hidden_units = hidden_units
+
+        self.mid_activation, self.mid_activation_kwargs = get_activation(mid_activation, mid_activation_kwargs)
+        self.last_activation, self.last_activation_kwargs = get_activation(last_activation, last_activation_kwargs)
+
+        self.kernel_initializer, self.kernel_initializer_kwargs = get_initializer(kernel_initializer,
+                                                                                  kernel_initializer_kwargs)
+        self.bias_initializer, self.bias_initializer_kwargs = get_initializer(bias_initializer,
+                                                                              bias_initializer_kwargs)
+
+        self.use_bias = use_bias
+        self.device = device
 
         self._make_layers()
         self.to(torch.device(device))
@@ -63,20 +68,30 @@ class MLP(Network):
         """
         Make MLP layers from layer dimensions and activations and initialize its weights and biases.
         """
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
+
+        layers = OrderedDict()
+        layer_units = [self.input_dim, *self.hidden_units, self.output_dim]
 
         for i in range(len(layer_units) - 1):
-            layers.append(nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+            layers[f'linear{i}'] = nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device)
+            if self.mid_activation is not None and i < len(layer_units) - 2:
+                layers[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
+            if self.last_activation is not None and i == len(layer_units) - 2:
+                layers[f'activation{i}'] = self.last_activation(**self.last_activation_kwargs)
 
-        layers.append(nn.Linear(layer_units[-1], self.output_dim, bias=self.use_bias, device=self.device))
-        if self.last_activation is not None:
-            layers.append(self.last_activation(**self.last_activation_kwargs))
-
-        self.layers = nn.Sequential(*layers)
+        self.layers = nn.Sequential(layers)
         self.layers.apply(self._init_weights)
+
+    def _init_weights(self, m: nn.Module) -> None:
+        """
+        Initialize layer weights and biases from wanted initializer specs.
+
+        :param m: a single torch layer
+        """
+        if isinstance(m, nn.Linear):
+            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
+            if m.bias is not None:
+                self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
 
     def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:
         """
@@ -96,23 +111,23 @@ class MLP(Network):
 
 class DeterministicActor(MLP):
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-        last_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        action_scale: float = 1.0,
-        action_bias: float = 0.0,
-        use_bias: bool = True,
-        feature_encoder: Optional[nn.Module] = None,
-        device: str = "cpu",
+            self,
+            state_dim: int,
+            action_dim: int,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            last_activation: Optional[Union[str, Type[nn.Module]]] = None,
+            last_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            action_scale: float = 1.0,
+            action_bias: float = 0.0,
+            use_bias: bool = True,
+            feature_encoder: Optional[nn.Module] = None,
+            device: str = "cpu",
     ):
         """
         Deterministic Actor class for Deep Reinforcement Learning.
@@ -174,19 +189,19 @@ class DeterministicActor(MLP):
 
 class QNetwork(MLP):
     def __init__(
-        self,
-        state_dim: int,
-        action_dim: int,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        use_bias: bool = True,
-        feature_encoder: Optional[nn.Module] = None,
-        device: str = "cpu",
+            self,
+            state_dim: int,
+            action_dim: int,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            use_bias: bool = True,
+            feature_encoder: Optional[nn.Module] = None,
+            device: str = "cpu",
     ):
         """
         Q-Network class for Deep Reinforcement Learning.
@@ -240,18 +255,18 @@ class QNetwork(MLP):
 
 class VNetwork(MLP):
     def __init__(
-        self,
-        state_dim: int,
-        hidden_units: Tuple[int, ...] = (64, 64),
-        mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-        mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-        kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-        kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-        bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
-        use_bias: bool = True,
-        feature_encoder: Optional[nn.Module] = None,
-        device: str = "cpu",
+            self,
+            state_dim: int,
+            hidden_units: Tuple[int, ...] = (64, 64),
+            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
+            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
+            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            use_bias: bool = True,
+            feature_encoder: Optional[nn.Module] = None,
+            device: str = "cpu",
     ):
         """
         V-Network class for Deep Reinforcement Learning.
@@ -303,5 +318,7 @@ class VNetwork(MLP):
 
 if __name__ == "__main__":
     print(getattr(nn, "ReLU") == nn.ReLU)
-    a = MLP(5, 2, hidden_units=(64,), kernel_initializer="orthogonal_", bias_initializer="zeros_", bias_initializer_kwargs={})
+    a = MLP(5, 2, hidden_units=(64, 128, 64), last_activation='Softmax', kernel_initializer="orthogonal_",
+            bias_initializer="zeros_", bias_initializer_kwargs={})
     print(a)
+    print(a.kernel_initializer, a.kernel_initializer_kwargs)

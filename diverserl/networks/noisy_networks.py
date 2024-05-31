@@ -1,10 +1,11 @@
 import math
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Type, Union
 
 import torch
 from torch import nn
 
-from diverserl.networks.basic_networks import MLP, DeterministicActor
+from diverserl.networks.basic_networks import MLP
 from diverserl.networks.dueling_network import DuelingNetwork
 
 
@@ -70,20 +71,19 @@ class NoisyMLP(MLP):
         Make MLP Noisy layers from layer dimensions and activations and initialize its weights and biases.
         """
         layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
+        layer_units = [self.input_dim, *self.hidden_units, self.output_dim]
+        layers = OrderedDict()
+
 
         for i in range(len(layer_units) - 1):
-            layers.append(NoisyLinear(layer_units[i], layer_units[i + 1], bias=self.use_bias, std_init=self.std_init,
-                                      noise_type=self.noise_type, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+            layers[f'noisylinear{i}'] = NoisyLinear(layer_units[i], layer_units[i + 1], bias=self.use_bias, std_init=self.std_init,
+                                      noise_type=self.noise_type, device=self.device)
+            if self.mid_activation is not None and i < len(layer_units) - 2:
+                layers[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
+            if self.last_activation is not None and i == len(layer_units) - 2:
+                layers[f'activation{i}'] = self.last_activation(**self.last_activation_kwargs)
 
-        layers.append(NoisyLinear(layer_units[-1], self.output_dim, bias=self.use_bias, std_init=self.std_init,
-                                  noise_type=self.noise_type, device=self.device))
-        if self.last_activation is not None:
-            layers.append(self.last_activation(**self.last_activation_kwargs))
-
-        self.layers = nn.Sequential(*layers)
+        self.layers = nn.Sequential(layers)
         self.layers.apply(self._init_weights)
 
 
@@ -404,6 +404,6 @@ class NoisyLinear(nn.Linear):
 
 if __name__ == '__main__':
     # print(NoisyDeterministicActor.mro())
-    a = NoisyDeterministicActor(5, 2)
-    # print(a.mro())
+    a = NoisyDeterministicActor(5, 2, last_activation='Softmax', last_activation_kwargs={'dim': -1})
+    print(a)
     print(a(torch.randn(1, 5)))

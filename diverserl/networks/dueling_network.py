@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
 
 import torch
@@ -58,20 +59,19 @@ class DuelingNetwork(MLP):
         self.feature_encoder = feature_encoder
 
     def _make_layers(self) -> None:
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
 
-        for i in range(len(layer_units) - 1):
-            layers.append(nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+        trunks = OrderedDict()
+        trunk_units = [self.input_dim, *self.hidden_units]
 
-        self.trunk = nn.Sequential(*layers)
+        for i in range(len(trunk_units) - 1):
+            trunks[f'linear{i}'] = nn.Linear(trunk_units[i], trunk_units[i + 1], bias=self.use_bias, device=self.device)
+            if self.mid_activation is not None and i < len(trunk_units) - 2:
+                trunks[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
 
-        self.value = nn.Linear(layer_units[-1], 1, bias=self.use_bias, device=self.device)
-        self.advantage = nn.Linear(layer_units[-1], self.output_dim, bias=self.use_bias, device=self.device)
+        value = nn.Linear(trunk_units[-1], 1, bias=self.use_bias, device=self.device)
+        advantage = nn.Linear(trunk_units[-1], self.output_dim, bias=self.use_bias, device=self.device)
 
-        self.layers = nn.ModuleDict({'trunk': self.trunk, 'value': self.value, 'advantage': self.advantage})
+        self.layers = nn.ModuleDict({'trunk': nn.Sequential(trunks), 'value': value, 'advantage': advantage})
         self.layers.apply(self._init_weights)
 
     def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
@@ -87,12 +87,17 @@ class DuelingNetwork(MLP):
             if detach_encoder:
                 input = input.detach()
 
-        output = self.trunk(input)
+        output = self.layers['trunk'](input)
 
-        value = self.value(output)
-        advantage = self.advantage(output)
+        value = self.layers['value'](output)
+        advantage = self.layers['advantage'](output)
 
         if self.estimator == 'mean':
             return value + (advantage - advantage.mean(axis=1, keepdims=True))
         else:
             return value + (advantage - advantage.max(axis=1, keepdims=True))
+
+if __name__ == '__main__':
+    a = DuelingNetwork(5, 3)
+    print(a)
+    print(a(torch.randn(1, 5)))
