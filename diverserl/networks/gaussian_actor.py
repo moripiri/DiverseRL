@@ -1,9 +1,11 @@
-from typing import Any, Callable, Dict, Optional, Tuple, Type, Union
+from collections import OrderedDict
+from typing import Optional, Tuple, Union
 
 import torch
 from torch import nn
 from torch.distributions.normal import Normal
 
+from diverserl.common.type_aliases import _activation, _initializer, _kwargs
 from diverserl.networks.basic_networks import MLP
 
 LOG_STD_MIN = -20.0
@@ -19,12 +21,12 @@ class GaussianActor(MLP):
             independent_std: bool = False,
             logstd_init: float = 0.0,
             hidden_units: Tuple[int, ...] = (64, 64),
-            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
@@ -83,24 +85,24 @@ class GaussianActor(MLP):
         """
         Make Gaussian Actor layers from layer dimensions and activations and initialize its weights and biases.
         """
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
+        trunks = OrderedDict()
+        trunk_units = [self.input_dim, *self.hidden_units]
 
-        for i in range(len(layer_units) - 1):
-            layers.append(nn.Linear(layer_units[i], layer_units[i + 1], bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+        for i in range(len(trunk_units) - 1):
+            trunks[f'linear{i}'] = nn.Linear(trunk_units[i], trunk_units[i + 1], bias=self.use_bias, device=self.device)
 
-        self.trunks = nn.Sequential(*layers)
-        self.mean_layer = nn.Linear(layer_units[-1], self.output_dim, bias=False, device=self.device)
+            if self.mid_activation is not None and i < len(trunk_units) - 2:
+                trunks[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
 
-        self.layers = nn.ModuleDict({"trunk": self.trunks, "mean": self.mean_layer})
+        mean_layer = nn.Linear(trunk_units[-1], self.output_dim, bias=False, device=self.device)
+
+        self.layers = nn.ModuleDict({"trunk": nn.Sequential(trunks), "mean": mean_layer})
         self.layers.apply(self._init_weights)
 
         if not self.independent_std:
-            self.logstd_layer = nn.Linear(self.hidden_units[-1], self.output_dim, bias=False, device=self.device)
-            torch.nn.init.constant_(self.logstd_layer.weight, val=self.logstd_init)
-            self.layers['logstd'] = self.logstd_layer
+            logstd_layer = nn.Linear(trunk_units[-1], self.output_dim, bias=False, device=self.device)
+            torch.nn.init.constant_(logstd_layer.weight, val=self.logstd_init)
+            self.layers['logstd'] = logstd_layer
 
     def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
@@ -151,13 +153,13 @@ class GaussianActor(MLP):
             if detach_encoder:
                 state = state.detach()
 
-        trunk_output = self.trunks(state)
-        output_mean = self.mean_layer(trunk_output)
+        trunk_output = self.layers['trunk'](state)
+        output_mean = self.layers['mean'](trunk_output)
 
         if self.independent_std:
             output_std = self.std.expand_as(output_mean)
         else:
-            output_std = torch.clamp(self.logstd_layer(trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
+            output_std = torch.clamp(self.layers['logstd'](trunk_output), LOG_STD_MIN, LOG_STD_MAX).exp()
 
         dist = Normal(loc=output_mean, scale=output_std)
 

@@ -1,6 +1,5 @@
 import argparse
 
-import numpy as np
 import yaml
 
 from diverserl.algos import PPO
@@ -114,8 +113,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    print(args)
-    exit()
+
     set_seed(args.seed)
 
     if args.config_path is not None:

@@ -1,10 +1,12 @@
 import math
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Type, Union
+from collections import OrderedDict
+from typing import Optional, Sequence, Tuple, Union
 
 import torch
 from torch import nn
 
-from diverserl.networks.basic_networks import MLP, DeterministicActor
+from diverserl.common.type_aliases import _activation, _initializer, _kwargs
+from diverserl.networks.basic_networks import MLP
 from diverserl.networks.dueling_network import DuelingNetwork
 
 
@@ -14,14 +16,14 @@ class NoisyMLP(MLP):
             input_dim: int,
             output_dim: int,
             hidden_units: Tuple[int, ...] = (64, 64),
-            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-            last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-            last_activation_kwargs: Optional[Dict[str, Any]] = None,
-            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[_kwargs] = None,
+            last_activation: Optional[_activation] = None,
+            last_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
             std_init: float = 0.5,
             noise_type: str = "factorized",
@@ -69,21 +71,19 @@ class NoisyMLP(MLP):
         """
         Make MLP Noisy layers from layer dimensions and activations and initialize its weights and biases.
         """
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
+        layer_units = [self.input_dim, *self.hidden_units, self.output_dim]
+        layers = OrderedDict()
 
         for i in range(len(layer_units) - 1):
-            layers.append(NoisyLinear(layer_units[i], layer_units[i + 1], bias=self.use_bias, std_init=self.std_init,
-                                      noise_type=self.noise_type, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+            layers[f'noisylinear{i}'] = NoisyLinear(layer_units[i], layer_units[i + 1], bias=self.use_bias, std_init=self.std_init,
+                                      noise_type=self.noise_type, device=self.device)
 
-        layers.append(NoisyLinear(layer_units[-1], self.output_dim, bias=self.use_bias, std_init=self.std_init,
-                                  noise_type=self.noise_type, device=self.device))
-        if self.last_activation is not None:
-            layers.append(self.last_activation(**self.last_activation_kwargs))
+            if self.mid_activation is not None and i < len(layer_units) - 2:
+                layers[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
+            if self.last_activation is not None and i == len(layer_units) - 2:
+                layers[f'activation{i}'] = self.last_activation(**self.last_activation_kwargs)
 
-        self.layers = nn.Sequential(*layers)
+        self.layers = nn.Sequential(layers)
         self.layers.apply(self._init_weights)
 
 
@@ -93,14 +93,14 @@ class NoisyDeterministicActor(NoisyMLP):
             state_dim: int,
             action_dim: int,
             hidden_units: Tuple[int, ...] = (64, 64),
-            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-            last_activation: Optional[Union[str, Type[nn.Module]]] = None,
-            last_activation_kwargs: Optional[Dict[str, Any]] = None,
-            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[_kwargs] = None,
+            last_activation: Optional[_activation] = None,
+            last_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
@@ -178,12 +178,12 @@ class NoisyDuelingNetwork(DuelingNetwork):
             action_dim: int,
             hidden_units: Tuple[int, ...] = (64, 64),
             estimator: str = 'mean',
-            mid_activation: Optional[Union[str, Type[nn.Module]]] = nn.ReLU,
-            mid_activation_kwargs: Optional[Dict[str, Any]] = None,
-            kernel_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.orthogonal_,
-            kernel_initializer_kwargs: Optional[Dict[str, Any]] = None,
-            bias_initializer: Optional[Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]] = nn.init.zeros_,
-            bias_initializer_kwargs: Optional[Dict[str, Any]] = None,
+            mid_activation: Optional[_activation] = nn.ReLU,
+            mid_activation_kwargs: Optional[_kwargs] = None,
+            kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
+            kernel_initializer_kwargs: Optional[_kwargs] = None,
+            bias_initializer: Optional[_initializer] = nn.init.zeros_,
+            bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
             std_init: float = 0.5,
             noise_type: str = 'factorized',
@@ -229,23 +229,22 @@ class NoisyDuelingNetwork(DuelingNetwork):
         )
 
     def _make_layers(self) -> None:
-        layers = []
-        layer_units = [self.input_dim, *self.hidden_units]
 
-        for i in range(len(layer_units) - 1):
-            layers.append(NoisyLinear(layer_units[i], layer_units[i + 1], std_init=self.std_init,
-                                      noise_type=self.noise_type, bias=self.use_bias, device=self.device))
-            if self.mid_activation is not None:
-                layers.append(self.mid_activation(**self.mid_activation_kwargs))
+        trunks = OrderedDict()
+        trunk_units = [self.input_dim, *self.hidden_units]
 
-        self.trunk = nn.Sequential(*layers)
+        for i in range(len(trunk_units) - 1):
+            trunks[f'noisylinear{i}'] = NoisyLinear(trunk_units[i], trunk_units[i + 1], std_init=self.std_init,
+                                      noise_type=self.noise_type, bias=self.use_bias, device=self.device)
+            if self.mid_activation is not None and i < len(trunk_units) - 2:
+                trunks[f'activation{i}'] = self.mid_activation(**self.mid_activation_kwargs)
 
-        self.value = NoisyLinear(layer_units[-1], 1, bias=self.use_bias, std_init=self.std_init,
+        value = NoisyLinear(trunk_units[-1], 1, bias=self.use_bias, std_init=self.std_init,
                                  noise_type=self.noise_type, device=self.device)
-        self.advantage = NoisyLinear(layer_units[-1], self.output_dim, std_init=self.std_init,
+        advantage = NoisyLinear(trunk_units[-1], self.output_dim, std_init=self.std_init,
                                      noise_type=self.noise_type, bias=self.use_bias, device=self.device)
 
-        self.layers = nn.ModuleDict({"trunk": self.trunk, "value": self.value, "advantage": self.advantage})
+        self.layers = nn.ModuleDict({'trunk': nn.Sequential(trunks), 'value': value, 'advantage': advantage})
         self.layers.apply(self._init_weights)
 
 
@@ -404,6 +403,6 @@ class NoisyLinear(nn.Linear):
 
 if __name__ == '__main__':
     # print(NoisyDeterministicActor.mro())
-    a = NoisyDeterministicActor(5, 2)
-    # print(a.mro())
+    a = NoisyDeterministicActor(5, 2, last_activation='Softmax', last_activation_kwargs={'dim': -1})
+    print(a)
     print(a(torch.randn(1, 5)))
