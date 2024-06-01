@@ -36,7 +36,7 @@ def get_args():
     parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments.")
 
     # deep rl hyperparameters
-    parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
+    parser.add_argument("--network-type", type=str, default="D2RL", choices=["Default", "D2RL"])
     parser.add_argument(
         "--network-config",
         default={"Actor": {'mid_activation': 'Tanh', 'kernel_initializer_kwargs': {'gain': "np.sqrt(2)"}},

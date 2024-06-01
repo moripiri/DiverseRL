@@ -10,7 +10,8 @@ from gymnasium import spaces
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
-from diverserl.networks import DeterministicActor, PixelEncoder
+from diverserl.networks import (D2RLDeterministicActor, DeterministicActor,
+                                PixelEncoder)
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
 
 
@@ -94,6 +95,7 @@ class DQN(DeepRL):
     def network_list() -> Dict[str, Any]:
         return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
                 "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "D2RL": {"Q_network": D2RLDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
                 }
 
     def _build_network(self) -> None:

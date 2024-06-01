@@ -30,7 +30,7 @@ def get_args():
         help="Additional wrappers to be applied to the environment.",
     )
     # ddpg hyperparameters
-    parser.add_argument("--network-type", type=str, default="Default", choices=["Default"])
+    parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "D2RL"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )

@@ -10,7 +10,8 @@ from gymnasium import spaces
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, soft_update
-from diverserl.networks.basic_networks import DeterministicActor, QNetwork
+from diverserl.networks import (D2RLDeterministicActor, D2RLQNetwork,
+                                DeterministicActor, QNetwork)
 
 
 class TD3(DeepRL):
@@ -92,7 +93,8 @@ class TD3(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": DeterministicActor, "Critic": QNetwork, "Buffer": ReplayBuffer}}
+        return {"Default": {"Actor": DeterministicActor, "Critic": QNetwork, "Buffer": ReplayBuffer},
+                "D2RL": {"Actor": D2RLDeterministicActor, "Critic": D2RLQNetwork, "Buffer": ReplayBuffer}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

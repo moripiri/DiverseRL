@@ -53,7 +53,7 @@ class PixelEncoder(nn.Module):
         # Todo: add padding and other conv2d settings
         assert last_activation is not None
 
-        super().__init__()
+        nn.Module.__init__(self)
 
         self.input_dim = state_dim
         self.output_dim = feature_dim
