@@ -9,7 +9,7 @@ from diverserl.common.type_aliases import _activation, _initializer, _kwargs
 from diverserl.networks.utils import get_activation, get_initializer
 
 
-class MLP(ABC, nn.Module):
+class MLP(nn.Module):
     def __init__(
             self,
             input_dim: int,
@@ -43,7 +43,7 @@ class MLP(ABC, nn.Module):
         :param use_bias: Whether to use bias in linear layer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__()
+        nn.Module.__init__(self)
 
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -79,7 +79,7 @@ class MLP(ABC, nn.Module):
             if self.last_activation is not None and i == len(layer_units) - 2:
                 layers[f'activation{i}'] = self.last_activation(**self.last_activation_kwargs)
 
-        self.layers = nn.Sequential(layers)
+        self.layers = nn.ModuleDict(layers)
         self.layers.apply(self._init_weights)
 
     def _init_weights(self, m: nn.Module) -> None:
@@ -103,8 +103,10 @@ class MLP(ABC, nn.Module):
         if isinstance(input, tuple):
             input = torch.cat(input, dim=1)
 
-        input = input.to(self.device)
-        output = self.layers(input)
+        output = input.to(self.device)
+
+        for layer in self.layers.values():
+            output = layer(output)
 
         return output
 
@@ -149,7 +151,8 @@ class DeterministicActor(MLP):
         :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=state_dim,
             output_dim=action_dim,
             hidden_units=hidden_units,
@@ -182,7 +185,7 @@ class DeterministicActor(MLP):
             if detach_encoder:
                 input = input.detach()
 
-        output = super().forward(input)
+        output = MLP.forward(self, input)
 
         return self.action_scale * output + self.action_bias
 
@@ -219,7 +222,8 @@ class QNetwork(MLP):
         :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=state_dim + action_dim,
             output_dim=1,
             hidden_units=hidden_units,
@@ -250,7 +254,7 @@ class QNetwork(MLP):
 
             input = (feature, input[1])
 
-        return super().forward(input)
+        return MLP.forward(self, input)
 
 
 class VNetwork(MLP):
@@ -283,7 +287,8 @@ class VNetwork(MLP):
         :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=state_dim,
             output_dim=1,
             hidden_units=hidden_units,
@@ -311,14 +316,14 @@ class VNetwork(MLP):
             if detach_encoder:
                 input = input.detach()
 
-        output = super().forward(input)
+        output = MLP.forward(self,input)
 
         return output
 
 
 if __name__ == "__main__":
     print(getattr(nn, "ReLU") == nn.ReLU)
-    a = MLP(5, 2, hidden_units=(64, 128, 64), last_activation='Softmax', kernel_initializer="orthogonal_",
+    a = MLP(5, 2, hidden_units=(64, 128, 64), last_activation='Softmax', last_activation_kwargs={'dim': -1}, kernel_initializer="orthogonal_",
             bias_initializer="zeros_", bias_initializer_kwargs={})
     print(a)
     print(a.kernel_initializer, a.kernel_initializer_kwargs)

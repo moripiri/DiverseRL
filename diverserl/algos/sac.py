@@ -10,7 +10,8 @@ from gymnasium import spaces
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, soft_update
-from diverserl.networks import GaussianActor, QNetwork, VNetwork
+from diverserl.networks import (D2RLGaussianActor, D2RLQNetwork, D2RLVNetwork,
+                                GaussianActor, QNetwork, VNetwork)
 
 
 class SACv2(DeepRL):
@@ -101,7 +102,8 @@ class SACv2(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "Buffer": ReplayBuffer}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "Buffer": ReplayBuffer},
+                "D2RL": {"Actor": D2RLGaussianActor, "Critic": D2RLQNetwork, "Buffer": ReplayBuffer},}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]
@@ -320,7 +322,8 @@ class SACv1(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork, "Buffer": ReplayBuffer}}
+        return {"Default": {"Actor": GaussianActor, "Critic": QNetwork, "V_network": VNetwork, "Buffer": ReplayBuffer},
+                "D2RL": {"Actor": D2RLGaussianActor, "Critic": D2RLQNetwork, "V_network": D2RLVNetwork, "Buffer": ReplayBuffer}}
 
     def _build_network(self) -> None:
         actor_class = self.network_list()[self.network_type]["Actor"]

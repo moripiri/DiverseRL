@@ -10,8 +10,9 @@ from torch import nn
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
-                                VNetwork)
+from diverserl.networks import (CategoricalActor, D2RLCategoricalActor,
+                                D2RLGaussianActor, D2RLVNetwork, GaussianActor,
+                                PixelEncoder, VNetwork)
 
 
 class PPO(DeepRL):
@@ -119,7 +120,10 @@ class PPO(DeepRL):
     def network_list() -> Dict[str, Any]:
         ppo_network_list = {
             "Default": {"Actor": {"Discrete": CategoricalActor, "Continuous": GaussianActor}, "Critic": VNetwork,
+                        "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+            "D2RL": {"Actor": {"Discrete": D2RLCategoricalActor, "Continuous": D2RLGaussianActor}, "Critic": D2RLVNetwork,
                         "Encoder": PixelEncoder, "Buffer": ReplayBuffer}
+
         }
         return ppo_network_list
 

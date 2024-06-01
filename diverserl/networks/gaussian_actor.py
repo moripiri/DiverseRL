@@ -64,7 +64,8 @@ class GaussianActor(MLP):
 
         self.feature_encoder = feature_encoder
 
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=state_dim,
             output_dim=action_dim,
             hidden_units=hidden_units,

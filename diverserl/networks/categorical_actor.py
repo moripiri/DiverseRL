@@ -40,7 +40,8 @@ class CategoricalActor(MLP):
         :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=state_dim,
             output_dim=action_dim,
             hidden_units=hidden_units,
@@ -94,7 +95,7 @@ class CategoricalActor(MLP):
             if detach_encoder:
                 state = state.detach()
 
-        probs = self.layers(state)
+        probs = MLP.forward(self, state)
         dist = Categorical(probs=probs)
 
         return dist

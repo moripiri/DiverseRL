@@ -51,7 +51,8 @@ class NoisyMLP(MLP):
         self.std_init = std_init
         self.noise_type = noise_type
 
-        super().__init__(
+        MLP.__init__(
+            self,
             input_dim=input_dim,
             output_dim=output_dim,
             hidden_units=hidden_units,
@@ -83,7 +84,7 @@ class NoisyMLP(MLP):
             if self.last_activation is not None and i == len(layer_units) - 2:
                 layers[f'activation{i}'] = self.last_activation(**self.last_activation_kwargs)
 
-        self.layers = nn.Sequential(layers)
+        self.layers = nn.ModuleDict(layers)
         self.layers.apply(self._init_weights)
 
 
@@ -131,7 +132,8 @@ class NoisyDeterministicActor(NoisyMLP):
         :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(
+        NoisyMLP.__init__(
+            self,
             input_dim=state_dim,
             output_dim=action_dim,
             hidden_units=hidden_units,
@@ -166,7 +168,7 @@ class NoisyDeterministicActor(NoisyMLP):
             if detach_encoder:
                 input = input.detach()
 
-        output = super().forward(input)
+        output = NoisyMLP.forward(self, input)
 
         return self.action_scale * output + self.action_bias
 
@@ -212,7 +214,8 @@ class NoisyDuelingNetwork(DuelingNetwork):
         self.std_init = std_init
         self.noise_type = noise_type
 
-        super().__init__(
+        DuelingNetwork.__init__(
+            self,
             state_dim=state_dim,
             action_dim=action_dim,
             hidden_units=hidden_units,

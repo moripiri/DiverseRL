@@ -13,7 +13,7 @@ def get_args():
     parser.add_argument('--config-path', type=str, help="Path to the config yaml file (optional)")
 
     # env hyperparameters
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v4", help="Name of the gymnasium environment to run.")
+    parser.add_argument("--env-id", type=str, default="InvertedDoublePendulum-v4", help="Name of the gymnasium environment to run.")
     parser.add_argument("--render", default=False, action="store_true")
     parser.add_argument(
         "--env-option",
@@ -31,7 +31,7 @@ def get_args():
     )
     # deep rl hyperparameters
     parser.add_argument(
-        "--network-type", type=str, default="Default", choices=["Default"], help="Type of the SACv2 networks to be used."
+        "--network-type", type=str, default="D2RL", choices=["Default", "D2RL"], help="Type of the SACv2 networks to be used."
     )
     parser.add_argument(
         "--network-config",

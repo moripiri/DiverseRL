@@ -31,7 +31,7 @@ def get_args():
     )
 
     # dqn hyperparameters
-    parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy"])
+    parser.add_argument("--network-type", type=str, default="Default", choices=["Default", "Noisy", "D2RL"])
     parser.add_argument(
         "--network-config", default={}, action=StoreDictKeyPair, metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3..."
     )

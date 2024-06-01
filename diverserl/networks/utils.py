@@ -1,5 +1,6 @@
 from typing import Tuple, Union
 
+import numpy as np
 from torch import nn
 
 from diverserl.common.type_aliases import _activation, _initializer, _kwargs
