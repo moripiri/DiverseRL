@@ -10,8 +10,9 @@ from gymnasium import spaces
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, soft_update
-from diverserl.networks import (D2RLDeterministicActor, D2RLQNetwork,
-                                DeterministicActor, QNetwork)
+from diverserl.networks import DeterministicActor, QNetwork
+from diverserl.networks.d2rl_networks import (D2RLDeterministicActor,
+                                              D2RLQNetwork)
 
 
 class DDPG(DeepRL):

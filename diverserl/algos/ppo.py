@@ -10,9 +10,10 @@ from torch import nn
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
-from diverserl.networks import (CategoricalActor, D2RLCategoricalActor,
-                                D2RLGaussianActor, D2RLVNetwork, GaussianActor,
-                                PixelEncoder, VNetwork)
+from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
+                                VNetwork)
+from diverserl.networks.d2rl_networks import (D2RLCategoricalActor,
+                                              D2RLGaussianActor, D2RLVNetwork)
 
 
 class PPO(DeepRL):

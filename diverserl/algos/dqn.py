@@ -10,8 +10,8 @@ from gymnasium import spaces
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
-from diverserl.networks import (D2RLDeterministicActor, DeterministicActor,
-                                PixelEncoder)
+from diverserl.networks import DeterministicActor, PixelEncoder
+from diverserl.networks.d2rl_networks import D2RLDeterministicActor
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
 
 
