@@ -97,7 +97,7 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> 
     return wrapper_class, wrapper_option
 
 
-def set_seed(seed: int) -> None:
+def set_seed(seed: int) -> int:
     """
     Sets random seed for deep RL training.
 
@@ -107,6 +107,8 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
+
+    return seed
 
 
 class ScaleObservation(gym.ObservationWrapper):
@@ -205,7 +207,7 @@ def make_atari_env(env_id: str, env_option: Dict[str, Any], image_size: int = 84
 
 
 def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_option: Optional[Dict[str, Any]] = None,
-              seed: int = 0, num_envs: int = 1, sync_vector_env: bool = True,
+              seed: int = 0, num_envs: int = 1, vector_env: bool = True,
               **kwargs: Optional[Dict[str, Any]]
               ) -> \
         Union[gym.Env, gym.vector.SyncVectorEnv]:
@@ -217,15 +219,15 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
     :param wrapper_option: additional arguments for wrapper creation.
     :param seed: random seed.
     :param num_envs: number of environments to generate if sync_vector_env is True.
-    :param sync_vector_env: whether to return env as sync_vector_env.
+    :param vector_env: whether to return env as sync_vector_env.
 
     :return: generated gymnasium environment
     """
 
     namespace = env_namespace(gym.make(env_id).spec)
 
-    env_option = {} if env_option is None else env_option
-    wrapper_option = {} if wrapper_option is None else wrapper_option
+    env_option = {} if env_option is None else dict(env_option)
+    wrapper_option = {} if wrapper_option is None else dict(wrapper_option)
 
     def make_env(random_seed: int = 0):
         """
@@ -277,7 +279,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
 
         return thunk
 
-    if sync_vector_env:
+    if vector_env:
         env = gym.vector.SyncVectorEnv([make_env(seed + i) for i in
                                         range(num_envs)])
     else:

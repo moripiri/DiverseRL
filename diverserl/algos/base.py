@@ -14,6 +14,7 @@ class BaseRL(ABC):
 
         :param env: Gymnasium environment to train the algorithm.
         """
+        self.env = env
         self._find_env_space(env)
 
     @abstractmethod

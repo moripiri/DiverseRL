@@ -3,9 +3,9 @@ import argparse
 import yaml
 
 from diverserl.algos import SACv2
-from diverserl.common.utils import make_envs, set_seed
+from diverserl.common.utils import make_envs
 from diverserl.trainers import DeepRLTrainer
-from examples.utils import StoreDictKeyPair
+from examples.utils import StoreDictKeyPair, set_config
 
 
 def get_args():
@@ -29,6 +29,8 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional wrappers to be applied to the environment.",
     )
+    parser.add_argument("--vector-env", type=bool, default=True, help="Whether to make synced vectorized environments")
+    parser.add_argument("--num-envs", type=int, default=1, help="Number of parallel environments.")
     # deep rl hyperparameters
     parser.add_argument(
         "--network-type", type=str, default="D2RL", choices=["Default", "D2RL"], help="Type of the SACv2 networks to be used."
@@ -115,15 +117,8 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
+    config = set_config(args)
 
-    if args.config_path is not None:
-        with open(args.config_path, "r") as f:
-            config = yaml.safe_load(f)
-            config['config_path'] = args.config_path
-    else:
-        config = vars(args)
-
-    set_seed(args.seed)
     env = make_envs(**config)
 
     algo = SACv2(
@@ -133,7 +128,6 @@ if __name__ == "__main__":
 
     trainer = DeepRLTrainer(
         algo=algo,
-        env=env,
         **config
     )
 

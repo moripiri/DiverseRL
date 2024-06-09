@@ -9,7 +9,7 @@ from gymnasium.wrappers import RecordVideo
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
-from diverserl.common.utils import env_namespace, get_project_root
+from diverserl.common.utils import env_namespace, get_project_root, set_seed
 
 ROOT_PATH = get_project_root() #./DiverseRL
 LOG_PATH = f"{ROOT_PATH}/logs"
@@ -23,7 +23,7 @@ class Trainer(ABC):
     def __init__(
             self,
             algo,
-            env: gym.Env,
+            seed: int,
             total: int,
             do_eval: bool,
             eval_every: int,
@@ -54,7 +54,9 @@ class Trainer(ABC):
         """
 
         self.algo = algo
-        self.env = env
+        self.env = self.algo.env
+
+        self.seed = set_seed(seed)
 
         self.do_eval = do_eval
         self.eval_every = eval_every
@@ -135,8 +137,9 @@ class Trainer(ABC):
             self.config['env_option']['render_mode'] = 'rgb_array'
         else:
             self.config['env_option']['render_mode'] = None
+        self.config['vector_env'] = False
 
-        eval_env = make_envs(**self.config, sync_vector_env=False)
+        eval_env = make_envs(**self.config)
 
         if self.config['record_video']:
             eval_env = RecordVideo(eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')

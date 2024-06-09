@@ -1,6 +1,5 @@
 from typing import Any, Dict, Optional
 
-import gymnasium as gym
 import numpy as np
 
 from diverserl.algos.base import DeepRL
@@ -11,7 +10,6 @@ class OnPolicyTrainer(Trainer):
     def __init__(
         self,
         algo: DeepRL,
-        env: gym.vector.SyncVectorEnv,
         seed: int,
         max_step: int = 1000000,
         do_eval: bool = True,
@@ -42,7 +40,7 @@ class OnPolicyTrainer(Trainer):
         """
 
         config = locals()
-        for key in ['self', 'algo', 'env', '__class__']:
+        for key in ['self', 'algo', '__class__']:
             del config[key]
         for key, value in config['kwargs'].items():
             config[key] = value
@@ -50,7 +48,7 @@ class OnPolicyTrainer(Trainer):
 
         super().__init__(
             algo=algo,
-            env=env,
+            seed=seed,
             total=max_step,
             do_eval=do_eval,
             eval_every=eval_every,
@@ -69,7 +67,6 @@ class OnPolicyTrainer(Trainer):
         self.num_epochs = self.algo.num_epochs
         self.num_envs = self.algo.num_envs
 
-        self.seed = seed
         self.max_step = max_step
 
     def evaluate(self) -> None:

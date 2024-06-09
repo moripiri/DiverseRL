@@ -1,11 +1,9 @@
 import argparse
 
-import yaml
-
 from diverserl.algos.classic_rl import SARSA
-from diverserl.common.utils import make_envs, set_seed
+from diverserl.common.utils import make_envs
 from diverserl.trainers import ClassicTrainer
-from examples.utils import StoreDictKeyPair
+from examples.utils import StoreDictKeyPair, set_config
 
 
 def get_args():
@@ -36,6 +34,8 @@ def get_args():
         metavar="KEY1=VAL1 KEY2=VAL2 KEY3=VAL3...",
         help="Additional wrappers to be applied to the environment.",
     )
+    parser.add_argument("--vector-env", type=bool, default=False, help="Whether to make synced vectorized environments")
+
     # algorithm setting
     parser.add_argument("--gamma", type=float, default=0.9, choices=range(0, 1), help="Discount factor.")
     parser.add_argument("--alpha", type=float, default=0.1, help="Step-size parameter (learning rate)")
@@ -65,22 +65,13 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
+    config = set_config(args)
 
-    set_seed(args.seed)
-
-    if args.config_path is not None:
-        with open(args.config_path, "r") as f:
-            config = yaml.safe_load(f)
-            config['config_path'] = args.config_path
-    else:
-        config = vars(args)
-
-    env = make_envs(sync_vector_env=False, **config)
+    env = make_envs(**config)
     algo = SARSA(env, **config)
 
     trainer = ClassicTrainer(
         algo=algo,
-        env=env,
         **config
     )
 
