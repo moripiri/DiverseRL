@@ -19,6 +19,7 @@ class DDPG(DeepRL):
     def __init__(
             self,
             env: gym.vector.SyncVectorEnv,
+            eval_env: gym.Env,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             gamma: float = 0.99,
@@ -57,7 +58,11 @@ class DDPG(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config,
+            env=env,
+            eval_env=eval_env,
+            network_type=network_type,
+            network_list=self.network_list(),
+            network_config=network_config,
             device=device
         )
 

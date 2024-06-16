@@ -8,13 +8,15 @@ import torch
 
 
 class BaseRL(ABC):
-    def __init__(self, env: gym.Env) -> None:
+    def __init__(self, env: gym.Env, eval_env: gym.Env) -> None:
         """
         Base class for all algorithms in DiverseRL.
 
         :param env: Gymnasium environment to train the algorithm.
         """
         self.env = env
+        self.eval_env = eval_env
+
         self._find_env_space(env)
 
     @abstractmethod
@@ -68,7 +70,8 @@ class DeepRL(BaseRL, ABC):
     """
 
     def __init__(
-            self, env: gym.Env, network_type: str, network_list: Dict[str, Any], network_config: Dict[str, Any],
+            self, env: gym.Env, eval_env: gym.Env, network_type: str, network_list: Dict[str, Any],
+            network_config: Dict[str, Any],
             device: str = "cpu"
     ) -> None:
         """
@@ -79,7 +82,7 @@ class DeepRL(BaseRL, ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(env)
+        super().__init__(env, eval_env)
 
         self._set_network_configs(network_type, network_list, network_config)
 

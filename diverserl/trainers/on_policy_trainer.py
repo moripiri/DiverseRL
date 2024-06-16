@@ -17,11 +17,10 @@ class OnPolicyTrainer(Trainer):
         eval_ep: int = 10,
         log_tensorboard: bool = False,
         log_wandb: bool = False,
-        record_video: bool = False,
+        record: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
-        **kwargs: Optional[Dict[str, Any]],
-
+        configs: Dict[str, Any] = None,
     ) -> None:
         """
         Trainer for Deep RL(On policy) algorithms.
@@ -34,17 +33,11 @@ class OnPolicyTrainer(Trainer):
         :param eval_ep: Number of episodes to run evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
-        :param record_video: Whether to record the evaluation procedure.
+        :param record: Whether to record the evaluation procedure.
         :param save_model: Whether to save the model (both in local and wandb)
         :param save_freq: How often to save the model
+        :param configs: The configuration of the training process.
         """
-
-        config = locals()
-        for key in ['self', 'algo', '__class__']:
-            del config[key]
-        for key, value in config['kwargs'].items():
-            config[key] = value
-        del config['kwargs']
 
         super().__init__(
             algo=algo,
@@ -55,10 +48,10 @@ class OnPolicyTrainer(Trainer):
             eval_ep=eval_ep,
             log_tensorboard=log_tensorboard,
             log_wandb=log_wandb,
-            record_video=record_video,
+            record=record,
             save_model=save_model,
             save_freq=save_freq,
-            config=config
+            configs=configs,
         )
 
         assert self.algo.buffer.save_log_prob

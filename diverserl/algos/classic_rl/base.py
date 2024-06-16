@@ -11,14 +11,14 @@ class ClassicRL(BaseRL, ABC):
     Abstract base class for classic RL algorithms.
     """
 
-    def __init__(self, env: gym.Env) -> None:
+    def __init__(self, env: gym.Env, eval_env: gym.Env) -> None:
         """
         The base of Classic RL algorithms.
         Check environment validity for Classic RL algorithms.
 
         :param env: The environment for RL agent to learn from
         """
-        super().__init__(env)
+        super().__init__(env, eval_env)
 
     @abstractmethod
     def __repr__(self) -> str:

@@ -14,6 +14,7 @@ class DuelingDQN(DDQN):
     def __init__(
             self,
             env: gym.vector.SyncVectorEnv,
+            eval_env: gym.Env,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
@@ -55,6 +56,7 @@ class DuelingDQN(DDQN):
         """
         super().__init__(
             env=env,
+            eval_env=eval_env,
             network_type=network_type,
             network_config=network_config,
             eps_initial=eps_initial,

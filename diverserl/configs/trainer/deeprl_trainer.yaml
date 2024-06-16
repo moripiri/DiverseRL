@@ -1,0 +1,14 @@
+_target_: trainers.deeprl_trainer.DeepRLTrainer
+seed: 1
+training_start: 1000
+training_freq: 1
+training_num: 1
+max_step: 2000000
+do_eval: true
+eval_every: 10000
+eval_ep: 1
+record: ${env.record}
+log_tensorboard: true
+log_wandb: true
+save_model: false
+save_freq: 100000
