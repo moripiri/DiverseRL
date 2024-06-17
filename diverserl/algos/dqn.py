@@ -19,6 +19,7 @@ class DQN(DeepRL):
     def __init__(
         self,
             env: gym.vector.SyncVectorEnv,
+            eval_env: gym.Env,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,
@@ -35,7 +36,6 @@ class DQN(DeepRL):
             training_start: int = 1000,
             max_step: int = 1000000,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         DQN(Deep-Q Network).
@@ -61,7 +61,7 @@ class DQN(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
         assert isinstance(self.observation_space, spaces.Box) and isinstance(

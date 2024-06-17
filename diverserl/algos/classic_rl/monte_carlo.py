@@ -9,7 +9,7 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class MonteCarlo(ClassicRL):
-    def __init__(self, env: gym.Env, gamma: float = 0.9, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, env: gym.Env, eval_env: gym.Env, gamma: float = 0.9, eps: float = 0.1) -> None:
         """
         Tabular Model-free Monte-Carlo control algorithm.
 
@@ -19,7 +19,7 @@ class MonteCarlo(ClassicRL):
         :param gamma: The discount factor
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env=env)
+        super().__init__(env=env, eval_env=eval_env)
         assert isinstance(env.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(env.action_space, gym.spaces.Discrete)
 
         self.gamma = gamma

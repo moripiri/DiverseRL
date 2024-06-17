@@ -11,7 +11,6 @@ class ClassicTrainer(Trainer):
     def __init__(
             self,
             algo: ClassicRL,
-            env: gym.Env,
             seed: int = 1234,
             max_episode: int = 1000,
             do_eval: bool = True,
@@ -19,8 +18,8 @@ class ClassicTrainer(Trainer):
             eval_ep: int = 10,
             log_tensorboard: bool = False,
             log_wandb: bool = False,
-            record_video: bool = False,
-            **kwargs: Optional[Dict[str, Any]]
+            record: bool = False,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> None:
         """
         Trainer for Classic RL algorithms.
@@ -34,31 +33,25 @@ class ClassicTrainer(Trainer):
         :param eval_ep: How many episodes to run to perform evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
-        :param record_video: Whether to record the evaluation procedure.
+        :param record: Whether to record the evaluation procedure.
+        :param configs: The configuration of the training process.
         """
-        config = locals()
-        for key in ['self', 'algo', 'env', '__class__']:
-            del config[key]
-        for key, value in config['kwargs'].items():
-            config[key] = value
-        del config['kwargs']
-
-        assert not isinstance(env, gym.vector.SyncVectorEnv), "For Classic RL, Env must not be vectorized."
 
         super().__init__(
             algo=algo,
-            env=env,
+            seed=seed,
             total=max_episode,
             do_eval=do_eval,
             eval_every=eval_every,
             eval_ep=eval_ep,
             log_tensorboard=log_tensorboard,
             log_wandb=log_wandb,
-            record_video=record_video,
-            config=config
+            record=record,
+            configs=configs,
         )
-        self.seed = seed
+
         self.max_episode = max_episode
+        assert not isinstance(self.env, gym.vector.SyncVectorEnv), "For Classic RL, Env must not be vectorized."
 
     def evaluate(self) -> None:
         """

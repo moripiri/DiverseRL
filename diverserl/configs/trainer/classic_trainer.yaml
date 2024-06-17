@@ -1,0 +1,9 @@
+_target_: diverserl.trainers.classic_trainer.ClassicTrainer
+seed: 1
+max_episode: 1000
+do_eval: true
+eval_every: 10
+eval_ep: 1
+record: ${env.record}
+log_tensorboard: false
+log_wandb: false

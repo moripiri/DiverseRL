@@ -1,0 +1,9 @@
+defaults:
+  - env: gym_classic_control
+  - algo: dqn
+  - trainer: deeprl_trainer
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

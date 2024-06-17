@@ -1,0 +1,22 @@
+_target_: diverserl.algos.TD3
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [256, 256]
+  Critic:
+    hidden_units: [256, 256]
+gamma: 0.99
+tau: 0.005
+noise_scale: 0.1
+target_noise_scale: 0.2
+noise_clip: 0.5
+policy_delay: 2
+batch_size: 256
+buffer_size: 1000000
+actor_lr: 0.0003
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.0003
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+device: cpu

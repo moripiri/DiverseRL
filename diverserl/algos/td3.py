@@ -19,6 +19,7 @@ class TD3(DeepRL):
     def __init__(
         self,
         env: gym.vector.SyncVectorEnv,
+        eval_env: gym.Env,
         network_type: str = "Default",
         network_config: Optional[Dict[str, Any]] = None,
         gamma: float = 0.99,
@@ -36,8 +37,6 @@ class TD3(DeepRL):
         critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
-
     ) -> None:
         """
         TD3(Twin Delayed Deep Deterministic Policy Gradients)
@@ -64,7 +63,7 @@ class TD3(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
+            env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
         assert isinstance(self.observation_space, spaces.Box) and isinstance(

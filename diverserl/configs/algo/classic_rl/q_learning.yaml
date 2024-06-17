@@ -1,0 +1,4 @@
+_target_: diverserl.algos.classic_rl.QLearning
+gamma: 0.9
+alpha: 0.1
+eps: 0.1

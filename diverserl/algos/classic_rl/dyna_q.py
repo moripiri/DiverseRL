@@ -8,8 +8,8 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 class DynaQ(ClassicRL):
     def __init__(
-        self, env: gym.Env, gamma: float = 0.8, alpha: float = 0.1, model_n: int = 10, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]
-    ) -> None:
+            self, env: gym.Env, eval_env: gym.Env, gamma: float = 0.8, alpha: float = 0.1, model_n: int = 10,
+            eps: float = 0.1, ) -> None:
         """
         Tabular Dyna-Q algorithm.
 
@@ -20,8 +20,9 @@ class DynaQ(ClassicRL):
         :param model_n: Number of times to train from simulated experiences for every train.
         :param eps: Probability to conduct random action during training.
         """
-        super().__init__(env=env)
-        assert isinstance(env.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(env.action_space, gym.spaces.Discrete)
+        super().__init__(env=env, eval_env=eval_env)
+        assert isinstance(env.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(
+            env.action_space, gym.spaces.Discrete)
 
         self.gamma = gamma
         self.alpha = alpha
@@ -54,7 +55,7 @@ class DynaQ(ClassicRL):
             action = np.random.randint(low=0, high=self.action_dim - 1)
 
         else:
-            action = np.argmax(self.q[observation],axis=-1)
+            action = np.argmax(self.q[observation], axis=-1)
 
         return action
 
@@ -96,7 +97,7 @@ class DynaQ(ClassicRL):
                 sample_ns = int(self.model_ns[sample_s, sample_a])
 
                 self.q[sample_s, sample_a] = self.q[sample_s, sample_a] + self.alpha * (
-                    sample_r + self.gamma * np.max(self.q[sample_ns]) - self.q[sample_s, sample_a]
+                        sample_r + self.gamma * np.max(self.q[sample_ns]) - self.q[sample_s, sample_a]
                 )
 
             self.ob_traj = list()

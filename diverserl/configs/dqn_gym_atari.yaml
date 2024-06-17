@@ -1,0 +1,56 @@
+defaults:
+  - env: gym_atari
+  - algo: dqn
+  - trainer: deeprl_trainer
+
+env:
+  env_id: "ALE/Pong-v5"
+  wrapper_option:
+    TransformReward: {f: "lambda reward: np.sign(float(reward))"}
+
+algo:
+  network_type: Default
+  network_config:
+    Q_network:
+      hidden_units: [64, 64]
+    Encoder:
+      feature_dim: 512
+      layer_num: 3
+      channel_num: [32, 64, 64]
+      kernel_size: [8, 4, 3]
+      strides: [4, 2, 1]
+  eps_initial: 1.0
+  eps_final: 0.01
+  decay_fraction: 0.1
+  gamma: 0.99
+  batch_size: 32
+  buffer_size: 100000
+  learning_rate: 0.0001
+  optimizer: Adam
+  optimizer_kwargs: {}
+  anneal_lr: false
+  target_copy_freq: 1000
+  training_start: ${trainer.training_start}
+  max_step: ${trainer.max_step}
+  device: cpu
+
+trainer:
+  seed: 1
+  training_start: 80000
+  training_freq: 4
+  training_num: 1
+  max_step: 10000000
+  do_eval: true
+  eval_every: 10000
+  eval_ep: 1
+  log_tensorboard: false
+  log_wandb: false
+  record: ${env.record}
+  save_model: false
+  save_freq: 100000
+
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

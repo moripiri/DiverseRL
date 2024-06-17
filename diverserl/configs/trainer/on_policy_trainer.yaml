@@ -1,0 +1,11 @@
+_target_: diverserl.trainers.on_policy_trainer.OnPolicyTrainer
+seed: 1
+max_step: 1000000
+do_eval: true
+eval_every: 10000
+eval_ep: 1
+record: ${env.record}
+log_tensorboard: false
+log_wandb: false
+save_model: false
+save_freq: 100000

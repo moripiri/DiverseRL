@@ -1,0 +1,9 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: HalfCheetah-v4
+env_option: {}
+wrapper_option: {}
+seed: ${trainer.seed}
+num_envs: 1
+vector_env: true
+render: false
+record: false

@@ -20,9 +20,9 @@ class PPO(DeepRL):
     def __init__(
             self,
             env: gym.vector.SyncVectorEnv,
+            eval_env: gym.Env,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
-            num_envs: int = 1,
             horizon: int = 128,
             minibatch_size: int = 64,
             num_epochs: int = 4,
@@ -40,7 +40,6 @@ class PPO(DeepRL):
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
             anneal_lr: bool = True,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         PPO(Proximal Policy Gradients)
@@ -70,7 +69,7 @@ class PPO(DeepRL):
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
-            env=env, network_type=network_type, network_list=self.network_list(), network_config=network_config,
+            env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(), network_config=network_config,
             device=device
         )
         assert mode.lower() in ["clip", "adaptive_kl", "fixed_kl"]
@@ -89,7 +88,7 @@ class PPO(DeepRL):
         self.gamma = gamma
         self.lambda_gae = lambda_gae
 
-        self.num_envs = num_envs
+        self.num_envs = env.num_envs
         self.horizon = horizon
         self.num_epochs = num_epochs
 
@@ -211,7 +210,7 @@ class PPO(DeepRL):
         self.actor.eval()
 
         with torch.no_grad():
-            action, log_prob = self.actor(observation, deterministic=True)
+            action, log_prob = self.actor(observation, deterministic=False)#deterministic actor greatly diminishes the performance.
 
         return action.cpu().numpy(), log_prob.cpu().numpy()
 

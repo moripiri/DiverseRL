@@ -1,0 +1,34 @@
+_target_: diverserl.algos.PPO
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [64, 64]
+    mid_activation: "Tanh"
+    kernel_initializer: "orthogonal_"
+    kernel_initializer_kwargs: {"gain": "np.sqrt(2)"}
+    bias_initializer: "constant_"
+    bias_initializer_kwargs: {"val": 0.0}
+  Critic:
+    hidden_units: [64, 64]
+    mid_activation: "Tanh"
+    kernel_initializer: "orthogonal_"
+    kernel_initializer_kwargs: {"gain": np.sqrt(2)}
+    bias_initializer: "constant_"
+    bias_initializer_kwargs: {"val": "0.0"}
+horizon: 2048
+minibatch_size: 64
+num_epochs: 10
+gamma: 0.99
+lambda_gae: 0.95
+mode: clip
+target_dist: 0.01
+beta: 3.0
+clip_coef: 0.2
+vf_coef: 0.5
+entropy_coef: 0.0
+max_grad_norm: 0.5
+learning_rate: 0.0003
+optimizer: Adam
+optimizer_kwargs: {"eps": 0.00001}
+anneal_lr: true
+device: cpu

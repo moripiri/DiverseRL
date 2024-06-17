@@ -1,15 +1,15 @@
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Union
 
-import gymnasium as gym
 import yaml
 from gymnasium.wrappers import RecordVideo
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
-from diverserl.common.utils import env_namespace, get_project_root
+from diverserl.common.make_env import env_namespace
+from diverserl.common.utils import get_project_root, set_seed
 
 ROOT_PATH = get_project_root() #./DiverseRL
 LOG_PATH = f"{ROOT_PATH}/logs"
@@ -23,17 +23,17 @@ class Trainer(ABC):
     def __init__(
             self,
             algo,
-            env: gym.Env,
+            seed: int,
             total: int,
             do_eval: bool,
             eval_every: int,
             eval_ep: int,
             log_tensorboard: bool = False,
             log_wandb: bool = False,
+            record: bool = False,
             save_model: bool = False,
             save_freq: int = 10 ** 6,
-            record_video: bool = False,
-            config: Dict[str, Any] = None,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
     ):
 
         """
@@ -50,11 +50,14 @@ class Trainer(ABC):
         :param wandb_group: Group name of the wandb
         :param save_model: Whether to save the RL model
         :param save_freq: How frequently save the RL model
-        :param config: Configuration of the run.
+        :param configs: Configuration of the run.
         """
 
         self.algo = algo
-        self.env = env
+        self.env = self.algo.env
+        self.eval_env = self.algo.eval_env
+
+        self.seed = set_seed(seed)
 
         self.do_eval = do_eval
         self.eval_every = eval_every
@@ -65,9 +68,8 @@ class Trainer(ABC):
 
         self.log_tensorboard = log_tensorboard
         self.log_wandb = log_wandb
-        self.record_video = record_video
-
-        self.config = config
+        self.record = record
+        self.configs = yaml.safe_load(configs) if isinstance(configs, str) else configs
 
         self.console = Console(style="bold black")
 
@@ -78,8 +80,8 @@ class Trainer(ABC):
             console=self.console,
         )
 
-        self.env_id = gym.make(config['env_id']).spec.id.replace('ALE/', '')
-        self.env_namespace = env_namespace(gym.make(config['env_id']).spec)
+        self.env_id = self.eval_env.spec.id.replace('ALE/', '')
+        self.env_namespace = env_namespace(self.eval_env.spec)
 
         self.task = self.progress.add_task(
             description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env_id}[/grey42]...[/bold]",
@@ -88,18 +90,14 @@ class Trainer(ABC):
         self.start_time = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
         self.run_name = f"{self.start_time}_{self.algo}_{self.env_id}"
 
-        if self.do_eval:
-            self.eval_env = self.make_eval_env()
-        else:
-            assert not (self.config['render'] or self.config['record_video']), \
-                "Rendering or Recording video is only supported in Evaluation."
 
         if self.log_tensorboard:
             from torch.utils.tensorboard import SummaryWriter
 
             self.tensorboard = SummaryWriter(log_dir=f"{LOG_PATH}/{self.run_name}/tensorboard")
-            with open(f"{LOG_PATH}/{self.run_name}/config.yaml", 'w') as file:
-                yaml.dump(self.config, file, sort_keys=False)
+
+            with open(f"{LOG_PATH}/{self.run_name}/configs.yaml", 'w') as file:
+                yaml.dump(self.configs, file, sort_keys=False, default_flow_style=False)
 
         if self.log_wandb:
             import wandb
@@ -108,12 +106,12 @@ class Trainer(ABC):
             self.wandb = wandb.init(
                 project="DiverseRL",
                 dir=f"{LOG_PATH}/{self.run_name}",
-                config=self.config,
+                config=self.configs,
                 group=f"{self.algo}_{self.env_id}",
                 name=f"{self.start_time}",
                 id=self.run_name,
                 notes=self.run_name,
-                monitor_gym=record_video,
+                monitor_gym=record,
                 tags=["RL", "DiverseRL", f"{self.algo}", self.env_namespace, f"{self.env_id}"],
             )
 
@@ -124,23 +122,8 @@ class Trainer(ABC):
             self.ckpt_folder = f"{LOG_PATH}/{self.run_name}/ckpt"
             os.makedirs(self.ckpt_folder, exist_ok=True)
 
-    def make_eval_env(self):
-        from diverserl.common.utils import make_envs
-        assert not (self.config['render'] and self.config['record_video']), ValueError(
-            "Cannot specify both render and record_video")
-
-        if self.config['render']:
-            self.config['env_option']['render_mode'] = 'human'
-        elif self.config['record_video']:
-            self.config['env_option']['render_mode'] = 'rgb_array'
-        else:
-            self.config['env_option']['render_mode'] = None
-
-        eval_env = make_envs(**self.config, sync_vector_env=False)
-
-        if self.config['record_video']:
-            eval_env = RecordVideo(eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
-        return eval_env
+        if record:
+            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
 
     @abstractmethod
     def evaluate(self):

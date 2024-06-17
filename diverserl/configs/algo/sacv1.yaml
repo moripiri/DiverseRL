@@ -1,0 +1,24 @@
+_target_: diverserl.algos.SACv1
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [256, 256]
+  Critic:
+    hidden_units: [256, 256]
+  V_network:
+    hidden_units: [256, 256]
+gamma: 0.99
+alpha: 0.1
+tau: 0.005
+batch_size: 256
+buffer_size: 1000000
+actor_lr: 0.0003
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.001
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+v_lr: 0.001
+v_optimizer: Adam
+v_optimizer_kwargs: {}
+device: cpu
