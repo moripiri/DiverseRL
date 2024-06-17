@@ -15,7 +15,7 @@ from diverserl.networks.d2rl_networks import (D2RLGaussianActor, D2RLQNetwork,
                                               D2RLVNetwork)
 
 
-class SACv2(DeepRL):
+class SAC(DeepRL):
     def __init__(
             self,
             env: gym.vector.SyncVectorEnv,
@@ -40,8 +40,6 @@ class SACv2(DeepRL):
             alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
             alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
-
     ) -> None:
         """
         SAC (Soft Actor-Critic)
@@ -49,8 +47,8 @@ class SACv2(DeepRL):
         Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al., 2018
 
         :param env: Gymnasium environment to train the SAC algorithm
-        :param network_type: Type of the SACv2 networks to be used.
-        :param network_config: Configurations of the SACv2 networks.
+        :param network_type: Type of the SAC networks to be used.
+        :param network_config: Configurations of the SAC networks.
         :param gamma: The discount factor.
         :param alpha: The entropy temperature parameter.
         :param train_alpha: Whether to train the parameter alpha.
@@ -100,7 +98,7 @@ class SACv2(DeepRL):
         self.batch_size = batch_size
 
     def __repr__(self) -> str:
-        return "SACv2"
+        return "SAC"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
@@ -146,10 +144,10 @@ class SACv2(DeepRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the SACv2 action from an observation (in training mode)
+        Get the SAC action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The SACv2 agent's action
+        :return: The SAC agent's action
         """
         observation = self._fix_observation(observation)
 
@@ -161,10 +159,10 @@ class SACv2(DeepRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the SACv2 action from an observation (in evaluation mode)
+        Get the SAC action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The SACv2 agent's action (in evaluation mode)
+        :return: The SAC agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)
@@ -184,7 +182,7 @@ class SACv2(DeepRL):
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
-        Train SACv2 policy.
+        Train SAC policy.
         :return: training results
         """
         self.training_count += 1
@@ -267,8 +265,6 @@ class SACv1(DeepRL):
             v_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
             v_optimizer_kwargs: Optional[Dict[str, Any]] = None,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
-
     ) -> None:
         """
         SAC (Soft Actor-Critic)

@@ -1,14 +1,15 @@
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any, Dict, Optional, Union
 
 import yaml
 from gymnasium.wrappers import RecordVideo
 from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, TextColumn
 
-from diverserl.common.utils import env_namespace, get_project_root, set_seed
+from diverserl.common.make_env import env_namespace
+from diverserl.common.utils import get_project_root, set_seed
 
 ROOT_PATH = get_project_root() #./DiverseRL
 LOG_PATH = f"{ROOT_PATH}/logs"
@@ -32,7 +33,7 @@ class Trainer(ABC):
             record: bool = False,
             save_model: bool = False,
             save_freq: int = 10 ** 6,
-            configs: Dict[str, Any] = None,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
     ):
 
         """

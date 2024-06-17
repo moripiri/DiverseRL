@@ -29,7 +29,6 @@ class DDQN(DQN):
             training_start: int = 1000,
             max_step: int = 1000000,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Deep Reinforcement Learning with Double Q-learning, Hasselt et al 2015.

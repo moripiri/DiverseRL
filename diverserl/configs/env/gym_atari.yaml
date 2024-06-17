@@ -1,0 +1,16 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: ALE/Pong-v5
+env_option:
+    frame_skip: 4
+    frame_stack: 4
+    repeat_action_probability: 0.
+    image_size: 84
+    noop_max: 30
+    terminal_on_life_loss: True
+    grayscale_obs: True
+wrapper_option: {}
+seed: ${trainer.seed}
+num_envs: 1
+vector_env: true
+render: false
+record: false

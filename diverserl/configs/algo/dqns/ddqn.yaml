@@ -1,4 +1,4 @@
-_target_: diverserl.algos.DQN
+_target_: diverserl.algos.dqns.DDQN
 network_type: Default
 network_config:
   Q_network:

@@ -1,0 +1,8 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: Taxi-v3
+env_option: {}
+wrapper_option: {}
+seed: ${trainer.seed}
+vector_env: false
+render: false
+record: false

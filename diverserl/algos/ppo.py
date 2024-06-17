@@ -23,7 +23,6 @@ class PPO(DeepRL):
             eval_env: gym.Env,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
-            num_envs: int = 1,
             horizon: int = 128,
             minibatch_size: int = 64,
             num_epochs: int = 4,
@@ -41,7 +40,6 @@ class PPO(DeepRL):
             optimizer_kwargs: Optional[Dict[str, Any]] = None,
             anneal_lr: bool = True,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         PPO(Proximal Policy Gradients)
@@ -90,7 +88,7 @@ class PPO(DeepRL):
         self.gamma = gamma
         self.lambda_gae = lambda_gae
 
-        self.num_envs = num_envs
+        self.num_envs = env.num_envs
         self.horizon = horizon
         self.num_epochs = num_epochs
 

@@ -9,7 +9,7 @@ from diverserl.algos.classic_rl.base import ClassicRL
 
 
 class MonteCarlo(ClassicRL):
-    def __init__(self, env: gym.Env, eval_env: gym.Env, gamma: float = 0.9, eps: float = 0.1, **kwargs: Optional[Dict[str, Any]]) -> None:
+    def __init__(self, env: gym.Env, eval_env: gym.Env, gamma: float = 0.9, eps: float = 0.1) -> None:
         """
         Tabular Model-free Monte-Carlo control algorithm.
 

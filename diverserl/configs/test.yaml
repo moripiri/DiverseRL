@@ -1,6 +1,6 @@
 defaults:
+  - env: gym_classic_control
   - algo: dqn
-  - env: classic_control
   - trainer: deeprl_trainer
 
 hydra:

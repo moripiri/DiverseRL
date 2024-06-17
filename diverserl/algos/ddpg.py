@@ -34,7 +34,6 @@ class DDPG(DeepRL):
             critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
             critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         DDPG(Deep Deterministic Policy Gradients)

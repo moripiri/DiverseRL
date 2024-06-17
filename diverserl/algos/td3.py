@@ -37,8 +37,6 @@ class TD3(DeepRL):
         critic_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
         critic_optimizer_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
-
     ) -> None:
         """
         TD3(Twin Delayed Deep Deterministic Policy Gradients)

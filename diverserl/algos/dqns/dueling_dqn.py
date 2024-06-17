@@ -31,7 +31,6 @@ class DuelingDQN(DDQN):
             training_start: int = 1000,
             max_step: int = 1000000,
             device: str = "cpu",
-            **kwargs: Optional[Dict[str, Any]]
     ) -> None:
         """
         Dueling Network Architectures for Deep Reinforcement Learning, Wang et al, 2015.

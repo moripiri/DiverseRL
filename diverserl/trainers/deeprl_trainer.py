@@ -1,6 +1,5 @@
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
-import gymnasium as gym
 import numpy as np
 
 from diverserl.algos.base import DeepRL
@@ -24,7 +23,7 @@ class DeepRLTrainer(Trainer):
         record: bool = False,
         save_model: bool = False,
         save_freq: int = 10**6,
-        configs: Dict[str, Any] = None,
+        configs: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> None:
 
         """

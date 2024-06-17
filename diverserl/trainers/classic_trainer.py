@@ -19,7 +19,7 @@ class ClassicTrainer(Trainer):
             log_tensorboard: bool = False,
             log_wandb: bool = False,
             record: bool = False,
-            configs: Dict[str, Any] = None,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> None:
         """
         Trainer for Classic RL algorithms.

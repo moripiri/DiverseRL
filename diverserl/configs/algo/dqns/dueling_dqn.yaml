@@ -1,8 +1,9 @@
-_target_: diverserl.algos.DQN
+_target_: diverserl.algos.dqns.DuelingDQN
 network_type: Default
 network_config:
   Q_network:
     hidden_units: [120, 84]
+    estimator: mean
 eps_initial: 0.1
 eps_final: 0.05
 decay_fraction: 0.5

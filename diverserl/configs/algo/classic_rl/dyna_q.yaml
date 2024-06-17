@@ -1,0 +1,5 @@
+_target_: diverserl.algos.classic_rl.DynaQ
+gamma: 0.9
+alpha: 0.1
+model_n: 10
+eps: 0.1
