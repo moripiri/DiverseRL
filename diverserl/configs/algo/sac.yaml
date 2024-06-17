@@ -1,7 +1,4 @@
-env_id: HalfCheetah-v4
-render: false
-env_option: {}
-
+_target_: diverserl.algos.SAC
 network_type: Default
 network_config:
   Actor:
@@ -26,17 +23,3 @@ alpha_lr: 0.001
 alpha_optimizer: Adam
 alpha_optimizer_kwargs: {}
 device: cpu
-seed: 1
-
-training_start: 10000
-training_freq: 1
-training_num: 1
-max_step: 1000000
-do_eval: true
-eval_every: 10000
-eval_ep: 1
-log_tensorboard: true
-log_wandb: true
-record_video: true
-save_model: false
-save_freq: 100000
