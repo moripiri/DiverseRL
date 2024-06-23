@@ -71,7 +71,7 @@ class Trainer(ABC):
         self.record = record
         self.configs = yaml.safe_load(configs) if isinstance(configs, str) else configs
 
-        self.console = Console(style="bold black")
+        self.console = Console()
 
         self.progress = Progress(
             TextColumn("[progress.description]{task.description}"),

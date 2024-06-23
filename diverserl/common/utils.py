@@ -1,15 +1,12 @@
 import random
-import re
-from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
 import gymnasium as gym
 import numpy as np
 import torch.optim
-from gymnasium import Env
-from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
-                                FrameStack)
+from omegaconf import OmegaConf
+from rich.pretty import pprint
 from torch import nn
 
 
@@ -109,3 +106,20 @@ def set_seed(seed: int) -> int:
     torch.backends.cudnn.deterministic = True
 
     return seed
+
+
+def pprint_config(config: Dict[str, Any]) -> bool:
+    """
+    Prettily print the configuration.
+
+    :param config: Configuration of the experiment.
+    """
+    print('='*100)
+    pprint(config, expand_all=True)
+    print('='*100)
+    answer = input("Continue? [y/n]: ")
+    if answer in ["y", "Y", "", " ", "ㅛ"]:
+        return True
+    else:
+        print("Quitting...")
+        return False

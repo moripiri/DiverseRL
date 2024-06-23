@@ -84,5 +84,5 @@ python examples/run_dqn.py --env-id CartPole-v1
 Or yaml files for configurations.
 
 ```bash
-python examples/run_dqn.py --config-path configurations/dqn_classic_control.yaml
+python examples/run_dqn.py --configs-path configurations/dqn_classic_control.yaml
 ```
