@@ -20,20 +20,23 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     :param env_spec: env_specification of gymnasium environment
     :return: namespace
     """
-    env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
-    split_entry_point = env_entry_point.split(".")
+    if env_spec.namespace is None: #pure gymnasium env
+        env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
+        split_entry_point = env_entry_point.split(".")
 
-    if len(split_entry_point) >= 3:
-        # If namespace is of the format:
-        #  - gymnasium.envs.mujoco.ant_v4:AntEnv
-        #  - gymnasium.envs.mujoco:HumanoidEnv
-        ns = split_entry_point[2]
-    elif len(split_entry_point) > 1:
-        # If namespace is of the format - shimmy.atari_env
-        ns = split_entry_point[1]
+        if len(split_entry_point) >= 3:
+            # If namespace is of the format:
+            #  - gymnasium.envs.mujoco.ant_v4:AntEnv
+            #  - gymnasium.envs.mujoco:HumanoidEnv
+            ns = split_entry_point[2]
+        elif len(split_entry_point) > 1:
+            # If namespace is of the format - shimmy.atari_env
+            ns = split_entry_point[1]
+        else:
+            # If namespace cannot be found, default to env name
+            ns = env_spec.name
     else:
-        # If namespace cannot be found, default to env name
-        ns = env_spec.name
+        ns = env_spec.namespace
 
     return ns
 

@@ -1,4 +1,5 @@
-from typing import TypeVar
+from copy import deepcopy
+from typing import Any, Dict, SupportsFloat, Tuple, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -19,3 +20,23 @@ class ScaleObservation(gym.ObservationWrapper):
 
     def observation(self, obs: ObsType) -> WrapperObsType:
         return obs / 255.
+
+
+class PixelEnvWrapper(gym.Wrapper):
+    def __init__(self, env: gym.Env):
+        """
+        Replace Env rendering to observation.
+        :param env:
+        """
+        super().__init__(env=env, pixels_only=False)
+    def reset(self):
+        pass
+    def step(self, action: WrapperActType) -> Tuple[WrapperObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
+
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        observation = self.observation(observation)
+        info['state'] = observation['state']
+        print("wow")
+        del observation['state']
+
+        return observation['pixels'], reward, terminated, truncated, info
