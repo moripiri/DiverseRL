@@ -62,8 +62,6 @@ class GaussianActor(MLP):
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-        self.feature_encoder = feature_encoder
-
         MLP.__init__(
             self,
             input_dim=state_dim,
@@ -78,6 +76,7 @@ class GaussianActor(MLP):
             use_bias=use_bias,
             device=device,
         )
+        self.feature_encoder = feature_encoder
 
         if self.independent_std:
             self.std = torch.tensor(self.logstd_init, device=self.device).exp()

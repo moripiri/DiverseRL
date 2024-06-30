@@ -1,0 +1,19 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: dm_control/cartpole-swingup-v0
+env_option:
+  render_mode: rgb_array
+  render_width: 84
+  render_height: 84
+wrapper_option:
+  FlattenObservation: {}
+  PixelOnlyObservationWrapper: {}
+  GrayScaleObservation: {}
+  FrameSkipWrapper:
+    frame_skip: 8
+  FrameStack:
+    num_stack: 3
+seed: ${trainer.seed}
+num_envs: 1
+vector_env: true
+render: false
+record: false

@@ -1,10 +1,12 @@
 from copy import deepcopy
-from typing import Any, Dict, SupportsFloat, Tuple, TypeVar
+from typing import Any, Dict, Optional, SupportsFloat, Tuple, TypeVar
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.wrappers import PixelObservationWrapper
 
 ObsType = TypeVar("ObsType")
+ActType = TypeVar("ActType")
 WrapperObsType = TypeVar("WrapperObsType")
 WrapperActType = TypeVar("WrapperActType")
 
@@ -22,21 +24,61 @@ class ScaleObservation(gym.ObservationWrapper):
         return obs / 255.
 
 
-class PixelEnvWrapper(gym.Wrapper):
-    def __init__(self, env: gym.Env):
+class PixelOnlyObservationWrapper(PixelObservationWrapper):
+    def __init__(self,
+                 env: gym.Env,
+                 render_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
+                 ):
         """
         Replace Env rendering to observation.
         :param env:
         """
-        super().__init__(env=env, pixels_only=False)
-    def reset(self):
-        pass
-    def step(self, action: WrapperActType) -> Tuple[WrapperObsType, SupportsFloat, bool, bool, Dict[str, Any]]:
+        super().__init__(env=env, pixels_only=True, render_kwargs=render_kwargs)
+        self.observation_space = self.observation_space['pixels']
 
-        observation, reward, terminated, truncated, info = self.env.step(action)
-        observation = self.observation(observation)
-        info['state'] = observation['state']
-        print("wow")
-        del observation['state']
+    def observation(self, observation):
+        """Updates the observations with the pixel observations.
 
-        return observation['pixels'], reward, terminated, truncated, info
+        Args:
+            observation: The observation to add pixel observations for
+
+        Returns:
+            The updated pixel observations
+        """
+        pixel_observation = self._add_pixel_observation(observation)
+        return pixel_observation['pixels']
+
+
+class FrameSkipWrapper(gym.ActionWrapper):
+    def __init__(self, env: gym.Env, frame_skip: int):
+        super().__init__(env)
+        self.frame_skip = frame_skip
+
+        assert frame_skip >= 1
+
+    def step(self, action: WrapperActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        """Runs the :attr:`env` :meth:`env.step` using the modified ``action`` from :meth:`self.action`."""
+        total_reward, terminated, truncated, info = 0.0, False, False, {}
+        observation = self.observation
+
+        for t in range(self.frame_skip):
+            observation, reward, terminated, truncated, info = self.env.step(action)
+            total_reward += reward
+
+            if terminated or truncated:
+                break
+
+        return observation, total_reward, terminated, truncated, info
+
+
+    def action(self, action: WrapperActType) -> ActType:
+        """Returns a modified action before :meth:`env.step` is called.
+
+        Args:
+            action: The original :meth:`step` actions
+
+        Returns:
+            The modified actions
+        """
+        raise NotImplementedError

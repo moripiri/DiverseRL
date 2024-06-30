@@ -28,6 +28,7 @@ class PixelEncoder(nn.Module):
         bias_initializer: Optional[_initializer] = nn.init.zeros_,
         bias_initializer_kwargs: Optional[_kwargs] = None,
         use_bias: bool = True,
+        layer_norm: bool = False,
         device: str = "cpu",
     ):
         """
@@ -48,6 +49,7 @@ class PixelEncoder(nn.Module):
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
         :param use_bias: whether to use bias in the network layers
+        :param layer_norm: whether to use layer normalization after fully connected layer.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         # Todo: add padding and other conv2d settings
@@ -72,22 +74,22 @@ class PixelEncoder(nn.Module):
         self.layer_num = layer_num
 
         correct = (
-            lambda x: [x for _ in range(self.layer_num)] if (isinstance(x, int) or len(x) != self.layer_num) else x
+            lambda x: [x for _ in range(self.layer_num)] if (isinstance(x, int)) else x
         )
         self.channel_num = correct(channel_num)
         self.kernel_size = correct(kernel_size)
         self.strides = correct(strides)
+        self.layer_norm = layer_norm
 
         self._make_layers()
         self.to(torch.device(device))
 
     def _make_layers(self) -> None:
-        layers = []
         layers = OrderedDict()
         layer_units = [self.input_dim[0], *self.channel_num]
 
         for i in range(len(layer_units) - 1):
-            layers[f'conv{i}'] = nn.Conv2d(
+            layers[f'conv2d{i}'] = nn.Conv2d(
                     in_channels=layer_units[i],
                     out_channels=layer_units[i + 1],
                     kernel_size=self.kernel_size[i],
@@ -104,6 +106,9 @@ class PixelEncoder(nn.Module):
             flatten_dim = temp(torch.zeros(1, *self.input_dim)).shape[1]
 
         layers['linear'] = nn.Linear(flatten_dim, self.output_dim, bias=self.use_bias, device=self.device)
+
+        if self.layer_norm:
+            layers['layer_normalization'] = nn.LayerNorm(self.output_dim)
 
         if self.last_activation is not None:
             layers[f'activation{len(layer_units) - 1}'] = self.last_activation(**self.last_activation_kwargs)
@@ -130,6 +135,7 @@ class PixelEncoder(nn.Module):
         :return: feature tensor
         """
         input = input.to(self.device)
+        input = input / 255.
         output = self.layers(input)
 
         return output
