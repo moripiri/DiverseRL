@@ -1,0 +1,15 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: ALE/Pong-ram-v5
+env_option:
+  repeat_action_probability: 0.
+  frameskip: 4
+wrapper_option:
+  FrameStack:
+    num_stack: 4
+  FlattenObservation: {}
+  ScaleObservation: {}
+seed: ${trainer.seed}
+num_envs: 1
+vector_env: true
+render: false
+record: false

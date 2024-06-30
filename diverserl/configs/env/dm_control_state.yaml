@@ -1,0 +1,10 @@
+_target_: diverserl.common.make_env.make_envs
+env_id: dm_control/cartpole-swingup-v0
+env_option: {}
+wrapper_option:
+  FlattenObservation: {}
+seed: ${trainer.seed}
+num_envs: 1
+vector_env: true
+render: false
+record: false

@@ -1,3 +1,7 @@
+"""
+DQNs contains DQN variant algorithms.
+"""
+
 from diverserl.algos.dqns.ddqn import DDQN
 from diverserl.algos.dqns.dueling_dqn import DuelingDQN
 

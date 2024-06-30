@@ -1,14 +1,12 @@
 import re
-from copy import deepcopy
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Optional, Union
 
-import gymnasium as gym
 from gymnasium import Env
 from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
                                 FrameStack)
 
 from diverserl.common.utils import get_wrapper
-from diverserl.common.wrappers import ScaleObservation
+from diverserl.common.wrappers import *
 
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
@@ -20,20 +18,23 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     :param env_spec: env_specification of gymnasium environment
     :return: namespace
     """
-    env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
-    split_entry_point = env_entry_point.split(".")
+    if env_spec.namespace is None: #pure gymnasium env
+        env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
+        split_entry_point = env_entry_point.split(".")
 
-    if len(split_entry_point) >= 3:
-        # If namespace is of the format:
-        #  - gymnasium.envs.mujoco.ant_v4:AntEnv
-        #  - gymnasium.envs.mujoco:HumanoidEnv
-        ns = split_entry_point[2]
-    elif len(split_entry_point) > 1:
-        # If namespace is of the format - shimmy.atari_env
-        ns = split_entry_point[1]
+        if len(split_entry_point) >= 3:
+            # If namespace is of the format:
+            #  - gymnasium.envs.mujoco.ant_v4:AntEnv
+            #  - gymnasium.envs.mujoco:HumanoidEnv
+            ns = split_entry_point[2]
+        elif len(split_entry_point) > 1:
+            # If namespace is of the format - shimmy.atari_env
+            ns = split_entry_point[1]
+        else:
+            # If namespace cannot be found, default to env name
+            ns = env_spec.name
     else:
-        # If namespace cannot be found, default to env name
-        ns = env_spec.name
+        ns = env_spec.namespace
 
     return ns
 
@@ -88,7 +89,7 @@ def make_atari_env(env_id: str, env_option: Dict[str, Any], image_size: int = 84
     env = FrameStack(
         AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
                            terminal_on_life_loss=terminal_on_life_loss,
-                           grayscale_obs=grayscale_obs, scale_obs=True), num_stack=frame_stack)
+                           grayscale_obs=grayscale_obs, scale_obs=False), num_stack=frame_stack)
 
     return env
 
@@ -145,29 +146,9 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
                 env_option['render_mode'] = 'human'
             elif not render_env and record_env:
                 env_option['render_mode'] = 'rgb_array'
-            else:
-                env_option['render_mode'] = None
 
-            if namespace == 'atari_env':
-                atari_option = {}
-                for key in ['image_size', 'noop_max', 'frame_skip', 'frame_stack', 'repeat_action_probability',
-                            'terminal_on_life_loss', 'grayscale_obs', 'repeat_action_probability']:
-                    try:
-                        atari_option[key] = env_option[key]
-                        del env_option[key]
-
-                    except:
-                        continue
-
-                if '-ram' in env_id:
-                    env = make_atari_ram_env(env_id, env_option, **atari_option)
-
-                else:
-                    env = make_atari_env(env_id, env_option, **atari_option)
-
-            else:
-                env = gym.make(env_id, **env_option)
-                env = gym.wrappers.RecordEpisodeStatistics(env)
+            env = gym.make(env_id, **env_option)
+            env = gym.wrappers.RecordEpisodeStatistics(env)
 
             for wrapper_name, wrapper_kwargs in wrapper_option.items():
                 wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs)

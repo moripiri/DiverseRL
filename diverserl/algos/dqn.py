@@ -6,6 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from gymnasium import spaces
+from numpy import dtype, ndarray
 
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
@@ -138,7 +139,7 @@ class DQN(DeepRL):
 
         self.action_count += 1
 
-    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Union[int, List[int]]:
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> ndarray[Any, dtype[Any]] | Any:
         """
         Get the DQN action from an observation (in training mode).
 

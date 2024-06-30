@@ -9,8 +9,10 @@ class ReplayBuffer:
     """
     Simple Buffer to store environment transitions and trajectories for Deep RL training.
     """
+
     def __init__(self, state_dim: Union[int, Tuple[int, ...]], action_dim: int, max_size: int = 10 ** 6,
-                 save_log_prob: bool = False, optimize_memory_usage: bool = False, num_envs: int = 1, device: str = "cpu") -> None:
+                 save_log_prob: bool = False, optimize_memory_usage: bool = False, num_envs: int = 1,
+                 device: str = "cpu") -> None:
         """
         Initialize buffer with given dimensions and settings.
 

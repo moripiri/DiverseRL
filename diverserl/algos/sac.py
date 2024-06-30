@@ -125,8 +125,6 @@ class SAC(DeepRL):
             **actor_config,
         ).train()
 
-        self.target_actor = deepcopy(self.actor).eval()
-
         self.critic = critic_class(
             state_dim=self.state_dim, action_dim=self.action_dim, device=self.device, **critic_config
         ).train()

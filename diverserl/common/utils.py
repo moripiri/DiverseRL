@@ -9,6 +9,8 @@ from omegaconf import OmegaConf
 from rich.pretty import pprint
 from torch import nn
 
+import diverserl
+
 
 def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent #./DiverseRL
@@ -79,7 +81,11 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> 
 
     :return: Gymnasium's wrapper class and wrapper arguments.
     """
-    wrapper_class = getattr(gym.wrappers, wrapper_name)
+    try:
+        wrapper_class = getattr(gym.wrappers, wrapper_name)
+    except:
+        wrapper_class = getattr(diverserl.common.wrappers, wrapper_name)
+
     wrapper_option = {}
 
     if wrapper_kwargs is not None:
