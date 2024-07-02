@@ -100,12 +100,7 @@ class PPO(DeepRL):
 
         self.learning_rate = learning_rate
 
-        if self.encoder is None:
-            self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
-        else:
-            self.params = itertools.chain(
-                *[self.actor.layers.parameters(), self.critic.layers.parameters(), self.encoder.parameters()])
-
+        self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
         self.optimizer = get_optimizer(list(self.params), learning_rate, optimizer, optimizer_kwargs)
 
         self.anneal_lr = anneal_lr
@@ -129,17 +124,6 @@ class PPO(DeepRL):
 
     def _build_network(self) -> None:
 
-        if not isinstance(self.state_dim, int):
-            encoder_class = self.network_list()[self.network_type]["Encoder"]
-            encoder_config = self.network_config["Encoder"]
-            self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
-
-            feature_dim = self.encoder.feature_dim
-
-        else:
-            self.encoder = None
-            feature_dim = self.state_dim
-
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete_action else "Continuous"]
         actor_config = self.network_config["Actor"]
 
@@ -153,11 +137,11 @@ class PPO(DeepRL):
         critic_config = self.network_config["Critic"]
 
         self.actor = actor_class(
-            state_dim=feature_dim, action_dim=self.action_dim, device=self.device, feature_encoder=self.encoder,
+            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device,
             **actor_config
         ).train()
 
-        self.critic = critic_class(state_dim=feature_dim, device=self.device, feature_encoder=self.encoder,
+        self.critic = critic_class(state_dim=self.state_dim, device=self.device,
                                    **critic_config).train()
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
@@ -228,13 +212,8 @@ class PPO(DeepRL):
         with torch.no_grad():
             dones = torch.logical_or(d, t).to(torch.float32)
 
-            if isinstance(self.state_dim, int):
-                old_values = self.critic(s)
-                previous_value = self.critic(ns)
-
-            else:
-                old_values = self.critic(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, 1)
-                previous_value = self.critic(ns)
+            old_values = self.critic(s)
+            previous_value = self.critic(ns)
 
             advantages = torch.zeros_like(r)
             running_advantage = torch.zeros((self.num_envs, 1))
@@ -249,11 +228,7 @@ class PPO(DeepRL):
 
             returns = advantages + old_values
 
-        if isinstance(self.state_dim, int):
-            s = s.reshape(-1, self.state_dim)
-        else:
-            s = s.reshape(-1, *self.state_dim)
-
+        s = s.reshape(-1, self.state_dim)
         a = a.reshape(-1, 1 if self.discrete_action else self.action_dim)
         log_prob = log_prob.reshape(-1, 1)
         advantages = advantages.reshape(-1, 1)

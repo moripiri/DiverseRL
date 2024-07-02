@@ -105,7 +105,6 @@ class NoisyDeterministicActor(NoisyMLP):
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             std_init: float = 0.5,
             noise_type: str = 'factorized',
             device: str = "cpu",
@@ -127,7 +126,6 @@ class NoisyDeterministicActor(NoisyMLP):
         :param action_scale: How much to scale the output action
         :param action_bias: How much to bias the output action
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param std_init: Initial standard deviation of the NoisyLinear layer.
         :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
         :param device: Device (cpu, cuda, ...) on which the code should be run
@@ -150,23 +148,17 @@ class NoisyDeterministicActor(NoisyMLP):
             noise_type=noise_type,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return output of the NoisyNet Deterministic Actor for the given input.
 
         :param input: state tensor
-        :param detach_encoder: whether to detach the encoder from training
         :return: action tensor
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-            if detach_encoder:
-                input = input.detach()
 
         output = NoisyMLP.forward(self, input)
 
@@ -189,7 +181,6 @@ class NoisyDuelingNetwork(DuelingNetwork):
             use_bias: bool = True,
             std_init: float = 0.5,
             noise_type: str = 'factorized',
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -208,7 +199,6 @@ class NoisyDuelingNetwork(DuelingNetwork):
         :param use_bias: Whether to use bias in linear layer
         :param std_init: Initial standard deviation of the NoisyLinear layer.
         :param noise_type: Type of NoisyLinear noise proposed in NoisyNet
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         self.std_init = std_init
@@ -227,7 +217,6 @@ class NoisyDuelingNetwork(DuelingNetwork):
             bias_initializer=bias_initializer,
             bias_initializer_kwargs=bias_initializer_kwargs,
             use_bias=use_bias,
-            feature_encoder=feature_encoder,
             device=device,
         )
 

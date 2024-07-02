@@ -22,7 +22,6 @@ class DuelingNetwork(MLP):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -39,7 +38,6 @@ class DuelingNetwork(MLP):
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         MLP.__init__(
@@ -58,7 +56,6 @@ class DuelingNetwork(MLP):
         )
         assert estimator in ['mean', 'max']
         self.estimator = estimator
-        self.feature_encoder = feature_encoder
 
     def _make_layers(self) -> None:
 
@@ -76,18 +73,13 @@ class DuelingNetwork(MLP):
         self.layers = nn.ModuleDict({'trunk': nn.Sequential(trunks), 'value': value, 'advantage': advantage})
         self.layers.apply(self._init_weights)
 
-    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return modified value from the Dueling Network
 
         :param input: input tensor
-        :param detach_encoder: whether to detach feature encoder from training
         :return: modified value from the Dueling Network
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-            if detach_encoder:
-                input = input.detach()
 
         output = self.layers['trunk'](input)
 

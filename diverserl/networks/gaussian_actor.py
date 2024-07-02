@@ -30,7 +30,6 @@ class GaussianActor(MLP):
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -51,7 +50,6 @@ class GaussianActor(MLP):
         :param action_scale: How much to scale the output action
         :param action_bias: How much to bias the output action
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         self.squash = squash
@@ -76,7 +74,6 @@ class GaussianActor(MLP):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
         if self.independent_std:
             self.std = torch.tensor(self.logstd_init, device=self.device).exp()
@@ -104,17 +101,16 @@ class GaussianActor(MLP):
             torch.nn.init.constant_(logstd_layer.weight, val=self.logstd_init)
             self.layers['logstd'] = logstd_layer
 
-    def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
+    def forward(self, state: Union[torch.Tensor], deterministic: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
         """
         Return action and its log_probability of the Gaussian actor for the given state.
 
         :param state: state(1 torch tensor)
         :param deterministic: whether to sample action from the computed distribution.
-        :param detach_encoder: whether to detach encoder weights while training.
         :return: action (scaled and biased), log_prob
         """
-        dist = self.compute_dist(state, detach_encoder)
+        dist = self.compute_dist(state)
 
         if deterministic:
             sample = dist.mean
@@ -138,7 +134,7 @@ class GaussianActor(MLP):
 
         return action, log_prob
 
-    def compute_dist(self, state: torch.Tensor, detach_encoder: bool = False) -> Normal:
+    def compute_dist(self, state: torch.Tensor) -> Normal:
         """
         Return Normal distribution of the Gaussian actor for the given state.
 
@@ -146,12 +142,6 @@ class GaussianActor(MLP):
         :return: Normal distribution
         """
         state = state.to(self.device)
-
-        if self.feature_encoder is not None:
-            state = self.feature_encoder(state)
-
-            if detach_encoder:
-                state = state.detach()
 
         trunk_output = self.layers['trunk'](state)
         output_mean = self.layers['mean'](trunk_output)
@@ -165,7 +155,7 @@ class GaussianActor(MLP):
 
         return dist
 
-    def log_prob(self, state: torch.Tensor, action: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def log_prob(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
         """
         Return log_probability of the Gaussian actor for the given state.
 
@@ -173,7 +163,7 @@ class GaussianActor(MLP):
         :param action: wanted action to calculate its log_probability
         :return: log_prob
         """
-        dist = self.compute_dist(state, detach_encoder)
+        dist = self.compute_dist(state)
         action = (action - self.action_bias) / self.action_scale
 
         if self.squash:
@@ -184,14 +174,14 @@ class GaussianActor(MLP):
 
         return dist.log_prob(action).sum(dim=-1, keepdim=True)
 
-    def entropy(self, state: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def entropy(self, state: torch.Tensor) -> torch.Tensor:
         """
         Return entropy of the Gaussian actor for the given state.
 
         :param state: state(a torch tensor)
         :return: entropy
         """
-        dist = self.compute_dist(state, detach_encoder)
+        dist = self.compute_dist(state)
         return dist.entropy().sum(dim=-1)
 
 

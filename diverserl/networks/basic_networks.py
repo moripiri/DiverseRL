@@ -128,7 +128,6 @@ class DeterministicActor(MLP):
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -148,7 +147,6 @@ class DeterministicActor(MLP):
         :param action_scale: How much to scale the output action
         :param action_bias: How much to bias the output action
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         MLP.__init__(
@@ -167,24 +165,17 @@ class DeterministicActor(MLP):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return output of the Deterministic Actor for the given input.
 
         :param input: state tensor
-        :param detach_encoder: whether to detach the encoder from training
         :return: action tensor
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-            if detach_encoder:
-                input = input.detach()
-
         output = MLP.forward(self, input)
 
         return self.action_scale * output + self.action_bias
@@ -203,7 +194,6 @@ class QNetwork(MLP):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -219,7 +209,6 @@ class QNetwork(MLP):
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         MLP.__init__(
@@ -236,24 +225,14 @@ class QNetwork(MLP):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
-    def forward(self, input: Tuple[torch.Tensor, torch.Tensor], detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         """
         Return Q-value for the given input.
 
         :param input: state and action tensors
-        :param detach_encoder: whether to detach the encoder from training
         :return: Q-value
         """
-        if self.feature_encoder is not None:
-            feature = self.feature_encoder(input[0].to(self.device))
-
-            if detach_encoder:
-                feature = feature.detach()
-
-            input = (feature, input[1])
-
         return MLP.forward(self, input)
 
 
@@ -269,7 +248,6 @@ class VNetwork(MLP):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         """
@@ -284,7 +262,6 @@ class VNetwork(MLP):
         :param bias_initializer: Bias initializer function for the network bias
         :param bias_initializer_kwargs: Parameters for the bias initializer
         :param use_bias: Whether to use bias in linear layer
-        :param feature_encoder: Optional feature encoder to attach to the MLP layers.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         MLP.__init__(
@@ -301,7 +278,6 @@ class VNetwork(MLP):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
     def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
         """
@@ -311,11 +287,6 @@ class VNetwork(MLP):
         :param detach_encoder: whether to detach the encoder from training
         :return: Value for the given input
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-            if detach_encoder:
-                input = input.detach()
-
         output = MLP.forward(self,input)
 
         return output
