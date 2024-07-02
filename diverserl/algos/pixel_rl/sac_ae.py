@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from diverserl.algos.base import DeepRL
+from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import (GaussianActor, PixelDecoder, PixelEncoder,
@@ -26,7 +26,7 @@ def preprocess_obs(obs, bits=5):
     return obs
 
 
-class SAC_AE(DeepRL):
+class SAC_AE(PixelRL):
     def __init__(self,
                  env: gym.vector.SyncVectorEnv,
                  eval_env: gym.Env,

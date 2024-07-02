@@ -42,6 +42,8 @@ class ReplayBuffer:
         self.s_size = (max_s_size, num_envs, state_dim) if isinstance(state_dim, int) else (
             max_s_size, num_envs, *state_dim)
 
+        self.s_dtype = np.float32 if isinstance(state_dim, int) else np.uint8
+
         self.a_size = (self.max_size, num_envs, action_dim)
 
         self.reset()
@@ -61,12 +63,12 @@ class ReplayBuffer:
         """
         Resets the ReplayBuffer to the initial state.
         """
-        self.s = np.empty(self.s_size, dtype=np.float32)
+        self.s = np.empty(self.s_size, dtype=self.s_dtype)
         self.a = np.empty(self.a_size, dtype=np.float32)
         self.r = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
 
         if not self.optimize_memory_usage:
-            self.ns = np.empty(self.s_size, dtype=np.float32)
+            self.ns = np.empty(self.s_size, dtype=self.s_dtype)
 
         self.d = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
         self.t = np.empty((self.max_size, self.num_envs, 1), dtype=np.float32)
