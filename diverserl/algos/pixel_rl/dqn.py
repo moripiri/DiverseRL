@@ -105,7 +105,7 @@ class DQN(PixelRL):
         encoder_class = self.network_list()[self.network_type]["Encoder"]
         encoder_config = self.network_config["Encoder"]
 
-        self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
+        self.encoder = encoder_class(state_dim=self.state_dim, device=self.device, **encoder_config)
         self.target_encoder = deepcopy(self.encoder).eval()
 
         feature_dim = self.encoder.feature_dim

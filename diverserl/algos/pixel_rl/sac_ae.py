@@ -157,14 +157,14 @@ class SAC_AE(PixelRL):
     def _build_network(self) -> None:
         encoder_class = self.network_list()[self.network_type]["Encoder"]
         encoder_config = self.network_config["Encoder"]
-        self.encoder = encoder_class(state_dim=self.state_dim, **encoder_config)
+        self.encoder = encoder_class(state_dim=self.state_dim, device=self.device, **encoder_config)
         self.target_encoder = deepcopy(self.encoder).eval()
 
         feature_dim = self.encoder.feature_dim
 
         decoder_class = self.network_list()[self.network_type]["Decoder"]
         decoder_config = self.network_config["Decoder"]
-        self.decoder = decoder_class(state_dim=self.state_dim, feature_dim=feature_dim, **decoder_config)
+        self.decoder = decoder_class(state_dim=self.state_dim, feature_dim=feature_dim, device=self.device, **decoder_config)
 
         actor_class = self.network_list()[self.network_type]["Actor"]
         critic_class = self.network_list()[self.network_type]["Critic"]
