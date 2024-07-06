@@ -45,6 +45,7 @@ class DQN(PixelRL):
         Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al., 2013.
 
         :param env: Gymnasium environment to train the DQN algorithm
+        :param eval_env: Gymnasium environment to evaluate the DQN algorithm
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param eps_initial: Initial probability to conduct random action during training

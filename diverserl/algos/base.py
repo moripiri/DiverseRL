@@ -81,6 +81,8 @@ class DeepRL(BaseRL, ABC):
         """
         The base of Deep RL algorithms
 
+        :param env: Gymnasium environment to train the algorithm.
+        :param eval_env: Gymnasium environment to evaluate the algorithm.
         :param network_type: Type of DeepRL algorithm networks.
         :param network_list: Dicts of required networks for the algorithm and its network class.
         :param network_config: Configurations of the DeepRL algorithm networks.

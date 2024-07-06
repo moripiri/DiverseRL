@@ -1,6 +1,6 @@
 defaults:
   - env: gym_atari
-  - algo: dqn
+  - algo: pixel_rl/dqn
   - trainer: deeprl_trainer
 
 env:

@@ -56,11 +56,9 @@ class FrameSkipWrapper(gym.ActionWrapper):
 
         assert frame_skip >= 1
 
-    def step(self, action: WrapperActType
-    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: WrapperActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Runs the :attr:`env` :meth:`env.step` using the modified ``action`` from :meth:`self.action`."""
         total_reward, terminated, truncated, info = 0.0, False, False, {}
-        observation = self.observation
 
         for t in range(self.frame_skip):
             observation, reward, terminated, truncated, info = self.env.step(action)
@@ -70,15 +68,3 @@ class FrameSkipWrapper(gym.ActionWrapper):
                 break
 
         return observation, total_reward, terminated, truncated, info
-
-
-    def action(self, action: WrapperActType) -> ActType:
-        """Returns a modified action before :meth:`env.step` is called.
-
-        Args:
-            action: The original :meth:`step` actions
-
-        Returns:
-            The modified actions
-        """
-        raise NotImplementedError

@@ -80,7 +80,7 @@ class Trainer(ABC):
             console=self.console,
         )
 
-        self.env_id = self.eval_env.spec.id.replace('ALE/', '')
+        self.env_id = self.eval_env.spec.id.replace('ALE/', '').replace('/', '_') #remove 'ALE/', and replace / to _
         self.env_namespace = env_namespace(self.eval_env.spec)
 
         self.task = self.progress.add_task(

@@ -47,6 +47,7 @@ class PPO(PixelRL):
         Paper: Proximal Policy Optimization Algorithm, Schulman et al., 2017
 
         :param env: Gymnasium environment to train the PPO algorithm
+        :param eval_env: Gymnasium environment to evaluate the PPO algorithm
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param num_envs: Number of vectorized environments to run RL algorithm on.
@@ -260,6 +261,7 @@ class PPO(PixelRL):
                 # advantages normalization
                 batch_advantages = (batch_advantages - batch_advantages.mean()) / (batch_advantages.std() + 1e-8)
 
+                # for computational efficiency
                 batch_feature = self.encoder(batch_s)
 
                 # actor loss
