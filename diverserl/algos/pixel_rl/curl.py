@@ -15,7 +15,7 @@ from diverserl.networks import GaussianActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
 
 
-class RAD(PixelRL):
+class CURL(PixelRL):
     def __init__(self,
                  env: gym.vector.SyncVectorEnv,
                  eval_env: gym.Env,
@@ -41,12 +41,15 @@ class RAD(PixelRL):
                  alpha_lr: float = 0.001,
                  alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
                  alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
+                 encoder_lr: float = 0.001,
+                 encoder_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
+                 encoder_optimizer_kwargs: Optional[Dict[str, Any]] = None,
                  device: str = "cpu",
                  ) -> None:
         """
-        RAD (Reinforcement learning with Augmented Data)
+        CURL (Contrastive Unsupervised Representations for Reinforcement Learning)
 
-        Paper: Reinforcement Learning with Augmented Data, Laskin et al., 2020
+        Paper: CURL: Contrastive Unsupervised Representations for Reinforcement Learning, Srinivas et al., 2020
 
         :param env: Gymnasium environment to train the RAD algorithm
         :param eval_env: Gymnasium environment to evaluate the RAD algorithm
@@ -72,12 +75,16 @@ class RAD(PixelRL):
         :param alpha_lr: Learning rate for alpha.
         :param alpha_optimizer: Optimizer class (or str) for the alpha
         :param alpha_optimizer_kwargs: Parameter dict for the alpha optimizer
-        :param device: Device (cpu, cuda, ...) on which the code should be run
+        :param encoder_lr: Learning rate of the encoder
+        :param encoder_optimizer: Optimizer class (or str) for the encoder
+        :param encoder_optimizer_kwargs: Parameter dict for the encoder optimizer
+        :param device:
         """
         super().__init__(
             env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(),
             network_config=network_config, device=device
         )
+
         assert pre_image_size > image_size, "Pre-image size must be greater than image size"
         self.pre_image_size = pre_image_size
         self.image_size = image_size
@@ -103,11 +110,16 @@ class RAD(PixelRL):
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
-            list(chain(*[self.critic.parameters(), self.critic2.parameters(), self.encoder.parameters()])), critic_lr, critic_optimizer, critic_optimizer_kwargs
+            list(chain(*[self.critic.parameters(), self.critic2.parameters(), self.encoder.parameters()])), critic_lr,
+            critic_optimizer, critic_optimizer_kwargs
         )
 
         if self.train_alpha:
             self.alpha_optimizer = get_optimizer([self.log_alpha], alpha_lr, alpha_optimizer, alpha_optimizer_kwargs)
+
+        self.encoder_optimizer = get_optimizer(self.encoder.parameters(), encoder_lr, encoder_optimizer,
+                                               encoder_optimizer_kwargs)
+        self.cpc_optimizer = get_optimizer([self.cpc_w], encoder_lr, encoder_optimizer, encoder_optimizer_kwargs)
 
         self.gamma = gamma
         self.tau = tau
@@ -116,7 +128,7 @@ class RAD(PixelRL):
         self.batch_size = batch_size
 
     def __repr__(self) -> str:
-        return "RAD"
+        return "CURL"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
@@ -139,7 +151,7 @@ class RAD(PixelRL):
         actor_config = self.network_config["Actor"]
         critic_config = self.network_config["Critic"]
 
-        # Fix GaussianActor setting for RAD
+        # Fix GaussianActor setting for CURL
         actor_config["squash"] = True
         actor_config["independent_std"] = False
 
@@ -164,6 +176,8 @@ class RAD(PixelRL):
         ).train()
         self.target_critic2 = deepcopy(self.critic2).eval()
 
+        self.cpc_w = torch.nn.Parameter(torch.rand(feature_dim, feature_dim))
+
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]
         self.buffer = buffer_class(self.pre_state_dim, self.action_dim, self.buffer_size, device=self.device,
@@ -171,10 +185,10 @@ class RAD(PixelRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the RAD action from an observation (in training mode)
+        Get the CURL action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The RAD agent's action
+        :return: The CURL agent's action
         """
         observation = self._fix_observation(observation)
 
@@ -186,10 +200,10 @@ class RAD(PixelRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the  action from an observation (in evaluation mode)
+        Get the CURL action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The RAD agent's action (in evaluation mode)
+        :return: The CURL agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)
@@ -209,7 +223,7 @@ class RAD(PixelRL):
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
-        Train RAD policy.
+        Train CURL policy.
         :return: training results
         """
         self.training_count += 1
@@ -218,7 +232,9 @@ class RAD(PixelRL):
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
 
+        s_pos = random_crop(s, self.image_size).to(torch.float32)
         s = random_crop(s, self.image_size).to(torch.float32)
+
         ns = random_crop(ns, self.image_size).to(torch.float32)
 
         # critic network training
@@ -259,7 +275,24 @@ class RAD(PixelRL):
 
             result_dict["loss/alpha_loss"] = alpha_loss.detach().cpu().numpy()
 
-        # critic update
+        # cpc training
+        feature_s = self.encoder(s)
+        feature_pos = self.target_encoder(s_pos).detach()
+
+        logits = torch.matmul(feature_s, torch.matmul(self.cpc_w, feature_pos.T))
+        logits -= torch.max(logits, dim=1, keepdim=True)[0]
+        labels = torch.arange(logits.shape[0]).long().to(self.device)
+
+        cpc_loss = F.cross_entropy(logits, labels)
+
+        self.encoder_optimizer.zero_grad()
+        self.cpc_optimizer.zero_grad()
+        cpc_loss.backward()
+
+        self.encoder_optimizer.step()
+        self.cpc_optimizer.step()
+
+        # target update
         if self.training_count % self.target_critic_update == 0:
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
