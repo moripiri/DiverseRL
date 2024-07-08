@@ -1,0 +1,56 @@
+_target_: diverserl.algos.pixel_rl.SAC
+network_type: Default
+network_config:
+  Actor:
+    hidden_units:
+      - 64
+      - 64
+  Critic:
+    hidden_units:
+      - 64
+      - 64
+  Encoder:
+    feature_dim: 50
+    layer_num: 4
+    channel_num:
+      - 32
+      - 32
+      - 32
+      - 32
+    kernel_size:
+      - 3
+      - 3
+      - 3
+      - 3
+    strides:
+      - 2
+      - 1
+      - 1
+      - 1
+    last_activation: Tanh
+    layer_norm: true
+  Buffer:
+    optimize_memory_usage: true
+pre_image_size: ${env.env_option.render_width}
+image_size: 84
+gamma: 0.99
+alpha: 0.1
+train_alpha: true
+target_alpha: null
+tau: 0.01
+encoder_tau: 0.05
+target_critic_update: 2
+batch_size: 32
+buffer_size: 100000
+
+actor_lr: 0.001
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.001
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+alpha_lr: 0.0001
+alpha_optimizer: Adam
+alpha_optimizer_kwargs:
+  betas: (0.5, 0.999)
+device: cpu

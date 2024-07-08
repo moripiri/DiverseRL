@@ -1,9 +1,7 @@
-# https://arxiv.org/pdf/2004.13649 DrQ: Data-regularized Q
-
 
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
 import numpy as np
@@ -12,19 +10,17 @@ import torch.nn.functional as F
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.image_augmentation import center_crop, random_crop
 from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import GaussianActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
 
 
-class DrQ(PixelRL):
+class SAC(PixelRL):
     def __init__(self,
                  env: gym.vector.SyncVectorEnv,
                  eval_env: gym.Env,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
-                 image_pad: int = 4,
                  gamma: float = 0.99,
                  alpha: float = 0.1,
                  train_alpha: bool = True,
@@ -46,15 +42,14 @@ class DrQ(PixelRL):
                  device: str = "cpu",
                  ) -> None:
         """
-        DrQ (Data-Regularized Q)
+        SAC (Soft Actor-Critic)
 
-        Paper:
+        Paper: Soft Actor-Critic Algorithm and Applications, Haarnoja et al., 2018
 
-        :param env: Gymnasium environment to train the DrQ algorithm
-        :param eval_env: Gymnasium environment to evaluate the DrQ algorithm
-        :param network_type: Type of the DrQ networks to be used.
-        :param network_config: Configurations of the DrQ networks.
-        :param image_pad: Size of image padding for image augmentation
+        :param env: Gymnasium environment to train the SAC algorithm
+        :param eval_env: Gymnasium environment to evaluate the SAC algorithm
+        :param network_type: Type of the SAC networks to be used.
+        :param network_config: Configurations of the SAC networks.
         :param gamma: The discount factor.
         :param alpha: The entropy temperature parameter.
         :param train_alpha: Whether to train the parameter alpha.
@@ -79,10 +74,6 @@ class DrQ(PixelRL):
             env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(),
             network_config=network_config, device=device
         )
-
-        self.image_pad = tuple(image_pad for _ in range(4))
-        self.image_size = self.state_dim[-1]
-
         self.buffer_size = buffer_size
 
         self._build_network()
@@ -112,7 +103,7 @@ class DrQ(PixelRL):
         self.batch_size = batch_size
 
     def __repr__(self) -> str:
-        return "DrQ"
+        return "SAC"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
@@ -135,8 +126,7 @@ class DrQ(PixelRL):
         actor_config = self.network_config["Actor"]
         critic_config = self.network_config["Critic"]
 
-        # Fix GaussianActor setting for DrQ
-
+        # Fix GaussianActor setting for SAC
         actor_config["squash"] = True
         actor_config["independent_std"] = False
 
@@ -168,32 +158,32 @@ class DrQ(PixelRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the DrQ action from an observation (in training mode)
+        Get the SAC action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The DrQ agent's action
+        :return: The SAC agent's action
         """
         observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
-            action, _ = self.actor(self.encoder(center_crop(observation, output_size=self.image_size)))
+            action, _ = self.actor(self.encoder(observation))
 
         return action.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the action from an observation (in evaluation mode)
+        Get the  action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The DrQ agent's action (in evaluation mode)
+        :return: The SAC agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():
-            action, _ = self.actor(self.encoder(center_crop(observation, output_size=self.image_size)))
+            action, _ = self.actor(self.encoder(observation))
 
         return action.cpu().numpy()
 
@@ -206,7 +196,7 @@ class DrQ(PixelRL):
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
-        Train DrQ policy.
+        Train SAC policy.
         :return: training results
         """
         self.training_count += 1
@@ -215,41 +205,19 @@ class DrQ(PixelRL):
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
 
-        s_aug = random_crop(F.pad(s, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
-        ns_aug = random_crop(F.pad(ns, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
-
-        s = random_crop(F.pad(s, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
-        ns = random_crop(F.pad(ns, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
+        s = s.to(torch.float32)
+        ns = ns.to(torch.float32)
 
         # critic network training
         with torch.no_grad():
-            #target_q
             ns_action, ns_logprob = self.actor(self.encoder(ns))
             target_feature_ns = self.target_encoder(ns)
             target_min_aq = torch.minimum(self.target_critic((target_feature_ns, ns_action)), self.target_critic2((target_feature_ns, ns_action)))
 
             target_q = r + self.gamma * (1 - d) * (target_min_aq - self.alpha * ns_logprob)
 
-            #augmented target_q
-            ns_aug_action, ns_aug_logprob = self.actor(self.encoder(ns_aug))
-            target_feature_ns_aug = self.target_encoder(ns_aug)
-            target_min_aq_aug = torch.minimum(self.target_critic((target_feature_ns_aug, ns_aug_action)),
-                                          self.target_critic2((target_feature_ns_aug, ns_aug_action)))
-
-            target_q_aug = r + self.gamma * (1 - d) * (target_min_aq_aug - self.alpha * ns_aug_logprob)
-
-            #average multiple target_q
-            target_q = (target_q + target_q_aug) / 2
-
-        #critic loss
         feature_s = self.encoder(s)
         critic_loss = F.mse_loss(self.critic((feature_s, a)), target_q) + F.mse_loss(self.critic2((feature_s, a)), target_q)
-
-        #augmented critic loss
-        feature_s_aug = self.encoder(s_aug)
-        critic_loss_aug = F.mse_loss(self.critic((feature_s_aug, a)), target_q) + F.mse_loss(self.critic2((feature_s_aug, a)), target_q)
-
-        critic_loss += critic_loss_aug
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
