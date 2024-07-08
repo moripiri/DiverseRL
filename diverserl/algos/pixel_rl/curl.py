@@ -1,6 +1,6 @@
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
 import numpy as np
@@ -176,7 +176,7 @@ class CURL(PixelRL):
         ).train()
         self.target_critic2 = deepcopy(self.critic2).eval()
 
-        self.cpc_w = torch.nn.Parameter(torch.rand(feature_dim, feature_dim))
+        self.cpc_w = torch.nn.Parameter(torch.rand(feature_dim, feature_dim, requires_grad=True, device=self.device))
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
         buffer_config = self.network_config["Buffer"]

@@ -1,9 +1,6 @@
-# https://arxiv.org/pdf/2004.13649 DrQ: Data-regularized Q
-
-
 from copy import deepcopy
 from itertools import chain
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
 import numpy as np
@@ -12,7 +9,7 @@ import torch.nn.functional as F
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.image_augmentation import center_crop, random_crop
+from diverserl.common.image_augmentation import random_crop
 from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import GaussianActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
@@ -48,7 +45,7 @@ class DrQ(PixelRL):
         """
         DrQ (Data-Regularized Q)
 
-        Paper:
+        Paper: Image Augmentation Is All You Need: Regularizing Deep Reinforcement Learning from Pixels, Kostrikov et al., 2021
 
         :param env: Gymnasium environment to train the DrQ algorithm
         :param eval_env: Gymnasium environment to evaluate the DrQ algorithm
@@ -177,7 +174,7 @@ class DrQ(PixelRL):
 
         self.actor.train()
         with torch.no_grad():
-            action, _ = self.actor(self.encoder(center_crop(observation, output_size=self.image_size)))
+            action, _ = self.actor(self.encoder(observation))
 
         return action.cpu().numpy()
 
@@ -193,7 +190,7 @@ class DrQ(PixelRL):
 
         self.actor.eval()
         with torch.no_grad():
-            action, _ = self.actor(self.encoder(center_crop(observation, output_size=self.image_size)))
+            action, _ = self.actor(self.encoder(observation))
 
         return action.cpu().numpy()
 
@@ -249,6 +246,7 @@ class DrQ(PixelRL):
         feature_s_aug = self.encoder(s_aug)
         critic_loss_aug = F.mse_loss(self.critic((feature_s_aug, a)), target_q) + F.mse_loss(self.critic2((feature_s_aug, a)), target_q)
 
+        # add critic loss
         critic_loss += critic_loss_aug
 
         self.critic_optimizer.zero_grad()
