@@ -2,6 +2,7 @@ from typing import Tuple, Union
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 
 def center_crop(images: torch.Tensor, output_size: Union[int, Tuple], data_format: str = 'channels_first') -> torch.Tensor:
@@ -95,3 +96,39 @@ def random_crop(images: torch.Tensor, output_size: Union[int, Tuple], data_forma
         cropped = cropped[0]
 
     return cropped
+
+
+def random_shift_aug(images: torch.Tensor, image_pad: int = 4) -> torch.Tensor:
+    assert images.ndim == 4, "Number of image dimension must be 3 or 4"
+    original_ndim = images.ndim
+    if original_ndim == 3:
+        images = torch.unsqueeze(images, dim=0)
+    b, c, h, w = images.shape
+
+    image_paddings = tuple(image_pad for _ in range(4))
+    images = F.pad(images, image_paddings, 'replicate')
+
+    eps = 1.0 / (h + 2 * image_pad)
+
+    arange = torch.linspace(-1.0 + eps,
+                            1.0 - eps,
+                            h + 2 * image_pad,
+                            device=images.device,
+                            dtype=images.dtype)[:h]
+
+    arange = arange.unsqueeze(0).repeat(h, 1).unsqueeze(2)
+    base_grid = torch.cat([arange, arange.transpose(1, 0)], dim=2)
+    base_grid = base_grid.unsqueeze(0).repeat(b, 1, 1, 1)
+
+    shift = torch.randint(0,
+                          2 * image_pad + 1,
+                          size=(b, 1, 1, 2),
+                          device=images.device,
+                          dtype=images.dtype)
+    shift *= 2.0 / (h + 2 * image_pad)
+
+    grid = base_grid + shift
+    return F.grid_sample(images,
+                         grid,
+                         padding_mode='zeros',
+                         align_corners=False)

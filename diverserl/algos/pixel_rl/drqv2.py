@@ -9,7 +9,7 @@ import torch.nn.functional as F
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import NstepReplayBuffer
-from diverserl.common.image_augmentation import random_crop
+from diverserl.common.image_augmentation import random_shift_aug
 from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import DeterministicActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import (D2RLDeterministicActor,
@@ -76,8 +76,7 @@ class DrQv2(PixelRL):
         assert isinstance(
             self.action_space, gym.spaces.Box), f"{self} supports only Box type action space."
 
-        self.image_pad = tuple(image_pad for _ in range(4))
-        self.image_size = self.state_dim[-1]
+        self.image_pad = image_pad
 
         self.buffer_size = buffer_size
         self._build_network()
@@ -206,8 +205,8 @@ class DrQv2(PixelRL):
 
         s, a, r, ns, d, t, discounts = self.buffer.sample(self.batch_size)
 
-        s = random_crop(F.pad(s, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
-        ns = random_crop(F.pad(ns, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
+        s = random_shift_aug(s.to(torch.float32), image_pad=self.image_pad)
+        ns = random_shift_aug(ns.to(torch.float32), image_pad=self.image_pad)
 
         with torch.no_grad():
             target_feature_ns = self.target_encoder(ns)
