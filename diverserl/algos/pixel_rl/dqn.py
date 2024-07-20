@@ -6,7 +6,6 @@ import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from gymnasium import spaces
 from numpy import dtype, ndarray
 
 from diverserl.algos.pixel_rl.base import PixelRL
@@ -66,10 +65,6 @@ class DQN(PixelRL):
         super().__init__(
             env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
-
-        assert isinstance(
-            self.action_space, spaces.Discrete
-        ), f"{self} supports only Discrete type action space."
 
         self.buffer_size = buffer_size
 

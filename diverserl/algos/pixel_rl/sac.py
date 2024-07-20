@@ -224,8 +224,7 @@ class SAC(PixelRL):
         self.critic_optimizer.step()
 
         # actor training
-        with torch.no_grad():
-            feature_s = self.encoder(s)
+        feature_s = feature_s.detach()
 
         s_action, s_logprob = self.actor(feature_s)
         min_aq_rep = torch.minimum(self.critic((feature_s, s_action)), self.critic2((feature_s, s_action)))

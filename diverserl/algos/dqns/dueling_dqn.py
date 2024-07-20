@@ -79,5 +79,5 @@ class DuelingDQN(DDQN):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Q_network": DuelingNetwork, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
-                "Noisy": {"Q_network": NoisyDuelingNetwork, "Encoder": PixelEncoder, "Buffer": ReplayBuffer}}
+        return {"Default": {"Q_network": DuelingNetwork, "Buffer": ReplayBuffer},
+                "Noisy": {"Q_network": NoisyDuelingNetwork, "Buffer": ReplayBuffer}}
