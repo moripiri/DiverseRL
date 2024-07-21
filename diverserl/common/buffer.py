@@ -190,13 +190,25 @@ class ReplayBuffer:
 
 class NstepReplayBuffer(ReplayBuffer):
     def __init__(self, state_dim: Union[int, Tuple[int, ...]], action_dim: int, max_size: int = 10 ** 6,
-                 n_step: int = 4, discount: float = 0.99, save_log_prob: bool = False,
+                 n_step: int = 3, discount: float = 0.99, save_log_prob: bool = False,
                  optimize_memory_usage: bool = False, num_envs: int = 1,
                  device: str = "cpu") -> None:
         super().__init__(state_dim, action_dim, max_size, save_log_prob, optimize_memory_usage, num_envs, device)
 
         self.discount = discount
         self.n_step = n_step
+
+
+    def __len__(self) -> int:
+        return self.idx - self.n_step
+
+    @property
+    def size(self) -> int:
+        """
+        Size of the stored transitions. Not equal to the buffer's length.
+        :return: Current ReplayBuffer size.
+        """
+        return (self.max_size if self.full else self.idx) - self.n_step
 
     def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
         """
@@ -228,12 +240,16 @@ class NstepReplayBuffer(ReplayBuffer):
         rewards = torch.zeros_like(torch.from_numpy(self.r[batch_ids, env_ids, :]).to(self.device))
         discounts = torch.ones_like(rewards)
 
-        masks = torch.logical_or(dones, terminates).to(dtype=torch.float32)
-
         for i in range(self.n_step):
             step_reward = torch.from_numpy(self.r[batch_ids + i, env_ids, :]).to(self.device)
             rewards += discounts * step_reward
-            discounts *= (1 - masks) * self.discount
+
+            step_dones = torch.from_numpy(self.d[batch_ids + i, env_ids, :]).to(self.device)
+            step_terminates = torch.from_numpy(self.t[batch_ids + i, env_ids, :]).to(self.device)
+
+            masks = torch.logical_or(step_dones, step_terminates).to(dtype=torch.float32)
+
+            discounts *= (1 - step_dones) * self.discount
 
         if self.save_log_prob:
             log_probs = torch.from_numpy(self.log_prob[batch_ids, env_ids, :]).to(self.device)

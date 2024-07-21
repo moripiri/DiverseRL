@@ -32,11 +32,11 @@ network_config:
   Buffer:
     n_step: 3
     discount: ${algo.gamma}
-    optimize_memory_usage: true
+    optimize_memory_usage: false
 image_pad: 4
 gamma: 0.99
 tau: 0.01
-encoder_tau: 0.05
+encoder_tau: 0.01
 noise_scale_init: 1.0
 noise_scale_final: 0.1
 noise_decay_horizon: 100000
