@@ -48,13 +48,16 @@ class DrQv2(PixelRL):
 
         Paper: Mastering Visual Continuous Control: Improved Data-Augmented Reinforcement Learning, Yarats et al., 2021
 
-        :param env: Gymnasium environment to train the TD3 algorithm
-        :param network_type: Type of the TD3 networks to be used.
-        :param network_config: Configurations of the TD3 networks.
+        :param env: Gymnasium environment to train the DrQ-v2 algorithm
+        :param network_type: Type of the DrQ-v2 networks to be used.
+        :param network_config: Configurations of the DrQ-v2 networks.
+        :param image_pad: Size of image padding for image augmentation
         :param gamma: Discount factor.
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param encoder_tau: Interpolation factor in polyak averaging for target encoder network.
-        :param noise_scale: Stddev for Gaussian noise added to policy action at training time.
+        :param noise_scale_init: Initial stddev for Gaussian noise added to policy action at training time.
+        :param noise_scale_final: Final stddev for Gaussian noise added to policy action at training time.
+        :param noise_decay_horizon: Timestep to decay noise from noise_scale_init to noise_scale_final.
         :param target_noise_scale: Stddev for smoothing noise added to target policy action.
         :param noise_clip: Limit for absolute value of target policy action noise.
         :param policy_delay: Policy will only be updated once every policy_delay times for each update of the critics.
@@ -160,10 +163,10 @@ class DrQv2(PixelRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the TD3 action from an observation (in training mode)
+        Get the DrQ-v2 action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The TD3 agent's action
+        :return: The DrQ-v2 agent's action
         """
         self.update_noise_scale()
         observation = self._fix_observation(observation)
@@ -177,10 +180,10 @@ class DrQv2(PixelRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the TD3 action from an observation (in evaluation mode)
+        Get the DrQ-v2 action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The TD3 agent's action (in evaluation mode)
+        :return: The DrQ-v2 agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)
@@ -194,7 +197,7 @@ class DrQv2(PixelRL):
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
-        Train the TD3 policy.
+        Train the DrQ-v2 policy.
 
         :return: Training result (actor_loss, critic_loss, critic2_loss)
         """
