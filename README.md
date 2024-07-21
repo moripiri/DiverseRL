@@ -30,6 +30,8 @@ Currently, the following algorithms are available.
 
 
 #### Model-free Deep RL
+Model-free Deep RL algorithms are set of algorithms that can train environments with state-based observations without model.
+
 - [DQN (Deep Q-Network)](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf)
   - [Double DQN](https://arxiv.org/abs/1509.06461)
   - [Dueling DQN](https://arxiv.org/abs/1511.06581)
@@ -38,6 +40,18 @@ Currently, the following algorithms are available.
 - [TD3 (Twin Deep Delayed Deterministic Policy Gradients)](https://arxiv.org/abs/1802.09477)
 - [SAC (Soft Actor Critic)](https://arxiv.org/abs/1812.05905)
 - [PPO (Proximal Policy Gradients)](https://arxiv.org/abs/1707.06347)
+
+#### Pixel RL
+Pixel RL contains set of algorithms that are set to train environments with high-dimensional images as observations, Such as Atari 2600 and dm-control.
+
+- [DQN (Deep Q-Network)](https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf) (for Atari 2600)
+- [SAC (Soft Actor Critic)](https://arxiv.org/abs/1812.05905) (for dm-control)
+- [PPO (Proximal Policy Gradients)](https://arxiv.org/abs/1707.06347) (for Atari 2600)
+- [SAC-AE (Soft Actor Critic with Autoencoders)](https://arxiv.org/abs/1910.01741) (for dm-control)
+- [CURL (Contrastive Unsupervised Representations for Reinforcement Learning)](https://arxiv.org/abs/2004.04136) (for dm-control)
+- [RAD (Reinforcement Learning with Augmented Data)](https://arxiv.org/abs/2004.14990) (for dm-control)
+- [DrQ (Data-Regularized Q)](https://arxiv.org/abs/2004.13649) (for dm-control)
+- [DrQ-v2 (Data-Regularized Q v2)](https://arxiv.org/abs/2107.09645) (for dm-control)
 
 #### Classic RL
 Classic RL algorithms that are mostly known by Sutton's [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/RLbook2020.pdf).
@@ -53,36 +67,24 @@ Getting Started
 
 Training requires two gymnasium environments(for training and evaluation), algorithm, and trainer.
 
-`examples/` folder provides python files for training of each implemented RL algorithms.
-
 ```python
-# extracted from examples/run_dqn.py
-import gymnasium as gym
 from diverserl.algos import DQN
 from diverserl.trainers import DeepRLTrainer
 from diverserl.common.utils import make_envs
 
 env, eval_env = make_envs(env_id='CartPole-v1')
 
-algo = DQN(env=env, **config)
+algo = DQN(env=env, eval_env=eval_env, **config)
 
 trainer = DeepRLTrainer(
     algo=algo,
-    env=env,
-    eval_env=eval_env,
+    **config
 )
 
 trainer.run()
-
-
-
 ```
-Or in `examples` folder, you can pass configuration parameters from command line arguments.
-```bash
-python examples/run_dqn.py --env-id CartPole-v1
-```
-Or yaml files for configurations.
 
+Or you use [hydra](https://hydra.cc/) by running `run.py`.
 ```bash
-python examples/run_dqn.py --configs-path configurations/dqn_classic_control.yaml
+python run.py env=gym_classic_control algo=dqn trainer=deeprl_trainer algo.device=cuda trainer.max_step=10000
 ```
