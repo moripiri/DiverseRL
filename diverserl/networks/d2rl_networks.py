@@ -107,7 +107,6 @@ class D2RLDeterministicActor(D2RLMLP, DeterministicActor):
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         D2RLMLP.__init__(
@@ -127,23 +126,16 @@ class D2RLDeterministicActor(D2RLMLP, DeterministicActor):
             device=device,
         )
 
-        self.feature_encoder = feature_encoder
-
         self.action_scale = action_scale
         self.action_bias = action_bias
 
-    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return output of the Deterministic Actor for the given input.
 
         :param input: state tensor
-        :param detach_encoder: whether to detach the encoder from training
         :return: action tensor
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-            if detach_encoder:
-                input = input.detach()
 
         output = D2RLMLP.forward(self, input)
 
@@ -163,7 +155,6 @@ class D2RLQNetwork(D2RLMLP, QNetwork):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         D2RLMLP.__init__(
@@ -180,23 +171,14 @@ class D2RLQNetwork(D2RLMLP, QNetwork):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
-    def forward(self, input: Tuple[torch.Tensor, torch.Tensor], detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
         """
         Return Q-value for the given input.
 
         :param input: state and action tensors
-        :param detach_encoder: whether to detach the encoder from training
         :return: Q-value
         """
-        if self.feature_encoder is not None:
-            feature = self.feature_encoder(input[0].to(self.device))
-            if detach_encoder:
-                feature = feature.detach()
-
-            input = (feature, input[1])
-
         output = D2RLMLP.forward(self, input)
 
         return output
@@ -214,7 +196,6 @@ class D2RLVNetwork(D2RLMLP, VNetwork):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ):
         D2RLMLP.__init__(
@@ -231,22 +212,14 @@ class D2RLVNetwork(D2RLMLP, VNetwork):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
-    def forward(self, input: torch.Tensor, detach_encoder: bool = False) -> torch.Tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return value for the given input.
 
         :param input: state tensor
-        :param detach_encoder: whether to detach the encoder from training
         :return: Value for the given input
         """
-        if self.feature_encoder is not None:
-            input = self.feature_encoder(input.to(self.device))
-
-            if detach_encoder:
-                input = input.detach()
-
         output = D2RLMLP.forward(self, input)
 
         return output
@@ -265,7 +238,6 @@ class D2RLCategoricalActor(D2RLMLP, CategoricalActor):
             bias_initializer: Optional[_initializer] = nn.init.zeros_,
             bias_initializer_kwargs: Optional[_kwargs] = None,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
     ) -> None:
         D2RLMLP.__init__(
@@ -284,26 +256,20 @@ class D2RLCategoricalActor(D2RLMLP, CategoricalActor):
             use_bias=use_bias,
             device=device,
         )
-        self.feature_encoder = feature_encoder
 
-    def forward(self, state: torch.Tensor, deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
+    def forward(self, state: torch.Tensor, deterministic: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
-        return CategoricalActor.forward(self, state, deterministic, detach_encoder)
+        return CategoricalActor.forward(self, state, deterministic)
 
-    def compute_dist(self, state: torch.Tensor, detach_encoder: bool = False) -> Categorical:
+    def compute_dist(self, state: torch.Tensor) -> Categorical:
         """
         Return Categorical distribution of the Categorical actor for the given state.
 
         :param state: state(a torch tensor)
-        :param detach_encoder: whether to detach encoder weights while training.
         :return: Categorical distribution
         """
         state = state.to(self.device)
 
-        if self.feature_encoder is not None:
-            state = self.feature_encoder(state)
-            if detach_encoder:
-                state = state.detach()
         probs = D2RLMLP.forward(self, state)
         dist = Categorical(probs=probs)
 
@@ -328,7 +294,6 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
             action_scale: float = 1.0,
             action_bias: float = 0.0,
             use_bias: bool = True,
-            feature_encoder: Optional[nn.Module] = None,
             device: str = "cpu",
             ):
 
@@ -339,8 +304,6 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
         self.logstd_init = logstd_init
         self.action_scale = action_scale
         self.action_bias = action_bias
-
-        self.feature_encoder = feature_encoder
 
         D2RLMLP.__init__(self,
                          input_dim=state_dim,
@@ -385,13 +348,13 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
             self.layers['logstd'] = logstd_layer
 
 
-    def forward(self, state: Union[torch.Tensor], deterministic: bool = False, detach_encoder: bool = False) -> Tuple[
+    def forward(self, state: Union[torch.Tensor], deterministic: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
 
-        return GaussianActor.forward(self, state, deterministic, detach_encoder)
+        return GaussianActor.forward(self, state, deterministic)
 
 
-    def compute_dist(self, state: torch.Tensor, detach_encoder: bool = False) -> Normal:
+    def compute_dist(self, state: torch.Tensor) -> Normal:
         """
         Return Normal distribution of the Gaussian actor for the given state.
 
@@ -400,11 +363,6 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
         """
         state = state.to(self.device)
 
-        if self.feature_encoder is not None:
-            state = self.feature_encoder(state)
-
-            if detach_encoder:
-                state = state.detach()
 
         trunk_output = state.to(self.device)
         concat_names = [f'linear{i}' for i in range(1, len(self.hidden_units))]

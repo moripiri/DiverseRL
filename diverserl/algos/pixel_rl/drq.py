@@ -9,30 +9,19 @@ import torch.nn.functional as F
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
+from diverserl.common.image_augmentation import random_crop
 from diverserl.common.utils import get_optimizer, hard_update, soft_update
-from diverserl.networks import (GaussianActor, PixelDecoder, PixelEncoder,
-                                QNetwork)
+from diverserl.networks import GaussianActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
 
 
-def preprocess_obs(obs, bits=5):
-    """Preprocessing image, see https://arxiv.org/abs/1807.03039."""
-    bins = 2 ** bits
-    assert obs.dtype == torch.float32
-    if bits < 8:
-        obs = torch.floor(obs / 2 ** (8 - bits))
-    obs = obs / bins
-    obs = obs + torch.rand_like(obs) / bins
-    obs = obs - 0.5
-    return obs
-
-
-class SAC_AE(PixelRL):
+class DrQ(PixelRL):
     def __init__(self,
                  env: gym.vector.SyncVectorEnv,
                  eval_env: gym.Env,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
+                 image_pad: int = 4,
                  gamma: float = 0.99,
                  alpha: float = 0.1,
                  train_alpha: bool = True,
@@ -40,9 +29,6 @@ class SAC_AE(PixelRL):
                  tau: float = 0.01,
                  encoder_tau: float = 0.05,
                  target_critic_update: int = 2,
-                 decoder_update: int = 1,
-                 decoder_latent_lambda: float = 1e-6,
-                 decoder_weight_lambda: float = 1e-7,
                  batch_size: int = 256,
                  buffer_size: int = 10 ** 6,
                  actor_lr: float = 0.001,
@@ -54,23 +40,18 @@ class SAC_AE(PixelRL):
                  alpha_lr: float = 0.001,
                  alpha_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
                  alpha_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-                 encoder_lr: float = 0.001,
-                 encoder_optimizer: Union[str, Type[torch.optim.Optimizer]] = "Adam",
-                 encoder_optimizer_kwargs: Optional[Dict[str, Any]] = None,
-                 decoder_lr: float = 0.001,
-                 decoder_optimizer: Union[str, Type[torch.optim.Optimizer]] = "AdamW",
-                 decoder_optimizer_kwargs: Optional[Dict[str, Any]] = None,
                  device: str = "cpu",
                  ) -> None:
         """
-        SAC-AE (Soft Actor-Critic with AutoEncoder)
+        DrQ (Data-Regularized Q)
 
-        Paper: Improving Sample Efficiency in Model-Free Reinforcement Learning from Images, Yarats et al., 2019
+        Paper: Image Augmentation Is All You Need: Regularizing Deep Reinforcement Learning from Pixels, Kostrikov et al., 2021
 
-        :param env: Gymnasium environment to train the SAC-AE algorithm
-        :param eval_env: Gymnasium environment to evaluate the SAC-AE algorithm
-        :param network_type: Type of the SAC-AE networks to be used.
-        :param network_config: Configurations of the SAC-AE networks.
+        :param env: Gymnasium environment to train the DrQ algorithm
+        :param eval_env: Gymnasium environment to evaluate the DrQ algorithm
+        :param network_type: Type of the DrQ networks to be used.
+        :param network_config: Configurations of the DrQ networks.
+        :param image_pad: Size of image padding for image augmentation
         :param gamma: The discount factor.
         :param alpha: The entropy temperature parameter.
         :param train_alpha: Whether to train the parameter alpha.
@@ -78,9 +59,6 @@ class SAC_AE(PixelRL):
         :param tau: Interpolation factor in polyak averaging for target networks.
         :param encoder_tau: Interpolation factor in polyak averaging for target encoder network.
         :param target_critic_update: Critic will only be updated once for every target_critic_update steps.
-        :param decoder_update: Decoder will only be trained once for every decoder_update steps.
-        :param decoder_latent_lambda:
-        :param decoder_weight_lambda:
         :param batch_size: Minibatch size for optimizer.
         :param buffer_size: Maximum length of replay buffer.
         :param actor_lr: Learning rate for actor.
@@ -92,18 +70,15 @@ class SAC_AE(PixelRL):
         :param alpha_lr: Learning rate for alpha.
         :param alpha_optimizer: Optimizer class (or str) for the alpha
         :param alpha_optimizer_kwargs: Parameter dict for the alpha optimizer
-        :param encoder_lr: Learning rate of the encoder
-        :param encoder_optimizer: Optimizer class (or str) for the encoder
-        :param encoder_optimizer_kwargs: Parameter dict for the encoder optimizer
-        :param decoder_lr: Learning rate of the decoder
-        :param decoder_optimizer: Optimizer class (or str) for the decoder
-        :param decoder_optimizer_kwargs: Parameter dict for the decoder optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
         super().__init__(
             env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(),
             network_config=network_config, device=device
         )
+
+        self.image_pad = tuple(image_pad for _ in range(4))
+        self.image_size = self.state_dim[-1]
 
         self.buffer_size = buffer_size
 
@@ -118,23 +93,14 @@ class SAC_AE(PixelRL):
         self.train_alpha = train_alpha
 
         self.target_critic_update = target_critic_update
-        self.decoder_update = decoder_update
-        self.decoder_latent_lambda = decoder_latent_lambda
-        self.decoder_weight_lambda = decoder_weight_lambda
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
-            list(chain(*[self.critic.parameters(), self.critic2.parameters(), self.encoder.parameters()])), critic_lr,
-            critic_optimizer, critic_optimizer_kwargs
+            list(chain(*[self.critic.parameters(), self.critic2.parameters(), self.encoder.parameters()])), critic_lr, critic_optimizer, critic_optimizer_kwargs
         )
 
         if self.train_alpha:
             self.alpha_optimizer = get_optimizer([self.log_alpha], alpha_lr, alpha_optimizer, alpha_optimizer_kwargs)
-
-        self.encoder_optimizer = get_optimizer(self.encoder.parameters(), encoder_lr, encoder_optimizer,
-                                               encoder_optimizer_kwargs)
-        self.decoder_optimizer = get_optimizer(self.decoder.parameters(), decoder_lr, decoder_optimizer,
-                                               decoder_optimizer_kwargs)
 
         self.gamma = gamma
         self.tau = tau
@@ -143,15 +109,13 @@ class SAC_AE(PixelRL):
         self.batch_size = batch_size
 
     def __repr__(self) -> str:
-        return "SAC_AE"
+        return "DrQ"
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
         return {
-            "Default": {"Actor": GaussianActor, "Critic": QNetwork, "Encoder": PixelEncoder, "Decoder": PixelDecoder,
-                        "Buffer": ReplayBuffer},
+            "Default": {"Actor": GaussianActor, "Critic": QNetwork, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
             "D2RL": {"Actor": D2RLGaussianActor, "Critic": D2RLQNetwork, "Encoder": PixelEncoder,
-                     "Decoder": PixelDecoder,
                      "Buffer": ReplayBuffer}, }
 
     def _build_network(self) -> None:
@@ -162,17 +126,14 @@ class SAC_AE(PixelRL):
 
         feature_dim = self.encoder.feature_dim
 
-        decoder_class = self.network_list()[self.network_type]["Decoder"]
-        decoder_config = self.network_config["Decoder"]
-        self.decoder = decoder_class(state_dim=self.state_dim, feature_dim=feature_dim, device=self.device, **decoder_config)
-
         actor_class = self.network_list()[self.network_type]["Actor"]
         critic_class = self.network_list()[self.network_type]["Critic"]
 
         actor_config = self.network_config["Actor"]
         critic_config = self.network_config["Critic"]
 
-        # Fix GaussianActor setting for SAC
+        # Fix GaussianActor setting for DrQ
+
         actor_config["squash"] = True
         actor_config["independent_std"] = False
 
@@ -204,10 +165,10 @@ class SAC_AE(PixelRL):
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the SAC-AE action from an observation (in training mode)
+        Get the DrQ action from an observation (in training mode)
 
         :param observation: The input observation
-        :return: The SAC-AE agent's action
+        :return: The DrQ agent's action
         """
         observation = self._fix_observation(observation)
 
@@ -219,10 +180,10 @@ class SAC_AE(PixelRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> List[float]:
         """
-        Get the SAC-AE action from an observation (in evaluation mode)
+        Get the action from an observation (in evaluation mode)
 
         :param observation: The input observation
-        :return: The SAC-AE agent's action (in evaluation mode)
+        :return: The DrQ agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
         observation = torch.unsqueeze(observation, dim=0)
@@ -242,7 +203,7 @@ class SAC_AE(PixelRL):
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
         """
-        Train SAC policy.
+        Train DrQ policy.
         :return: training results
         """
         self.training_count += 1
@@ -250,21 +211,43 @@ class SAC_AE(PixelRL):
         self.actor.train()
 
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
-        s = s.to(torch.float32)
-        ns = ns.to(torch.float32)
+
+        s_aug = random_crop(F.pad(s, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
+        ns_aug = random_crop(F.pad(ns, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
+
+        s = random_crop(F.pad(s, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
+        ns = random_crop(F.pad(ns, self.image_pad, mode='replicate'), self.image_size).to(torch.float32)
 
         # critic network training
         with torch.no_grad():
+            #target_q
             ns_action, ns_logprob = self.actor(self.encoder(ns))
             target_feature_ns = self.target_encoder(ns)
-            target_min_aq = torch.minimum(self.target_critic((target_feature_ns, ns_action)),
-                                          self.target_critic2((target_feature_ns, ns_action)))
+            target_min_aq = torch.minimum(self.target_critic((target_feature_ns, ns_action)), self.target_critic2((target_feature_ns, ns_action)))
 
             target_q = r + self.gamma * (1 - d) * (target_min_aq - self.alpha * ns_logprob)
 
+            #augmented target_q
+            ns_aug_action, ns_aug_logprob = self.actor(self.encoder(ns_aug))
+            target_feature_ns_aug = self.target_encoder(ns_aug)
+            target_min_aq_aug = torch.minimum(self.target_critic((target_feature_ns_aug, ns_aug_action)),
+                                          self.target_critic2((target_feature_ns_aug, ns_aug_action)))
+
+            target_q_aug = r + self.gamma * (1 - d) * (target_min_aq_aug - self.alpha * ns_aug_logprob)
+
+            #average multiple target_q
+            target_q = (target_q + target_q_aug) / 2
+
+        #critic loss
         feature_s = self.encoder(s)
-        critic_loss = F.mse_loss(self.critic((feature_s, a)), target_q) + F.mse_loss(self.critic2((feature_s, a)),
-                                                                                     target_q)
+        critic_loss = F.mse_loss(self.critic((feature_s, a)), target_q) + F.mse_loss(self.critic2((feature_s, a)), target_q)
+
+        #augmented critic loss
+        feature_s_aug = self.encoder(s_aug)
+        critic_loss_aug = F.mse_loss(self.critic((feature_s_aug, a)), target_q) + F.mse_loss(self.critic2((feature_s_aug, a)), target_q)
+
+        # add critic loss
+        critic_loss += critic_loss_aug
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -298,27 +281,6 @@ class SAC_AE(PixelRL):
             soft_update(self.critic, self.target_critic, self.tau)
             soft_update(self.critic2, self.target_critic2, self.tau)
             soft_update(self.encoder, self.target_encoder, self.encoder_tau)
-
-        # decoder update
-        if self.training_count % self.target_critic_update == 0:
-            feature_s = self.encoder(s)
-            recovered_s = self.decoder(feature_s)
-            real_s = preprocess_obs(s)
-
-            rec_loss = F.mse_loss(recovered_s, real_s)
-            latent_loss = (0.5 * torch.sum(feature_s ** 2, dim=1)).mean()
-
-            ae_loss = rec_loss + self.decoder_latent_lambda * latent_loss
-
-            self.encoder_optimizer.zero_grad()
-            self.decoder_optimizer.zero_grad()
-
-            ae_loss.backward()
-
-            self.encoder_optimizer.step()
-            self.decoder_optimizer.step()
-
-            result_dict["loss/ae_loss"] = ae_loss.detach().cpu().numpy()
 
         result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
         result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()

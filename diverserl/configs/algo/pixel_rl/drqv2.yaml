@@ -1,0 +1,54 @@
+_target_: diverserl.algos.pixel_rl.DrQv2
+network_type: Default
+network_config:
+  Actor:
+    hidden_units:
+      - 64
+      - 64
+  Critic:
+    hidden_units:
+      - 64
+      - 64
+  Encoder:
+    feature_dim: 50
+    layer_num: 4
+    channel_num:
+      - 32
+      - 32
+      - 32
+      - 32
+    kernel_size:
+      - 3
+      - 3
+      - 3
+      - 3
+    strides:
+      - 2
+      - 1
+      - 1
+      - 1
+    last_activation: Tanh
+    layer_norm: true
+  Buffer:
+    n_step: 3
+    discount: ${algo.gamma}
+    optimize_memory_usage: false
+image_pad: 4
+gamma: 0.99
+tau: 0.01
+encoder_tau: 0.01
+noise_scale_init: 1.0
+noise_scale_final: 0.1
+noise_decay_horizon: 100000
+target_noise_scale: 0.2
+noise_clip: 0.3
+policy_delay: 2
+batch_size: 256
+buffer_size: 100000
+actor_lr: 0.0001
+actor_optimizer: Adam
+actor_optimizer_kwargs: {}
+critic_lr: 0.0001
+critic_optimizer: Adam
+critic_optimizer_kwargs: {}
+device: cpu

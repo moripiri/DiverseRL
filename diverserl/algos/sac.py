@@ -1,4 +1,5 @@
 from copy import deepcopy
+from itertools import chain
 from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
@@ -84,10 +85,7 @@ class SAC(DeepRL):
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
-            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
-        )
-        self.critic2_optimizer = get_optimizer(
-            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+            list(chain(*[self.critic.parameters(), self.critic2.parameters()])), critic_lr, critic_optimizer, critic_optimizer_kwargs
         )
 
         if self.train_alpha:
@@ -197,16 +195,11 @@ class SAC(DeepRL):
 
             target_q = r + self.gamma * (1 - d) * (target_min_aq - self.alpha * ns_logprob)
 
-        critic_loss = F.mse_loss(self.critic((s, a)), target_q)
-        critic2_loss = F.mse_loss(self.critic2((s, a)), target_q)
+        critic_loss = F.mse_loss(self.critic((s, a)), target_q) + F.mse_loss(self.critic2((s, a)), target_q)
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
-
-        self.critic2_optimizer.zero_grad()
-        critic2_loss.backward()
-        self.critic2_optimizer.step()
 
         # actor training
         s_action, s_logprob = self.actor(s)
@@ -235,7 +228,6 @@ class SAC(DeepRL):
 
         result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
         result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
         result_dict["value/alpha"] = self.alpha.cpu().numpy()
 
         return result_dict
@@ -307,11 +299,9 @@ class SACv1(DeepRL):
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
-            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+            list(chain(*[self.critic.parameters(), self.critic2.parameters()])), critic_lr, critic_optimizer, critic_optimizer_kwargs
         )
-        self.critic2_optimizer = get_optimizer(
-            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
-        )
+
         self.v_optimizer = get_optimizer(self.v_network.parameters(), v_lr, v_optimizer, v_optimizer_kwargs)
 
     def __repr__(self) -> str:
@@ -418,16 +408,16 @@ class SACv1(DeepRL):
         with torch.no_grad():
             target_q = r + self.gamma * (1 - d) * self.target_v_network(ns)
 
-        critic_loss = F.mse_loss(self.critic((s, a)), target_q)
-        critic2_loss = F.mse_loss(self.critic2((s, a)), target_q)
+        critic_loss = F.mse_loss(self.critic((s, a)), target_q) + F.mse_loss(self.critic2((s, a)), target_q)
+        #critic2_loss = F.mse_loss(self.critic2((s, a)), target_q)
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.critic2_optimizer.zero_grad()
-        critic2_loss.backward()
-        self.critic2_optimizer.step()
+        # self.critic2_optimizer.zero_grad()
+        # critic2_loss.backward()
+        # self.critic2_optimizer.step()
 
         # actor training
         s_action, s_logprob = self.actor(s)
@@ -444,6 +434,6 @@ class SACv1(DeepRL):
         return {
             "loss/actor_loss": actor_loss.detach().cpu().numpy(),
             "loss/critic_loss": critic_loss.detach().cpu().numpy(),
-            "loss/critic2_loss": critic2_loss.detach().cpu().numpy(),
+            #"loss/critic2_loss": critic2_loss.detach().cpu().numpy(),
             "loss/v_loss": v_loss.detach().cpu().numpy(),
         }

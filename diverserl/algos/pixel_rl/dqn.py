@@ -1,22 +1,22 @@
 from copy import deepcopy
+from itertools import chain
 from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn.functional as F
-from gymnasium import spaces
 from numpy import dtype, ndarray
 
-from diverserl.algos.base import DeepRL
+from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer, hard_update
-from diverserl.networks import DeterministicActor
+from diverserl.networks import DeterministicActor, PixelEncoder
 from diverserl.networks.d2rl_networks import D2RLDeterministicActor
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
 
 
-class DQN(DeepRL):
+class DQN(PixelRL):
     def __init__(
         self,
             env: gym.vector.SyncVectorEnv,
@@ -44,6 +44,7 @@ class DQN(DeepRL):
         Paper: Playing Atari with Deep Reinforcement Learning, Mnih et al., 2013.
 
         :param env: Gymnasium environment to train the DQN algorithm
+        :param eval_env: Gymnasium environment to evaluate the DQN algorithm
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param eps_initial: Initial probability to conduct random action during training
@@ -65,15 +66,11 @@ class DQN(DeepRL):
             env=env, eval_env=eval_env, network_type=network_type, network_list=self.network_list(), network_config=network_config, device=device
         )
 
-        assert isinstance(self.observation_space, spaces.Box) and isinstance(
-            self.action_space, spaces.Discrete
-        ), f"{self} supports only Box type state observation space and Discrete type action space."
-
         self.buffer_size = buffer_size
 
         self._build_network()
 
-        self.optimizer = get_optimizer(self.q_network.parameters(), learning_rate, optimizer, optimizer_kwargs)
+        self.optimizer = get_optimizer(list(chain(*[self.q_network.parameters(), self.encoder.parameters()])), learning_rate, optimizer, optimizer_kwargs)
         self.anneal_lr = anneal_lr
 
         self.gamma = gamma
@@ -94,17 +91,25 @@ class DQN(DeepRL):
 
     @staticmethod
     def network_list() -> Dict[str, Any]:
-        return {"Default": {"Q_network": DeterministicActor, "Buffer": ReplayBuffer},
-                "Noisy": {"Q_network": NoisyDeterministicActor, "Buffer": ReplayBuffer},
-                "D2RL": {"Q_network": D2RLDeterministicActor, "Buffer": ReplayBuffer},
+        return {"Default": {"Q_network": DeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "Noisy": {"Q_network": NoisyDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
+                "D2RL": {"Q_network": D2RLDeterministicActor, "Encoder": PixelEncoder, "Buffer": ReplayBuffer},
                 }
 
     def _build_network(self) -> None:
+        encoder_class = self.network_list()[self.network_type]["Encoder"]
+        encoder_config = self.network_config["Encoder"]
+
+        self.encoder = encoder_class(state_dim=self.state_dim, device=self.device, **encoder_config)
+        self.target_encoder = deepcopy(self.encoder).eval()
+
+        feature_dim = self.encoder.feature_dim
+
         q_network_class = self.network_list()[self.network_type]["Q_network"]
         q_network_config = self.network_config["Q_network"]
 
         self.q_network = q_network_class(
-            state_dim=self.state_dim,
+            state_dim=feature_dim,
             action_dim=self.action_dim,
             device=self.device,
             **q_network_config,
@@ -135,13 +140,15 @@ class DQN(DeepRL):
         :return: The DQN agent's action
         """
         self.update_eps()
+        self.q_network.train()
+        self.encoder.train()
 
         if np.random.rand() < self.eps:
             return np.array([np.random.randint(self.action_dim)])
         else:
             observation = self._fix_observation(observation)
             with torch.no_grad():
-                action = self.q_network(observation).argmax(1).cpu().numpy()
+                action = self.q_network(self.encoder(observation)).argmax(1).cpu().numpy()
 
             return action
 
@@ -157,8 +164,10 @@ class DQN(DeepRL):
         observation = torch.unsqueeze(observation, dim=0)
 
         self.q_network.eval()
+        self.encoder.eval()
+
         with torch.no_grad():
-            action = self.q_network(observation).argmax(1).cpu().numpy()
+            action = self.q_network(self.encoder(observation)).argmax(1).cpu().numpy()
 
         return action
 
@@ -177,9 +186,9 @@ class DQN(DeepRL):
         s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
 
         with torch.no_grad():
-            target_value = r + self.gamma * (1 - d) * (self.target_q_network(ns).max(1, keepdims=True)[0])
+            target_value = r + self.gamma * (1 - d) * (self.target_q_network(self.target_encoder(ns)).max(1, keepdims=True)[0])
 
-        selected_value = self.q_network(s).gather(1, a.to(torch.int64))
+        selected_value = self.q_network(self.encoder(s)).gather(1, a.to(torch.int64))
         loss = F.smooth_l1_loss(selected_value, target_value)
 
         self.optimizer.zero_grad()
@@ -188,5 +197,6 @@ class DQN(DeepRL):
 
         if self.training_count % self.target_copy_freq == 0:
             hard_update(self.q_network, self.target_q_network)
+            hard_update(self.encoder, self.target_encoder)
 
         return {"loss/loss": loss.detach().cpu().numpy(), "eps": self.eps, "learning_rate": self.optimizer.param_groups[0]['lr']}

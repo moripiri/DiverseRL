@@ -18,6 +18,7 @@ class BaseRL(ABC):
         self.eval_env = eval_env
 
         self._find_env_space(env)
+        self._type_assertion()
 
     @abstractmethod
     def __repr__(self) -> str:
@@ -63,6 +64,9 @@ class BaseRL(ABC):
         else:
             raise TypeError(f"{self.action_space} action_space is currently not supported.")
 
+    @abstractmethod
+    def _type_assertion(self):
+        pass
 
 class DeepRL(BaseRL, ABC):
     """
@@ -77,6 +81,8 @@ class DeepRL(BaseRL, ABC):
         """
         The base of Deep RL algorithms
 
+        :param env: Gymnasium environment to train the algorithm.
+        :param eval_env: Gymnasium environment to evaluate the algorithm.
         :param network_type: Type of DeepRL algorithm networks.
         :param network_list: Dicts of required networks for the algorithm and its network class.
         :param network_config: Configurations of the DeepRL algorithm networks.
@@ -89,9 +95,11 @@ class DeepRL(BaseRL, ABC):
         self.device = device
         self.training_count = 0
 
-    @abstractmethod
     def __repr__(self) -> str:
         return "DeepRL"
+
+    def _type_assertion(self):
+        assert isinstance(self.observation_space, gym.spaces.Box) and isinstance(self.state_dim, int)
 
     @staticmethod
     @abstractmethod
@@ -122,7 +130,6 @@ class DeepRL(BaseRL, ABC):
 
         self.network_type = network_type
         self.network_config = network_config
-
 
     def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
         """

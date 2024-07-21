@@ -1,6 +1,6 @@
 defaults:
   - env: gym_atari
-  - algo: dqn
+  - algo: pixel_rl/dqn
   - trainer: deeprl_trainer
 
 env:
@@ -9,6 +9,7 @@ env:
     TransformReward: {f: "lambda reward: np.sign(float(reward))"}
 
 algo:
+  _target_: diverserl.algos.pixel_rl.DQN
   network_type: Default
   network_config:
     Q_network:

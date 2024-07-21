@@ -1,4 +1,5 @@
 from copy import deepcopy
+from itertools import chain
 from typing import Any, Dict, List, Optional, Type, Union
 
 import gymnasium as gym
@@ -75,11 +76,9 @@ class TD3(DeepRL):
 
         self.actor_optimizer = get_optimizer(self.actor.parameters(), actor_lr, actor_optimizer, actor_optimizer_kwargs)
         self.critic_optimizer = get_optimizer(
-            self.critic.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
+            list(chain(*[self.critic.parameters(), self.critic2.parameters()])), critic_lr, critic_optimizer, critic_optimizer_kwargs
         )
-        self.critic2_optimizer = get_optimizer(
-            self.critic2.parameters(), critic_lr, critic_optimizer, critic_optimizer_kwargs
-        )
+
         self.gamma = gamma
         self.tau = tau
         self.batch_size = batch_size
@@ -185,16 +184,12 @@ class TD3(DeepRL):
                 self.target_critic((ns, target_action)), self.target_critic2((ns, target_action))
             )
 
-        critic_loss = F.mse_loss(self.critic((s, a)), target_value)
-        critic2_loss = F.mse_loss(self.critic2((s, a)), target_value)
+        critic_loss = F.mse_loss(self.critic((s, a)), target_value) + F.mse_loss(self.critic2((s, a)), target_value)
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.critic2_optimizer.zero_grad()
-        critic2_loss.backward()
-        self.critic2_optimizer.step()
 
         if self.training_count % self.policy_delay == 0:
             actor_loss = -self.critic((s, self.actor(s))).mean()
@@ -209,6 +204,5 @@ class TD3(DeepRL):
 
             result_dict["loss/actor_loss"] = actor_loss.detach().cpu().numpy()
         result_dict["loss/critic_loss"] = critic_loss.detach().cpu().numpy()
-        result_dict["loss/critic2_loss"] = critic2_loss.detach().cpu().numpy()
 
         return result_dict

@@ -1,0 +1,25 @@
+_target_: diverserl.algos.pixel_rl.DQN
+network_type: Default
+network_config:
+  Q_network:
+    hidden_units: [64, 64]
+  Encoder:
+    feature_dim: 512
+    layer_num: 3
+    channel_num: [32, 64, 64]
+    kernel_size: [8, 4, 3]
+    strides: [4, 2, 1]
+eps_initial: 1.0
+eps_final: 0.01
+decay_fraction: 0.1
+gamma: 0.99
+batch_size: 32
+buffer_size: 100000
+learning_rate: 0.0001
+optimizer: Adam
+optimizer_kwargs: {}
+anneal_lr: false
+target_copy_freq: 1000
+training_start: ${trainer.training_start}
+max_step: ${trainer.max_step}
+device: cpu

@@ -7,7 +7,7 @@ import torch
 from gymnasium import spaces
 from torch import nn
 
-from diverserl.algos.base import DeepRL
+from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
 from diverserl.common.utils import get_optimizer
 from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
@@ -16,7 +16,7 @@ from diverserl.networks.d2rl_networks import (D2RLCategoricalActor,
                                               D2RLGaussianActor, D2RLVNetwork)
 
 
-class PPO(DeepRL):
+class PPO(PixelRL):
     def __init__(
             self,
             env: gym.vector.SyncVectorEnv,
@@ -47,6 +47,7 @@ class PPO(DeepRL):
         Paper: Proximal Policy Optimization Algorithm, Schulman et al., 2017
 
         :param env: Gymnasium environment to train the PPO algorithm
+        :param eval_env: Gymnasium environment to evaluate the PPO algorithm
         :param network_type: Type of the DQN networks to be used.
         :param network_config: Configurations of the DQN networks.
         :param num_envs: Number of vectorized environments to run RL algorithm on.
@@ -100,7 +101,9 @@ class PPO(DeepRL):
 
         self.learning_rate = learning_rate
 
-        self.params = itertools.chain(*[self.actor.parameters(), self.critic.parameters()])
+        self.params = itertools.chain(
+            *[self.actor.parameters(), self.critic.parameters(), self.encoder.parameters()])
+
         self.optimizer = get_optimizer(list(self.params), learning_rate, optimizer, optimizer_kwargs)
 
         self.anneal_lr = anneal_lr
@@ -124,6 +127,13 @@ class PPO(DeepRL):
 
     def _build_network(self) -> None:
 
+        encoder_class = self.network_list()[self.network_type]["Encoder"]
+        encoder_config = self.network_config["Encoder"]
+
+        self.encoder = encoder_class(state_dim=self.state_dim, device=self.device, **encoder_config)
+
+        feature_dim = self.encoder.feature_dim
+
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete_action else "Continuous"]
         actor_config = self.network_config["Actor"]
 
@@ -137,11 +147,10 @@ class PPO(DeepRL):
         critic_config = self.network_config["Critic"]
 
         self.actor = actor_class(
-            state_dim=self.state_dim, action_dim=self.action_dim, device=self.device,
-            **actor_config
+            state_dim=feature_dim, action_dim=self.action_dim, device=self.device, **actor_config
         ).train()
 
-        self.critic = critic_class(state_dim=self.state_dim, device=self.device,
+        self.critic = critic_class(state_dim=feature_dim, device=self.device,
                                    **critic_config).train()
 
         buffer_class = self.network_list()[self.network_type]["Buffer"]
@@ -183,7 +192,7 @@ class PPO(DeepRL):
         self.actor.train()
 
         with torch.no_grad():
-            action, log_prob = self.actor(observation)
+            action, log_prob = self.actor(self.encoder(observation))
 
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
@@ -194,7 +203,7 @@ class PPO(DeepRL):
         self.actor.eval()
 
         with torch.no_grad():
-            action, log_prob = self.actor(observation, deterministic=False)#deterministic actor greatly diminishes the performance.
+            action, log_prob = self.actor(self.encoder(observation), deterministic=False)#deterministic actor greatly diminishes the performance.
 
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
@@ -211,9 +220,8 @@ class PPO(DeepRL):
         # Generalized Advantage Estimation(GAE)
         with torch.no_grad():
             dones = torch.logical_or(d, t).to(torch.float32)
-
-            old_values = self.critic(s)
-            previous_value = self.critic(ns)
+            old_values = self.critic(self.encoder(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, self.encoder.feature_dim))
+            previous_value = self.critic(self.encoder(ns))
 
             advantages = torch.zeros_like(r)
             running_advantage = torch.zeros((self.num_envs, 1))
@@ -228,7 +236,7 @@ class PPO(DeepRL):
 
             returns = advantages + old_values
 
-        s = s.reshape(-1, self.state_dim)
+        s = s.view(-1, *self.state_dim)
         a = a.reshape(-1, 1 if self.discrete_action else self.action_dim)
         log_prob = log_prob.reshape(-1, 1)
         advantages = advantages.reshape(-1, 1)
@@ -253,8 +261,11 @@ class PPO(DeepRL):
                 # advantages normalization
                 batch_advantages = (batch_advantages - batch_advantages.mean()) / (batch_advantages.std() + 1e-8)
 
+                # for computational efficiency
+                batch_feature = self.encoder(batch_s)
+
                 # actor loss
-                log_policy = self.actor.log_prob(batch_s, batch_a)
+                log_policy = self.actor.log_prob(batch_feature, batch_a)
                 log_ratio = log_policy - batch_log_prob
                 ratio = log_ratio.exp()
                 kl = (ratio - 1) - log_ratio
@@ -276,11 +287,11 @@ class PPO(DeepRL):
                         elif kl.mean().item() > self.target_dist * 1.5:
                             self.beta *= 2
 
-                entropy_loss = self.actor.entropy(batch_s).mean()
+                entropy_loss = self.actor.entropy(batch_feature).mean()
                 actor_loss -= self.entropy_coef * entropy_loss
 
                 #critic loss
-                new_values = self.critic(batch_s)
+                new_values = self.critic(batch_feature)
 
                 critic_loss_unclipped = (new_values - batch_returns) ** 2
                 clipped_values = batch_old_values + torch.clamp(new_values - batch_old_values, -self.clip_coef,

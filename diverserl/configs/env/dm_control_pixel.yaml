@@ -5,11 +5,11 @@ env_option:
   render_width: 84
   render_height: 84
 wrapper_option:
+  FrameSkipWrapper:
+    frame_skip: 8
   FlattenObservation: {}
   PixelOnlyObservationWrapper: {}
   GrayScaleObservation: {}
-  FrameSkipWrapper:
-    frame_skip: 8
   FrameStack:
     num_stack: 3
 seed: ${trainer.seed}

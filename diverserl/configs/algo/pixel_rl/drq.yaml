@@ -1,4 +1,4 @@
-_target_: diverserl.algos.pixel_rl.SAC_AE
+_target_: diverserl.algos.pixel_rl.DrQ
 network_type: Default
 network_config:
   Actor:
@@ -29,25 +29,9 @@ network_config:
       - 1
     last_activation: Tanh
     layer_norm: true
-  Decoder:
-    layer_num: 4
-    channel_num:
-      - 32
-      - 32
-      - 32
-      - 32
-    kernel_size:
-      - 3
-      - 3
-      - 3
-      - 3
-    strides:
-      - 1
-      - 1
-      - 1
-      - 2
   Buffer:
     optimize_memory_usage: true
+image_pad: 4
 gamma: 0.99
 alpha: 0.1
 train_alpha: true
@@ -57,8 +41,6 @@ encoder_tau: 0.05
 target_critic_update: 2
 batch_size: 32
 buffer_size: 100000
-decoder_latent_lambda: 1e-5
-decoder_weight_lambda: 1e-6
 
 actor_lr: 0.001
 actor_optimizer: Adam
@@ -70,11 +52,4 @@ alpha_lr: 0.0001
 alpha_optimizer: Adam
 alpha_optimizer_kwargs:
   betas: (0.5, 0.999)
-encoder_lr: 0.001
-encoder_optimizer: Adam
-encoder_optimizer_kwargs: {}
-decoder_lr: 0.001
-decoder_optimizer: AdamW
-decoder_optimizer_kwargs: {}
-
 device: cpu

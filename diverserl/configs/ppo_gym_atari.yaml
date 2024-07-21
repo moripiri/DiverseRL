@@ -1,0 +1,64 @@
+defaults:
+  - env: gym_atari
+  - algo: pixel_rl/ppo
+  - trainer: on_policy_trainer
+
+env:
+  env_id: "ALE/Pong-v5"
+  wrapper_option:
+    TransformReward: {f: "lambda reward: np.sign(float(reward))"}
+  num_envs: 8
+
+algo:
+  _target_: diverserl.algos.pixel_rl.PPO
+  network_type: Default
+  network_config:
+    Actor:
+      hidden_units: []
+      mid_activation: "Tanh"
+      kernel_initializer: "orthogonal_"
+      kernel_initializer_kwargs: {"gain": "np.sqrt(2)"}
+      bias_initializer: "constant_"
+      bias_initializer_kwargs: {"val": 0.0}
+    Critic:
+      hidden_units: []
+      mid_activation: "Tanh"
+      kernel_initializer: "orthogonal_"
+      kernel_initializer_kwargs: {"gain": "np.sqrt(2)"}
+      bias_initializer: "constant_"
+      bias_initializer_kwargs: {"val": 0.0}
+    Encoder:
+      feature_dim: 512
+  horizon: 128
+  minibatch_size: 32
+  num_epochs: 4
+  gamma: 0.99
+  lambda_gae: 0.95
+  mode: clip
+  target_dist: 0.01
+  beta: 3.0
+  clip_coef: 0.2
+  vf_coef: 0.5
+  entropy_coef: 0.0
+  max_grad_norm: 0.5
+  learning_rate: 0.00025
+  optimizer: Adam
+  optimizer_kwargs: {"eps": 0.00001}
+  anneal_lr: true
+  device: cpu
+trainer:
+  seed: 1
+  max_step: 1000000
+  do_eval: true
+  eval_every: 10000
+  eval_ep: 1
+  record: ${env.record}
+  log_tensorboard: false
+  log_wandb: false
+  save_model: false
+  save_freq: 100000
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
