@@ -54,10 +54,9 @@ class OnPolicyTrainer(Trainer):
             configs=configs,
         )
 
-        assert self.algo.buffer.save_log_prob
+        assert self.algo.buffer.save_log_prob, "Off-policy algorithms must use deeprl_trainer."
 
         self.horizon = self.algo.horizon
-        self.num_epochs = self.algo.num_epochs
         self.num_envs = self.algo.num_envs
 
         self.max_step = max_step
