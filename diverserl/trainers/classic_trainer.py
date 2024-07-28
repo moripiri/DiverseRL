@@ -25,11 +25,10 @@ class ClassicTrainer(Trainer):
         Trainer for Classic RL algorithms.
 
         :param algo: RL algorithm
-        :param env: The environment for RL agent to learn from
         :param seed: The random seed
         :param max_episode: Maximum episode to train the classic RL algorithm
         :param do_eval: Whether to perform evaluation during training
-        :param eval_every: Perform evalaution every n episode
+        :param eval_every: Perform evaluation every n episode
         :param eval_ep: How many episodes to run to perform evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb

@@ -44,7 +44,7 @@ class DeepRLTrainer(Trainer):
         :param record: Whether to record the evaluation procedure.
         :param save_model: Whether to save the model (both in local and wandb)
         :param save_freq: How often to save the model
-        :param configs: The configuration of the traininig process
+        :param configs: The configuration of the training process
         """
 
         super().__init__(
@@ -62,12 +62,14 @@ class DeepRLTrainer(Trainer):
             configs=configs,
         )
 
-        assert not self.algo.buffer.save_log_prob
+        assert not self.algo.buffer.save_log_prob, "On-policy algorithms must use on_policy trainer."
 
         self.training_start = training_start
         self.training_freq = training_freq
         self.training_num = training_num
         self.max_step = max_step
+
+        self.num_envs = self.algo.num_envs
 
     def evaluate(self) -> None:
         """
@@ -122,13 +124,15 @@ class DeepRLTrainer(Trainer):
             observation, info = self.env.reset()
 
             while self.total_step <= self.max_step:
-                progress.advance(self.task)
+                progress.advance(self.task, advance=self.num_envs)
 
+                # take action
                 if self.total_step < self.training_start:
                     action = self.env.action_space.sample()
 
                 else:
                     action = self.algo.get_action(observation)
+
                 (
                     next_observation,
                     reward,
@@ -137,6 +141,7 @@ class DeepRLTrainer(Trainer):
                     infos,
                 ) = self.env.step(action)
 
+                # add buffer
                 self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
                 # train algorithm
@@ -146,19 +151,23 @@ class DeepRLTrainer(Trainer):
                         self.log_scalar(result, self.total_step)
 
                 observation = next_observation
-                self.total_step += 1
+                self.total_step += self.num_envs
 
+                # evaluate
                 if self.do_eval and self.total_step % self.eval_every == 0:
                     self.evaluate()
 
+                # save episode
                 if self.save_model and self.total_step % self.save_freq == 0:
                     self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
+                # log episode
                 if any(terminated) or any(truncated):
                     self.log_episodes(infos)
 
             if self.log_tensorboard:
                 self.tensorboard.close()
+
             if self.log_wandb:
                 if self.save_model:
                     self.wandb.save(f"{self.ckpt_folder}/*.pt")
