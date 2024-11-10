@@ -3,7 +3,8 @@ from typing import Any, Dict, Optional, SupportsFloat, Tuple, TypeVar
 
 import gymnasium as gym
 import numpy as np
-from gymnasium.wrappers import PixelObservationWrapper
+
+#from gymnasium.wrappers import PixelObservationWrapper
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
@@ -24,29 +25,29 @@ class ScaleObservation(gym.ObservationWrapper):
         return obs / 255.
 
 
-class PixelOnlyObservationWrapper(PixelObservationWrapper):
-    def __init__(self,
-                 env: gym.Env,
-                 render_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
-                 ):
-        """
-        Replace Env rendering to observation.
-        :param env:
-        """
-        super().__init__(env=env, pixels_only=True, render_kwargs=render_kwargs)
-        self.observation_space = self.observation_space['pixels']
-
-    def observation(self, observation):
-        """Updates the observations with the pixel observations.
-
-        Args:
-            observation: The observation to add pixel observations for
-
-        Returns:
-            The updated pixel observations
-        """
-        pixel_observation = self._add_pixel_observation(observation)
-        return pixel_observation['pixels']
+# class PixelOnlyObservationWrapper(PixelObservationWrapper):
+#     def __init__(self,
+#                  env: gym.Env,
+#                  render_kwargs: Optional[Dict[str, Dict[str, Any]]] = None,
+#                  ):
+#         """
+#         Replace Env rendering to observation.
+#         :param env:
+#         """
+#         super().__init__(env=env, pixels_only=True, render_kwargs=render_kwargs)
+#         self.observation_space = self.observation_space['pixels']
+#
+#     def observation(self, observation):
+#         """Updates the observations with the pixel observations.
+#
+#         Args:
+#             observation: The observation to add pixel observations for
+#
+#         Returns:
+#             The updated pixel observations
+#         """
+#         pixel_observation = self._add_pixel_observation(observation)
+#         return pixel_observation['pixels']
 
 
 class FrameSkipWrapper(gym.ActionWrapper):

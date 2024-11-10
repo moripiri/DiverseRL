@@ -8,7 +8,7 @@ import torch
 
 
 class BaseRL(ABC):
-    def __init__(self, env: gym.Env, eval_env: gym.Env) -> None:
+    def __init__(self, env: Union[gym.Env, gym.vector.VectorEnv], eval_env: gym.Env) -> None:
         """
         Base class for all algorithms in DiverseRL.
 
@@ -24,15 +24,20 @@ class BaseRL(ABC):
     def __repr__(self) -> str:
         return "BaseRL"
 
-    def _find_env_space(self, env: gym.Env) -> None:
+    def _find_env_space(self, env: Union[gym.Env, gym.vector.VectorEnv]) -> None:
         """
         Find environment's observation_space and action_space, action space's discreteness and action scale, bias
         :param env:
         :return:
         """
-        self.observation_space = env.single_observation_space if isinstance(env,
-                                                                            gym.vector.SyncVectorEnv) else env.observation_space
-        self.action_space = env.single_action_space if isinstance(env, gym.vector.SyncVectorEnv) else env.action_space
+        try:
+            self.observation_space = env.single_observation_space
+        except:
+            self.observation_space = env.observation_space
+        try:
+            self.action_space = env.single_action_space
+        except:
+            self.action_space = env.action_space
 
         # state_dim
         if isinstance(self.observation_space, gym.spaces.Box):
@@ -57,8 +62,13 @@ class BaseRL(ABC):
 
         elif isinstance(self.action_space, gym.spaces.Box):
             self.action_dim = int(self.action_space.shape[0])
-            self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
-            self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
+
+            if self.action_space.high[0] == np.inf:
+                self.action_scale = 1.0#(self.action_space.high[0] - self.action_space.low[0]) / 2
+                self.action_bias = 0.0#(self.action_space.high[0] + self.action_space.low[0]) / 2
+            else:
+                self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
+                self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
 
             self.discrete_action = False
         else:
@@ -74,7 +84,7 @@ class DeepRL(BaseRL, ABC):
     """
 
     def __init__(
-            self, env: gym.Env, eval_env: gym.Env, network_type: str, network_list: Dict[str, Any],
+            self, env: gym.vector.SyncVectorEnv, eval_env: gym.Env, network_type: str, network_list: Dict[str, Any],
             network_config: Dict[str, Any],
             device: str = "cpu"
     ) -> None:
@@ -92,6 +102,7 @@ class DeepRL(BaseRL, ABC):
 
         self._set_network_configs(network_type, network_list, network_config)
 
+        self.num_envs = env.num_envs
         self.device = device
         self.training_count = 0
 

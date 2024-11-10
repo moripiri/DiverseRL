@@ -1,13 +1,15 @@
 import re
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
+import ale_py
+import shimmy
 from gymnasium import Env
-from gymnasium.wrappers import (AtariPreprocessing, FlattenObservation,
-                                FrameStack)
 
-from diverserl.common.utils import get_wrapper
+import diverserl
 from diverserl.common.wrappers import *
 
+gym.register_envs(ale_py)
+gym.register_envs(shimmy)
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     """
@@ -38,60 +40,34 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
 
     return ns
 
-
-def make_atari_ram_env(env_id: str, env_option: Dict[str, Any], frame_skip: int = 4, frame_stack: int = 4,
-                       repeat_action_probability: float = 0.):
+def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env: gym.Env) -> Tuple[
+    Type[gym.Wrapper], Dict[str, Any]]:
     """
-    Return Gymnasium's Atari-Ram enviornment with appropriate wrappers.
+    Return Gymnasium's wrapper class and wrapper arguments.
 
-    :param env_id: name of the gymnasium environment.
-    :param env_option: additional arguments for environment creation.
-    :param frame_skip: number of frames to skip before observation.
-    :param frame_stack: number of frames to stack before observation.
-    :param repeat_action_probability: probability of taking previous actions instead of taking current action.
+    :param wrapper_name: Name of the gymnasium wrapper.
+    :param wrapper_kwargs: Additional arguments to be passed to the gymnasium wrapper.
 
-    :return: Gymnasium's atari_ram environment.
+    :return: Gymnasium's wrapper class and wrapper arguments.
     """
-    env_option['repeat_action_probability'] = repeat_action_probability
-    env_option['frameskip'] = frame_skip
+    try:
+        wrapper_class = getattr(gym.wrappers, wrapper_name)
+    except:
+        wrapper_class = getattr(diverserl.common.wrappers, wrapper_name)
 
-    env = gym.make(env_id, **env_option)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-    env = ScaleObservation(FlattenObservation(FrameStack(env, num_stack=frame_stack)))
+    wrapper_option = {}
 
-    return env
+    if wrapper_kwargs is not None:
+        for key, value in wrapper_kwargs.items():
+            assert isinstance(value, Union[
+                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
+            if isinstance(value, str):
+                wrapper_option[key] = eval(value)
+            else:
+                wrapper_option[key] = value
 
+    return wrapper_class, wrapper_option
 
-def make_atari_env(env_id: str, env_option: Dict[str, Any], image_size: int = 84, noop_max: int = 30,
-                   frame_skip: int = 4, frame_stack: int = 4,
-                   terminal_on_life_loss: bool = True, grayscale_obs: bool = True,
-                   repeat_action_probability: float = 0., ):
-    """
-    Return Gymnasium's Atari environment.
-
-    :param env_id: name of the gymnasium environment.
-    :param env_option: additional arguments for environment creation.
-    :param image_size: size of the image_type observation (image_size, image_size)
-    :param noop_max: For No-op reset, the max number no-ops actions are taken at reset, to turn off, set to 0.
-    :param frame_skip: number of frames to skip before observation.
-    :param frame_stack: number of frames to stack before observation.
-    :param terminal_on_life_loss: `if True`, then :meth:`step()` returns `terminated=True` whenever a life is lost.
-    :param grayscale_obs: Whether to use grayscale observation.
-    :param repeat_action_probability: probability of taking previous actions instead of taking current action.
-    :return:
-    """
-    env_option['repeat_action_probability'] = repeat_action_probability
-    env_option['frameskip'] = 1  # fixed to 1 for AtariPreprocessing
-
-    env = gym.make(env_id, **env_option)
-    env = gym.wrappers.RecordEpisodeStatistics(env)
-
-    env = FrameStack(
-        AtariPreprocessing(env, noop_max=noop_max, frame_skip=frame_skip, screen_size=image_size,
-                           terminal_on_life_loss=terminal_on_life_loss,
-                           grayscale_obs=grayscale_obs, scale_obs=False), num_stack=frame_stack)
-
-    return env
 
 
 def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_option: Optional[Dict[str, Any]] = None,
@@ -112,8 +88,6 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
 
     :return: generated gymnasium environment
     """
-
-    namespace = env_namespace(gym.make(env_id).spec)
 
     env_option = {} if env_option is None else dict(env_option)
     wrapper_option = {} if wrapper_option is None else dict(wrapper_option)
@@ -148,10 +122,9 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
                 env_option['render_mode'] = 'rgb_array'
 
             env = gym.make(env_id, **env_option)
-            env = gym.wrappers.RecordEpisodeStatistics(env)
 
             for wrapper_name, wrapper_kwargs in wrapper_option.items():
-                wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs)
+                wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs, env)
                 env = wrapper_class(env, **wrapper_kwargs)
 
             env.action_space.seed(random_seed)
@@ -163,6 +136,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
     if vector_env:
         env = gym.vector.SyncVectorEnv([make_env(seed + i, False, False) for i in
                                         range(num_envs)])
+        env = gym.wrappers.vector.RecordEpisodeStatistics(env)
         eval_env = make_env(seed - 1, render, record)()
 
     else:

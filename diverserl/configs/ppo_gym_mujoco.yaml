@@ -4,14 +4,14 @@ defaults:
   - trainer: on_policy_trainer
 
 env:
-  env_id: HalfCheetah-v4
+  env_id: HalfCheetah-v5
   env_option: {}
   wrapper_option:
     ClipAction: {}
     NormalizeObservation: {}
-    TransformObservation: { "f": "lambda obs: np.clip(obs, -10, 10)" }
+    TransformObservation: { "func": "lambda obs: np.clip(obs, -10, 10)", "observation_space": "env.observation_space"}
     NormalizeReward: { "gamma": 0.99 }
-    TransformReward: { "f": "lambda reward: np.clip(reward, -10, 10)" }
+    TransformReward: { "func": "lambda reward: np.clip(reward, -10, 10)" }
   seed: ${trainer.seed}
   num_envs: 1
   vector_env: true
