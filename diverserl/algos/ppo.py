@@ -215,8 +215,8 @@ class PPO(DeepRL):
             old_values = self.critic(s)
             previous_value = self.critic(ns)
 
-            advantages = torch.zeros_like(r)
-            running_advantage = torch.zeros((self.num_envs, 1))
+            advantages = torch.zeros_like(r, device=self.device)
+            running_advantage = torch.zeros((self.num_envs, 1), device=self.device)
 
             for t in reversed(range(self.horizon)):
                 running_tderror = r[t] + self.gamma * previous_value * (1 - dones[t]) - old_values[t]

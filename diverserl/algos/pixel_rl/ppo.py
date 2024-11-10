@@ -223,8 +223,8 @@ class PPO(PixelRL):
             old_values = self.critic(self.encoder(s.reshape(-1, *self.state_dim)).reshape(self.horizon, self.num_envs, self.encoder.feature_dim))
             previous_value = self.critic(self.encoder(ns))
 
-            advantages = torch.zeros_like(r)
-            running_advantage = torch.zeros((self.num_envs, 1))
+            advantages = torch.zeros_like(r, device=self.device)
+            running_advantage = torch.zeros((self.num_envs, 1), device=self.device)
 
             for t in reversed(range(self.horizon)):
                 running_tderror = r[t] + self.gamma * previous_value * (1 - dones[t]) - old_values[t]

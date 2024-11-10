@@ -109,6 +109,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
 
             :return: Gymnasium environment.
             """
+            nonlocal env_id
             nonlocal env_option
             nonlocal wrapper_option
 
@@ -141,6 +142,8 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
 
     else:
         env = make_env(seed, False, False)()
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+
         eval_env = make_env(seed - 1, render, record)()
 
     return env, eval_env

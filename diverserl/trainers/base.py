@@ -154,25 +154,6 @@ class Trainer(ABC):
         :param infos: Gymnasium info that contains episode results recorded by Gymnasium's RecordEpisodeStatistics wrapper.
         :return:
         """
-        # for episode_info, episode_done in zip(episode_infos, infos['_final_info']):
-        #     if episode_done:
-        #         local_step = episode_info['episode']['l'].item()
-        #         episode_reward = episode_info['episode']['r'].item()
-        #
-        #         self.progress.console.print(
-        #             f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-        #         )
-        #         self.log_scalar(
-        #             {
-        #                 "train/episode_reward": episode_reward,
-        #                 "train/local_step": local_step,
-        #                 "train/total_step": self.total_step,
-        #                 "train/training_count": self.algo.training_count,
-        #             },
-        #             self.total_step,
-        #         )
-        #
-        #         self.episode += 1
 
         for i, episode_done in enumerate(infos['_episode']):
             if episode_done:
