@@ -6,7 +6,7 @@ defaults:
 env:
   env_id: "ALE/Pong-v5"
   wrapper_option:
-    TransformReward: {f: "lambda reward: np.sign(float(reward))"}
+    TransformReward: {func: "lambda reward: np.sign(float(reward))"}
   num_envs: 8
 
 algo:

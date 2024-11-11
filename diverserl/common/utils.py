@@ -1,15 +1,11 @@
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Type, Union
 
-import gymnasium as gym
 import numpy as np
 import torch.optim
-from omegaconf import OmegaConf
 from rich.pretty import pprint
 from torch import nn
-
-import diverserl
 
 
 def get_project_root() -> Path:
@@ -69,35 +65,6 @@ def get_optimizer(
     optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_option)
 
     return optimizer
-
-
-def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]]) -> Tuple[
-    Type[gym.Wrapper], Dict[str, Any]]:
-    """
-    Return Gymnasium's wrapper class and wrapper arguments.
-
-    :param wrapper_name: Name of the gymnasium wrapper.
-    :param wrapper_kwargs: Additional arguments to be passed to the gymnasium wrapper.
-
-    :return: Gymnasium's wrapper class and wrapper arguments.
-    """
-    try:
-        wrapper_class = getattr(gym.wrappers, wrapper_name)
-    except:
-        wrapper_class = getattr(diverserl.common.wrappers, wrapper_name)
-
-    wrapper_option = {}
-
-    if wrapper_kwargs is not None:
-        for key, value in wrapper_kwargs.items():
-            assert isinstance(value, Union[
-                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
-            if isinstance(value, str):
-                wrapper_option[key] = eval(value)
-            else:
-                wrapper_option[key] = value
-
-    return wrapper_class, wrapper_option
 
 
 def set_seed(seed: int) -> int:
