@@ -4,8 +4,8 @@ env_option:
   repeat_action_probability: 0.
   frameskip: 4
 wrapper_option:
-  FrameStack:
-    num_stack: 4
+  FrameStackObservation:
+    stack_size: 4
   FlattenObservation: {}
   ScaleObservation: {}
 seed: ${trainer.seed}

@@ -19,8 +19,8 @@ from diverserl.networks.d2rl_networks import (D2RLCategoricalActor,
 class PPO(DeepRL):
     def __init__(
             self,
-            env: gym.vector.SyncVectorEnv,
-            eval_env: gym.Env,
+            env: gym.vector.VectorEnv,
+            eval_env: gym.vector.VectorEnv,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             horizon: int = 128,
@@ -189,7 +189,6 @@ class PPO(DeepRL):
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
         observation = self._fix_observation(observation)
-        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
 

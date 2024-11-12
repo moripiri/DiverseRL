@@ -17,8 +17,8 @@ from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
 
 class CURL(PixelRL):
     def __init__(self,
-                 env: gym.vector.SyncVectorEnv,
-                 eval_env: gym.Env,
+                 env: gym.vector.VectorEnv,
+                 eval_env: gym.vector.VectorEnv,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
                  pre_image_size: int = 100,
@@ -206,7 +206,6 @@ class CURL(PixelRL):
         :return: The CURL agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
-        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():

@@ -8,7 +8,7 @@ import torch
 
 
 class BaseRL(ABC):
-    def __init__(self, env: Union[gym.Env, gym.vector.VectorEnv], eval_env: gym.Env) -> None:
+    def __init__(self, env: Union[gym.Env, gym.vector.VectorEnv], eval_env: Union[gym.Env, gym.vector.VectorEnv]) -> None:
         """
         Base class for all algorithms in DiverseRL.
 
@@ -64,8 +64,8 @@ class BaseRL(ABC):
             self.action_dim = int(self.action_space.shape[0])
 
             if self.action_space.high[0] == np.inf:
-                self.action_scale = 1.0#(self.action_space.high[0] - self.action_space.low[0]) / 2
-                self.action_bias = 0.0#(self.action_space.high[0] + self.action_space.low[0]) / 2
+                self.action_scale = 1.#(env.unwrapped.envs[0].action_space.high[0] - env.unwrapped.envs[0].action_space.low[0]) / 2
+                self.action_bias = 0.#(env.unwrapped.envs[0].action_space.high[0] + env.unwrapped.envs[0].action_space.low[0]) / 2
             else:
                 self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
                 self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
@@ -84,7 +84,7 @@ class DeepRL(BaseRL, ABC):
     """
 
     def __init__(
-            self, env: gym.vector.SyncVectorEnv, eval_env: gym.Env, network_type: str, network_list: Dict[str, Any],
+            self, env: gym.vector.VectorEnv, eval_env: gym.vector.VectorEnv, network_type: str, network_list: Dict[str, Any],
             network_config: Dict[str, Any],
             device: str = "cpu"
     ) -> None:

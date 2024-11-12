@@ -11,6 +11,7 @@ from diverserl.common.wrappers import *
 gym.register_envs(ale_py)
 gym.register_envs(shimmy)
 
+
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     """
     Return namespace (classic_control, mujoco, atari_env, etc..) of an environment.
@@ -20,7 +21,7 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     :param env_spec: env_specification of gymnasium environment
     :return: namespace
     """
-    if env_spec.namespace is None: #pure gymnasium env
+    if env_spec.namespace is None:  #pure gymnasium env
         env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
         split_entry_point = env_entry_point.split(".")
 
@@ -39,6 +40,7 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
         ns = env_spec.namespace
 
     return ns
+
 
 def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env: gym.Env) -> Tuple[
     Type[gym.Wrapper], Dict[str, Any]]:
@@ -67,7 +69,6 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env
                 wrapper_option[key] = value
 
     return wrapper_class, wrapper_option
-
 
 
 def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_option: Optional[Dict[str, Any]] = None,
@@ -123,6 +124,7 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
                 env_option['render_mode'] = 'rgb_array'
 
             env = gym.make(env_id, **env_option)
+            env = gym.wrappers.RecordEpisodeStatistics(env)
 
             for wrapper_name, wrapper_kwargs in wrapper_option.items():
                 wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs, env)
@@ -137,12 +139,10 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
     if vector_env:
         env = gym.vector.SyncVectorEnv([make_env(seed + i, False, False) for i in
                                         range(num_envs)])
-        env = gym.wrappers.vector.RecordEpisodeStatistics(env)
-        eval_env = make_env(seed - 1, render, record)()
+        eval_env = gym.vector.SyncVectorEnv([make_env(seed - 1, render, record) for i in range(1)])
 
     else:
         env = make_env(seed, False, False)()
-        env = gym.wrappers.RecordEpisodeStatistics(env)
 
         eval_env = make_env(seed - 1, render, record)()
 

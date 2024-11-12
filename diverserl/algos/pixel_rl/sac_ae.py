@@ -29,8 +29,8 @@ def preprocess_obs(obs, bits=5):
 
 class SAC_AE(PixelRL):
     def __init__(self,
-                 env: gym.vector.SyncVectorEnv,
-                 eval_env: gym.Env,
+                 env: gym.vector.VectorEnv,
+                 eval_env: gym.vector.VectorEnv,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
                  gamma: float = 0.99,
@@ -225,7 +225,6 @@ class SAC_AE(PixelRL):
         :return: The SAC-AE agent's action (in evaluation mode)
         """
         observation = self._fix_observation(observation)
-        observation = torch.unsqueeze(observation, dim=0)
 
         self.actor.eval()
         with torch.no_grad():

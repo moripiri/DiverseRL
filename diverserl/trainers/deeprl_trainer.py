@@ -81,8 +81,6 @@ class DeepRLTrainer(Trainer):
         for episode in range(self.eval_ep):
             observation, info = self.eval_env.reset()
             terminated, truncated = False, False
-            episode_reward = 0
-            local_step = 0
 
             while not (terminated or truncated):
                 action = self.algo.eval_action(observation)
@@ -93,15 +91,12 @@ class DeepRLTrainer(Trainer):
                     terminated,
                     truncated,
                     info,
-                ) = self.eval_env.step(action[0])
+                ) = self.eval_env.step(action)
 
                 observation = next_observation
-                episode_reward += reward
 
-                local_step += 1
-
-            ep_reward_list.append(episode_reward)
-            local_step_list.append(local_step)
+            ep_reward_list.append(info['episode']['r'][0])
+            local_step_list.append(info['episode']['l'][0])
 
         avg_ep_reward = np.mean(ep_reward_list)
         avg_local_step = np.mean(local_step_list)

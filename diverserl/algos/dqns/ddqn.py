@@ -11,8 +11,8 @@ from diverserl.common.utils import hard_update
 class DDQN(DQN):
     def __init__(
         self,
-            env: gym.vector.SyncVectorEnv,
-            eval_env: gym.Env,
+            env: gym.vector.VectorEnv,
+            eval_env: gym.vector.VectorEnv,
             network_type: str = "Default",
             network_config: Optional[Dict[str, Any]] = None,
             eps_initial: float = 1.0,

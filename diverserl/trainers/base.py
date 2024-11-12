@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any, Dict, Optional, Union
 
+import gymnasium as gym
 import yaml
 from gymnasium.wrappers import RecordVideo
 from rich.console import Console
@@ -80,8 +81,13 @@ class Trainer(ABC):
             console=self.console,
         )
 
-        self.env_id = self.eval_env.spec.id.replace('ALE/', '').replace('/', '_') #remove 'ALE/', and replace / to _
-        self.env_namespace = env_namespace(self.eval_env.spec)
+        if isinstance(self.eval_env, gym.vector.VectorEnv):
+            env_spec = self.eval_env.envs[0].spec
+        else:
+            env_spec = self.eval_env.spec
+
+        self.env_id = env_spec.id.replace('ALE/', '').replace('/', '_') #remove 'ALE/', and replace / to _
+        self.env_namespace = env_namespace(env_spec)
 
         self.task = self.progress.add_task(
             description=f"[bold]Training [red]{self.algo}[/red] in [grey42]{self.env_id}[/grey42]...[/bold]",
@@ -123,7 +129,7 @@ class Trainer(ABC):
             os.makedirs(self.ckpt_folder, exist_ok=True)
 
         if record:
-            self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+            self.eval_env.envs[0] = RecordVideo(self.eval_env.envs[0], video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
 
     @abstractmethod
     def evaluate(self):
