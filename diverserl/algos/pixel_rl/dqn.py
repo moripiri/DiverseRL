@@ -10,7 +10,7 @@ from numpy import dtype, ndarray
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import get_optimizer, hard_update
+from diverserl.common.utils import fix_observation, get_optimizer, hard_update
 from diverserl.networks import DeterministicActor, PixelEncoder
 from diverserl.networks.d2rl_networks import D2RLDeterministicActor
 from diverserl.networks.noisy_networks import NoisyDeterministicActor
@@ -146,7 +146,7 @@ class DQN(PixelRL):
         if np.random.rand() < self.eps:
             return np.array([np.random.randint(self.action_dim)])
         else:
-            observation = self._fix_observation(observation)
+            observation = fix_observation(observation, self.device)
             with torch.no_grad():
                 action = self.q_network(self.encoder(observation)).argmax(1).cpu().numpy()
 
@@ -160,7 +160,7 @@ class DQN(PixelRL):
         :return: The DQN agent's action (in evaluation mode)
         """
 
-        observation = self._fix_observation(observation)
+        observation = fix_observation(observation, self.device)
 
         self.q_network.eval()
         self.encoder.eval()

@@ -41,7 +41,6 @@ class Trainer(ABC):
         Base trainer for RL algorithms.
 
         :param algo: RL algorithm
-        :param env: The environment for RL agent to learn from
         :param total: Ending point of the progress bar (max_episode or max_step)
         :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode or steps
@@ -55,7 +54,6 @@ class Trainer(ABC):
         """
 
         self.algo = algo
-        self.env = self.algo.env
         self.eval_env = self.algo.eval_env
 
         self.seed = set_seed(seed)

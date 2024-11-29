@@ -5,7 +5,6 @@ import torch
 
 from diverserl.algos.dqns import DDQN
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.networks import PixelEncoder
 from diverserl.networks.dueling_network import DuelingNetwork
 from diverserl.networks.noisy_networks import NoisyDuelingNetwork
 

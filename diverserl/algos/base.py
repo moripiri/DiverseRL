@@ -1,24 +1,19 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 import gymnasium as gym
 import numpy as np
 import torch
 
+from diverserl.common.utils import set_network_configs
+
 
 class BaseRL(ABC):
-    def __init__(self, env: Union[gym.Env, gym.vector.VectorEnv], eval_env: Union[gym.Env, gym.vector.VectorEnv]) -> None:
+    def __init__(self) -> None:
         """
         Base class for all algorithms in DiverseRL.
-
-        :param env: Gymnasium environment to train the algorithm.
         """
-        self.env = env
-        self.eval_env = eval_env
-
-        self._find_env_space(env)
-        self._type_assertion()
 
     @abstractmethod
     def __repr__(self) -> str:
@@ -64,8 +59,8 @@ class BaseRL(ABC):
             self.action_dim = int(self.action_space.shape[0])
 
             if self.action_space.high[0] == np.inf:
-                self.action_scale = 1.#(env.unwrapped.envs[0].action_space.high[0] - env.unwrapped.envs[0].action_space.low[0]) / 2
-                self.action_bias = 0.#(env.unwrapped.envs[0].action_space.high[0] + env.unwrapped.envs[0].action_space.low[0]) / 2
+                self.action_scale = 1.  #(env.unwrapped.envs[0].action_space.high[0] - env.unwrapped.envs[0].action_space.low[0]) / 2
+                self.action_bias = 0.  #(env.unwrapped.envs[0].action_space.high[0] + env.unwrapped.envs[0].action_space.low[0]) / 2
             else:
                 self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
                 self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
@@ -78,13 +73,15 @@ class BaseRL(ABC):
     def _type_assertion(self):
         pass
 
+
 class DeepRL(BaseRL, ABC):
     """
     Abstract base class for Deep RL algorithms.
     """
 
     def __init__(
-            self, env: gym.vector.VectorEnv, eval_env: gym.vector.VectorEnv, network_type: str, network_list: Dict[str, Any],
+            self, env: Optional[gym.vector.VectorEnv], eval_env: gym.vector.VectorEnv, network_type: str,
+            network_list: Dict[str, Any],
             network_config: Dict[str, Any],
             device: str = "cpu"
     ) -> None:
@@ -98,11 +95,22 @@ class DeepRL(BaseRL, ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(env, eval_env)
+        super().__init__()
+        self.env = env
+        self.eval_env = eval_env
 
-        self._set_network_configs(network_type, network_list, network_config)
+        if env is not None:
+            self._find_env_space(env)
+            self.num_envs = env.num_envs
 
-        self.num_envs = env.num_envs
+        else:
+            self._find_env_space(eval_env)
+            self.num_envs = eval_env.num_envs
+
+        self._type_assertion()
+
+        self.network_type, self.network_config = set_network_configs(network_type, network_list, network_config)
+
         self.device = device
         self.training_count = 0
 
@@ -127,39 +135,6 @@ class DeepRL(BaseRL, ABC):
         :return:
         """
         pass
-
-    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any],
-                             network_config: Dict[str, Any], ) -> None:
-        assert network_type in network_list.keys()
-        if network_config is None:
-            network_config = dict()
-
-        assert set(network_config.keys()).issubset(network_list[network_type].keys())
-        for network in network_list[network_type].keys():
-            if network not in network_config.keys():
-                network_config[network] = dict()
-
-        self.network_type = network_type
-        self.network_config = network_config
-
-    def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
-        """
-        Fix observation appropriate to torch neural network module.
-
-        :param observation: The input observation
-        :return: The input observation in the form of two dimension tensor
-        """
-
-        if isinstance(observation, torch.Tensor):
-            observation = observation.to(dtype=torch.float32)
-
-        else:
-            observation = np.asarray(observation).astype(np.float32)
-            observation = torch.from_numpy(observation)
-
-        observation = observation.to(self.device)
-
-        return observation
 
     @abstractmethod
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:

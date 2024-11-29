@@ -1,6 +1,9 @@
-_target_: diverserl.trainers.on_policy_trainer.OnPolicyTrainer
+_target_: diverserl.trainers.deeprl_trainer.DeepRLTrainer
 seed: 1
-max_step: 1000000
+training_start: 0
+training_freq: ${algo.horizon}
+training_num: 1
+max_step: 2000000
 do_eval: true
 eval_every: 10000
 eval_ep: 1

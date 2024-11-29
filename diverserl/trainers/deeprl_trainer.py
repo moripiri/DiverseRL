@@ -27,10 +27,9 @@ class DeepRLTrainer(Trainer):
     ) -> None:
 
         """
-        Trainer for Deep RL (Off policy) algorithms.
+        Trainer for Deep RL algorithms.
 
-        :param algo: Deep RL algorithm (Off policy)
-        :param env: The environment for RL agent to learn from
+        :param algo: Deep RL algorithm
         :param seed: Random seed
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param training_freq: How frequently train the algorithm (in total_step)
@@ -61,8 +60,9 @@ class DeepRLTrainer(Trainer):
             save_freq=save_freq,
             configs=configs,
         )
+        self.env = self.algo.env
 
-        assert not self.algo.buffer.save_log_prob, "On-policy algorithms must use on_policy trainer."
+        self.save_log_prob = self.algo.buffer.save_log_prob
 
         self.training_start = training_start
         self.training_freq = training_freq
@@ -83,8 +83,10 @@ class DeepRLTrainer(Trainer):
             terminated, truncated = False, False
 
             while not (terminated or truncated):
-                action = self.algo.eval_action(observation)
-
+                if self.save_log_prob:
+                    action, _ = self.algo.eval_action(observation)
+                else:
+                    action = self.algo.eval_action(observation)
                 (
                     next_observation,
                     reward,
@@ -126,7 +128,11 @@ class DeepRLTrainer(Trainer):
                     action = self.env.action_space.sample()
 
                 else:
-                    action = self.algo.get_action(observation)
+                    if self.save_log_prob:
+                        action, log_prob = self.algo.get_action(observation)
+                    else:
+                        action = self.algo.get_action(observation)
+                        log_prob = None
 
                 (
                     next_observation,
@@ -137,10 +143,10 @@ class DeepRLTrainer(Trainer):
                 ) = self.env.step(action)
 
                 # add buffer
-                self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
+                self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
 
                 # train algorithm
-                if self.total_step >= self.training_start and (self.total_step % self.training_freq == 0):
+                if self.total_step > self.training_start and (self.total_step % self.training_freq == 0):
                     for _ in range(int(self.training_num)):
                         result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
                         self.log_scalar(result, self.total_step)

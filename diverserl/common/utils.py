@@ -1,15 +1,40 @@
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Optional, Tuple, Type, Union
 
+import numpy
 import numpy as np
+import torch
 import torch.optim
 from rich.pretty import pprint
 from torch import nn
 
 
 def get_project_root() -> Path:
-    return Path(__file__).parent.parent.parent #./DiverseRL
+    return Path(__file__).parent.parent.parent  #./DiverseRL
+
+
+def fix_observation(observation: Union[np.ndarray, torch.Tensor], device: Optional[Union[str, torch.device]] = None) -> torch.tensor:
+    """
+    Fix observation appropriate to torch neural network module.
+
+    :param observation: The input observation
+    :param device: torch device to set the observation to
+
+    :return: The input observation in the form of two dimension tensor
+    """
+
+    if isinstance(observation, torch.Tensor):
+        observation = observation.to(dtype=torch.float32)
+
+    else:
+        observation = np.asarray(observation).astype(np.float32)
+        observation = torch.from_numpy(observation)
+
+    if device is not None:
+        observation = observation.to(device)
+
+    return observation
 
 
 def soft_update(network: nn.Module, target_network: nn.Module, tau: float) -> None:
@@ -87,12 +112,26 @@ def pprint_config(config: Dict[str, Any]) -> bool:
 
     :param config: Configuration of the experiment.
     """
-    print('='*100)
+    print('=' * 100)
     pprint(config, expand_all=True)
-    print('='*100)
+    print('=' * 100)
     answer = input("Continue? [y/n]: ")
     if answer in ["y", "Y", "", " ", "ㅛ"]:
         return True
     else:
         print("Quitting...")
         return False
+
+
+def set_network_configs(network_type: str, network_list: Dict[str, Any],
+                        network_config: Dict[str, Any], ) -> Tuple[str, Dict[str, Any]]:
+    assert network_type in network_list.keys()
+    if network_config is None:
+        network_config = dict()
+
+    assert set(network_config.keys()).issubset(network_list[network_type].keys())
+    for network in network_list[network_type].keys():
+        if network not in network_config.keys():
+            network_config[network] = dict()
+
+    return network_type, network_config
