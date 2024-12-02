@@ -2,43 +2,42 @@ from typing import Any, Dict, Optional, Union
 
 import numpy as np
 
-from diverserl.algos.base import DeepRL
+from diverserl.algos.offline_rl.base import OfflineRL
 from diverserl.trainers.base import Trainer
 
 
-class OnPolicyTrainer(Trainer):
+class OfflineTrainer(Trainer):
     def __init__(
-        self,
-        algo: DeepRL,
-        seed: int,
-        max_step: int = 1000000,
-        do_eval: bool = True,
-        eval_every: int = 1000,
-        eval_ep: int = 10,
-        log_tensorboard: bool = False,
-        log_wandb: bool = False,
-        record: bool = False,
-        save_model: bool = False,
-        save_freq: int = 10**6,
-        configs: Optional[Union[str, Dict[str, Any]]] = None,
+            self,
+            algo: OfflineRL,
+            seed: int = 1234,
+            max_step: int = 100000,
+            do_eval: bool = True,
+            eval_every: int = 1000,
+            eval_ep: int = 10,
+            log_tensorboard: bool = False,
+            log_wandb: bool = False,
+            record: bool = False,
+            save_model: bool = False,
+            save_freq: int = 10 ** 6,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
     ) -> None:
         """
-        Trainer for Deep RL(On policy) algorithms.
+        Trainer for Offline RL algorithms.
 
-        :param algo: Deep RL algorithm (Off policy)
-        :param env: The environment for RL agent to learn from
+        :param algo: Offline RL algorithm
+        :param seed: Random seed
         :param max_step: Maximum step to run the training
-        :param do_eval: Whether to perform the evaluation.
-        :param eval_every: Do evaluation every N step.
+        :param do_eval: Whether to perform the evaluation
+        :param eval_every: Do evaluation every N step
         :param eval_ep: Number of episodes to run evaluation
         :param log_tensorboard: Whether to log the training records in tensorboard
         :param log_wandb: Whether to log the training records in Wandb
         :param record: Whether to record the evaluation procedure.
         :param save_model: Whether to save the model (both in local and wandb)
         :param save_freq: How often to save the model
-        :param configs: The configuration of the training process.
+        :param configs: The configuration of the training process
         """
-
         super().__init__(
             algo=algo,
             seed=seed,
@@ -54,16 +53,24 @@ class OnPolicyTrainer(Trainer):
             configs=configs,
         )
 
-        assert self.algo.buffer.save_log_prob, "Off-policy algorithms must use deeprl_trainer."
-
-        self.horizon = self.algo.horizon
-        self.num_envs = self.algo.num_envs
-
+        self.env = self.algo.env
+        self.save_log_prob = False
         self.max_step = max_step
+
+    def log_results(self, result: Dict[str, Any]) -> None:
+        """
+        Print training result to console.
+
+        :param result: Training result
+        :return:
+        """
+        self.progress.console.print(
+            f"Step: {self.total_step:08d} -> loss: {result['loss']:04.4f}",
+        )
 
     def evaluate(self) -> None:
         """
-        Evaluate Deep RL algorithm.
+        Evaluate Offline RL algorithm performance.
         """
         ep_reward_list = []
         local_step_list = []
@@ -73,7 +80,10 @@ class OnPolicyTrainer(Trainer):
             terminated, truncated = False, False
 
             while not (terminated or truncated):
-                action, _ = self.algo.eval_action(observation)
+                if self.save_log_prob:
+                    action, _ = self.algo.eval_action(observation)
+                else:
+                    action = self.algo.eval_action(observation)
 
                 (
                     next_observation,
@@ -103,43 +113,26 @@ class OnPolicyTrainer(Trainer):
 
     def run(self) -> None:
         """
-        Train On policy RL algorithm.
+        Train Offline RL algorithm.
         """
-
-        observation, info = self.env.reset()
-
         with self.progress as progress:
             while self.total_step <= self.max_step:
-                for _ in range(self.horizon):
-                    progress.advance(self.task, advance=self.num_envs)
+                progress.advance(self.task, advance=1)
 
-                    action, log_prob = self.algo.get_action(observation)
+                result = self.algo.train()
 
-                    (
-                        next_observation,
-                        reward,
-                        terminated,
-                        truncated,
-                        infos,
-                    ) = self.env.step(action)
-
-                    self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
-
-                    observation = next_observation
-
-                    self.total_step += self.num_envs
-
-                    if any(terminated) or any(truncated):
-                        self.log_episodes(infos)
-
-                    if self.do_eval and self.total_step % self.eval_every == 0:
-                        self.evaluate()
-
-                    if self.save_model and self.total_step % self.save_freq == 0:
-                        self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
-
-                result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
+                self.log_results(result)
                 self.log_scalar(result, self.total_step)
+
+                self.total_step += 1
+
+                # evaluate
+                if self.do_eval and self.total_step % self.eval_every == 0:
+                    self.evaluate()
+
+                # save episode
+                if self.save_model and self.total_step % self.save_freq == 0:
+                    self.algo.save(f"{self.ckpt_folder}/{self.total_step}")
 
             if self.log_tensorboard:
                 self.tensorboard.close()
