@@ -1,0 +1,9 @@
+defaults:
+  - env: minari_mujoco
+  - algo: offline_rl/bc
+  - trainer: offline_trainer
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null

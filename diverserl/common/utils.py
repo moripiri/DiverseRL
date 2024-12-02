@@ -6,6 +6,7 @@ import numpy
 import numpy as np
 import torch
 import torch.optim
+from minari import EpisodeData
 from rich.pretty import pprint
 from torch import nn
 
@@ -135,3 +136,35 @@ def set_network_configs(network_type: str, network_list: Dict[str, Any],
             network_config[network] = dict()
 
     return network_type, network_config
+
+
+def collate_fn(batch: EpisodeData) -> Dict[str, Any]:
+    """
+    Collate function to load MinariDataset in torch DataLoader
+
+    :param batch: MinariDataset batch.
+    :return:
+    """
+    return {
+        "id": torch.Tensor([x.id for x in batch]),
+        "observations": torch.nn.utils.rnn.pad_sequence(
+            [torch.as_tensor(x.observations, dtype=torch.float32) for x in batch],
+            batch_first=True
+        ),
+        "actions": torch.nn.utils.rnn.pad_sequence(
+            [torch.as_tensor(x.actions, dtype=torch.float32) for x in batch],
+            batch_first=True
+        ),
+        "rewards": torch.nn.utils.rnn.pad_sequence(
+            [torch.as_tensor(x.rewards, dtype=torch.float32) for x in batch],
+            batch_first=True
+        ),
+        "terminations": torch.nn.utils.rnn.pad_sequence(
+            [torch.as_tensor(x.terminations, dtype=torch.float32) for x in batch],
+            batch_first=True
+        ),
+        "truncations": torch.nn.utils.rnn.pad_sequence(
+            [torch.as_tensor(x.truncations, dtype=torch.float32) for x in batch],
+            batch_first=True
+        )
+    }

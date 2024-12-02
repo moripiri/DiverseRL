@@ -38,6 +38,7 @@ optional = true
 [tool.poetry.group.envs.dependencies]
 #shimmy version restricted due to gymnasium 0.29.1
 shimmy = {version=">=2.0.0", extras=['dm-control']}
+minari = {version="^0.5.1", extras=['gcs']}
 
 [[tool.poetry.source]]
 name = "pytorch-gpu-src"

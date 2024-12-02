@@ -1,0 +1,10 @@
+_target_: diverserl.algos.offline_rl.BC
+network_type: Default
+network_config:
+  Actor:
+    hidden_units: [256, 256]
+dataset_frac: 0.7
+learning_rate: 0.001
+optimizer: Adam
+optimizer_kwargs: {}
+device: cpu

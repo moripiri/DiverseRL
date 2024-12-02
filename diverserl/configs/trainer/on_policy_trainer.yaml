@@ -1,4 +1,5 @@
-_target_: diverserl.trainers.deeprl_trainer.DeepRLTrainer
+# DeepRLTrainer configuration file for on-policy RL algorithms.
+_target_: diverserl.trainers.DeepRLTrainer
 seed: 1
 training_start: 0
 training_freq: ${algo.horizon}
