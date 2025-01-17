@@ -57,7 +57,7 @@ class OfflineTrainer(Trainer):
         self.save_log_prob = False
         self.max_step = max_step
 
-    def log_results(self, result: Dict[str, Any]) -> None:
+    def print_results(self, result: Dict[str, Any]) -> None:
         """
         Print training result to console.
 
@@ -78,7 +78,6 @@ class OfflineTrainer(Trainer):
         for episode in range(self.eval_ep):
             observation, info = self.eval_env.reset()
             terminated, truncated = False, False
-
             while not (terminated or truncated):
                 if self.save_log_prob:
                     action, _ = self.algo.eval_action(observation)
@@ -121,7 +120,7 @@ class OfflineTrainer(Trainer):
 
                 result = self.algo.train()
 
-                self.log_results(result)
+                #self.print_results(result)
                 self.log_scalar(result, self.total_step)
 
                 self.total_step += 1

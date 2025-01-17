@@ -1,5 +1,6 @@
 import re
-from typing import Type, Union
+from copy import deepcopy
+from typing import Dict, Optional, Type
 
 from gymnasium import Env
 
@@ -8,10 +9,7 @@ from diverserl.common.wrappers import *
 
 try:
     import ale_py
-    import minari
     import shimmy
-    from minari import MinariDataset
-    from minari.dataset.episode_data import EpisodeData
 
     gym.register_envs(ale_py)
     gym.register_envs(shimmy)
@@ -68,8 +66,8 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env
 
     if wrapper_kwargs is not None:
         for key, value in wrapper_kwargs.items():
-            assert isinstance(value, Union[
-                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
+            # assert isinstance(value, Union[
+            #     int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
                 wrapper_option[key] = eval(value)
             else:
@@ -154,80 +152,3 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
         eval_env = make_env(seed - 1, render, record)()
 
     return {'env': env, 'eval_env': eval_env}
-
-
-def make_offline_envs(dataset_id: str, eval_env_option: Optional[Dict[str, Any]] = None,
-                      eval_wrapper_option: Optional[Dict[str, Any]] = None,
-                      seed: int = 1234, vector_env: bool = True, render: bool = False,
-                      record: bool = False,
-                      ) -> \
-        Dict[str, Any]:
-    """
-    Creates gymnasium environments for training or evaluation.
-
-    :param dataset_id: name of the minari dataset.
-    :param eval_env_option: additional arguments for evaluation environment creation.
-    :param eval_wrapper_option: additional arguments for evaluation environment wrapper creation.
-    :param seed: random seed.
-    :param vector_env: whether to return eval_env as sync_vector_env.
-    :param record: record the evaluation environment
-    :param render: render the evaluation environment
-
-    :return: generated gymnasium environment
-    """
-
-    eval_env_option = {} if eval_env_option is None else dict(eval_env_option)
-    eval_wrapper_option = {} if eval_wrapper_option is None else dict(eval_wrapper_option)
-
-    def make_env(random_seed: int = 0, render_env: bool = False, record_env: bool = False):
-        """
-        Create a gymnasium environment generating function.
-
-        :param random_seed: random seed to apply to the environment.
-        :param render_env: whether to render the environment.
-        :param record_env: whether to record the environment.
-
-        :return: Function that returns Gymnasium environment.
-        """
-
-        def thunk() -> Env:
-            """
-            Create a Gymnasium environment.
-
-            :return: Gymnasium environment.
-            """
-            nonlocal dataset_id
-            nonlocal eval_env_option
-            nonlocal eval_wrapper_option
-
-            eval_env_option = deepcopy(eval_env_option)
-            eval_wrapper_option = deepcopy(eval_wrapper_option)
-
-            assert not (render_env and record_env), ValueError("Cannot specify both render_env and record")
-            if render_env and not record_env:
-                eval_env_option['render_mode'] = 'human'
-            elif not render_env and record_env:
-                eval_env_option['render_mode'] = 'rgb_array'
-
-            env = dataset.recover_environment(eval_env=True, **eval_env_option)
-            env = gym.wrappers.RecordEpisodeStatistics(env)
-
-            for wrapper_name, wrapper_kwargs in eval_wrapper_option.items():
-                wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs, env)
-                env = wrapper_class(env, **wrapper_kwargs)
-
-            env.action_space.seed(random_seed)
-
-            return env
-
-        return thunk
-
-    if vector_env:
-        dataset = minari.load_dataset(dataset_id)
-        eval_env = gym.vector.SyncVectorEnv([make_env(seed - 1, render, record) for i in range(1)])
-
-    else:
-        dataset = minari.load_dataset(dataset_id)
-        eval_env = make_env(seed - 1, render, record)()
-
-    return {'dataset': dataset, 'eval_env': eval_env}

@@ -4,6 +4,8 @@ network_config:
   Actor:
     hidden_units: [256, 256]
 dataset_frac: 0.7
+gamma: 0.99
+batch_size: 256
 learning_rate: 0.001
 optimizer: Adam
 optimizer_kwargs: {}

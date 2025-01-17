@@ -3,23 +3,23 @@ from typing import Any, Dict, Optional, Type, Union
 import gymnasium as gym
 import numpy as np
 import torch
-from minari import MinariDataset
 from torch.functional import F
-from torch.utils.data import DataLoader
 
 from diverserl.algos.offline_rl.base import OfflineRL
-from diverserl.common.utils import collate_fn, fix_observation, get_optimizer
+from diverserl.common.buffer import DatasetBuffer
+from diverserl.common.utils import fix_observation, get_optimizer
 from diverserl.networks import DeterministicActor
 from diverserl.networks.d2rl_networks import D2RLDeterministicActor
 
 
 class BC(OfflineRL):
     def __init__(self,
-                 dataset: MinariDataset,
+                 buffer: DatasetBuffer,
                  eval_env: gym.vector.VectorEnv,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
                  dataset_frac: float = 1.0,
+                 gamma: float = 0.99,
                  batch_size: int = 256,
                  learning_rate: float = 0.001,
                  optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
@@ -40,7 +40,7 @@ class BC(OfflineRL):
         :param optimizer_kwargs: Parameter dict for the optimizer
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__(dataset=dataset,
+        super().__init__(buffer=buffer,
                          env=None,
                          eval_env=eval_env,
                          network_type=network_type,
@@ -48,14 +48,11 @@ class BC(OfflineRL):
                          network_config=network_config,
                          device=device)
 
-        reward_dict = dict(zip(list(map(lambda x: int(x.id), dataset)), list(map(lambda x: float(sum(x.rewards)), dataset))))
-        reward_dict = dict(sorted(reward_dict.items(), key=lambda item: item[1]))
-
-        idxs = list(reward_dict.keys())[int(len(reward_dict) * (1 - dataset_frac)):]
-
-        self.dataloader = DataLoader(dataset.filter_episodes(lambda x: x.id in idxs), batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
+        #self.dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
         self.dataset_frac = dataset_frac
+        self.gamma = gamma
+
         self.batch_size = batch_size
         self.learning_rate = learning_rate
 
@@ -126,13 +123,11 @@ class BC(OfflineRL):
 
         :return: Train result
         """
-        batch = next(iter(self.dataloader))
-
+        s, a, r, ns, d, t = self.buffer.sample(self.batch_size)
         self.training_count += 1
         self.actor.train()
 
-        batch_s, batch_a = batch['observations'], batch['actions']
-        loss = F.mse_loss(self.actor(batch_s[:, :-1]), batch_a)
+        loss = F.mse_loss(self.actor(s), a)
 
         self.optimizer.zero_grad()
         loss.backward()

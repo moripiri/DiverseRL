@@ -3,6 +3,14 @@ defaults:
   - algo: offline_rl/bc
   - trainer: offline_trainer
 
+env:
+  dataset_id: D4RL/door/human-v2
+  filter_option:
+    filter_reward:
+      dataset_frac: ${algo.dataset_frac}
+      gamma: ${algo.gamma}
+    normalize_dataset: {}
+
 hydra:
   run:
     dir: .

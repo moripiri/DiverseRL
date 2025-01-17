@@ -6,7 +6,8 @@ import gymnasium as gym
 import numpy as np
 import torch
 
-from diverserl.common.utils import set_network_configs
+from diverserl.common.utils import (find_action_space, find_observation_space,
+                                    set_network_configs)
 
 
 class BaseRL(ABC):
@@ -34,40 +35,8 @@ class BaseRL(ABC):
         except:
             self.action_space = env.action_space
 
-        # state_dim
-        if isinstance(self.observation_space, gym.spaces.Box):
-            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
-            self.state_dim = int(self.observation_space.shape[0]) if len(
-                self.observation_space.shape) == 1 else self.observation_space.shape
-
-        elif isinstance(self.observation_space, gym.spaces.Discrete):
-            self.state_dim = int(self.observation_space.n)
-
-        elif isinstance(self.observation_space, gym.spaces.Tuple):
-            # currently only supports tuple observation_space that consist of discrete spaces (toy_text environment)
-            self.state_dim = tuple(map(lambda x: int(x.n), self.observation_space))
-
-        else:
-            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
-
-        # action_dim
-        if isinstance(self.action_space, gym.spaces.Discrete):
-            self.action_dim = int(self.action_space.n)
-            self.discrete_action = True
-
-        elif isinstance(self.action_space, gym.spaces.Box):
-            self.action_dim = int(self.action_space.shape[0])
-
-            if self.action_space.high[0] == np.inf:
-                self.action_scale = 1.  #(env.unwrapped.envs[0].action_space.high[0] - env.unwrapped.envs[0].action_space.low[0]) / 2
-                self.action_bias = 0.  #(env.unwrapped.envs[0].action_space.high[0] + env.unwrapped.envs[0].action_space.low[0]) / 2
-            else:
-                self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
-                self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
-
-            self.discrete_action = False
-        else:
-            raise TypeError(f"{self.action_space} action_space is currently not supported.")
+        self.state_dim = find_observation_space(self.observation_space)
+        self.action_dim, self.discrete_action, self.action_scale, self.action_bias = find_action_space(self.action_space)
 
     @abstractmethod
     def _type_assertion(self):
