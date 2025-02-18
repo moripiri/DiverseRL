@@ -18,7 +18,13 @@ class ClassicRL(BaseRL, ABC):
 
         :param env: The environment for RL agent to learn from
         """
-        super().__init__(env, eval_env)
+        super().__init__()
+
+        self.env = env
+        self.eval_env = eval_env
+
+        self._find_env_space(env)
+        self._type_assertion()
 
     def _type_assertion(self):
         assert isinstance(self.observation_space, (gym.spaces.Discrete, gym.spaces.Tuple)) and isinstance(

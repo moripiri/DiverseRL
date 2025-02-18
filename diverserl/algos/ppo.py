@@ -9,7 +9,7 @@ from torch import nn
 
 from diverserl.algos.base import DeepRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import get_optimizer
+from diverserl.common.utils import fix_observation, get_optimizer
 from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
                                 VNetwork)
 from diverserl.networks.d2rl_networks import (D2RLCategoricalActor,
@@ -123,7 +123,6 @@ class PPO(DeepRL):
         return ppo_network_list
 
     def _build_network(self) -> None:
-
         actor_class = self.network_list()[self.network_type]["Actor"]["Discrete" if self.discrete_action else "Continuous"]
         actor_config = self.network_config["Actor"]
 
@@ -178,7 +177,7 @@ class PPO(DeepRL):
         layer_init(self.critic.layers[-1], std=1.0)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_observation(observation)
+        observation = fix_observation(observation, self.device)
 
         self.actor.train()
 
@@ -188,7 +187,7 @@ class PPO(DeepRL):
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = self._fix_observation(observation)
+        observation = fix_observation(observation, self.device)
 
         self.actor.eval()
 
