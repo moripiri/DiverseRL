@@ -4,7 +4,7 @@ defaults:
   - trainer: offline_trainer
 
 env:
-  dataset_id: D4RL/door/human-v2
+  dataset_id: mujoco/ant/expert-v0
   filter_option:
     filter_reward:
       dataset_frac: ${algo.dataset_frac}

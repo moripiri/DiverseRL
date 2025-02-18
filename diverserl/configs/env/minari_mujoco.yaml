@@ -1,9 +1,6 @@
 _target_: diverserl.common.make_offline_env.make_offline_envs
 dataset_id: mujoco/ant/expert-v0
-filter_option:
-  filter_reward:
-    dataset_frac: 0.7
-    gamma: ${algo.gamma}
+filter_option: {}
 eval_env_option: {}
 eval_wrapper_option: {}
 seed: ${trainer.seed}

@@ -29,7 +29,7 @@ class BC(OfflineRL):
         """
         Behavior Cloning(Any percent BC): Directly learns a policy by using supervised learning on observation-action pairs from expert demonstrations.
 
-        :param dataset: Dataset that contains expert demonstrations.
+        :param buffer: Dataset Buffer that contains expert demonstrations.
         :param eval_env: Gymnasium environment to evaluate the BC algorithm
         :param network_type: Type of neural network to use
         :param network_config: Configurations for the neural networks
@@ -47,8 +47,6 @@ class BC(OfflineRL):
                          network_list=self.network_list(),
                          network_config=network_config,
                          device=device)
-
-        #self.dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
 
         self.dataset_frac = dataset_frac
         self.gamma = gamma

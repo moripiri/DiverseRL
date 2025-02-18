@@ -268,6 +268,7 @@ class DatasetBuffer:
 
         self.dataset = self.load_dataset(dataset)
         self.dataset_metadata = dataset.storage.metadata
+        self.ref_min_score, self.ref_max_score = self.dataset_metadata.get('ref_min_score'), self.dataset_metadata.get('ref_max_score')
         self.device = device
 
     def __len__(self) -> int:
