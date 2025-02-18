@@ -1,6 +1,6 @@
 import re
 from copy import deepcopy
-from typing import Dict, Optional, Type
+from typing import Dict, Optional, Tuple, Type
 
 from gymnasium import Env
 

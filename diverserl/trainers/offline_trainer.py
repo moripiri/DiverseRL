@@ -57,6 +57,8 @@ class OfflineTrainer(Trainer):
         self.save_log_prob = False
         self.max_step = max_step
 
+
+
     def print_results(self, result: Dict[str, Any]) -> None:
         """
         Print training result to console.
@@ -101,13 +103,21 @@ class OfflineTrainer(Trainer):
         avg_local_step = np.mean(local_step_list)
 
         self.log_scalar(
-            {"eval/avg_episode_reward": avg_ep_reward, "eval/avg_local_step": avg_local_step}, self.total_step
+            {"eval/avg_episode_reward": avg_ep_reward,
+             "eval/avg_local_step": avg_local_step}, self.total_step
         )
+        result = f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}"
+
+        if isinstance(self.algo.buffer.ref_min_score, Union[float, int]) and isinstance(self.algo.buffer.ref_max_score, Union[float, int]):
+            normalized_avg_ep_reward = ((avg_ep_reward - self.algo.buffer.ref_min_score)
+                                        / (self.algo.buffer.ref_max_score - self.algo.buffer.ref_min_score))
+            self.log_scalar(
+                {"eval/normalized_avg_episode_reward": normalized_avg_ep_reward}, self.total_step
+            )
+            result += f", normalized_avg_ep_reward: {normalized_avg_ep_reward:04.2f}"
 
         self.progress.console.print("=" * 100, style="bold")
-        self.progress.console.print(
-            f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}",
-        )
+        self.progress.console.print(result)
         self.progress.console.print("=" * 100, style="bold")
 
     def run(self) -> None:
