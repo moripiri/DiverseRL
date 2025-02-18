@@ -41,6 +41,7 @@ class Trainer(ABC):
         Base trainer for RL algorithms.
 
         :param algo: RL algorithm
+        :param env: The environment for RL agent to learn from
         :param total: Ending point of the progress bar (max_episode or max_step)
         :param do_eval: Whether to perform evaluation during training
         :param eval_every: Perform evalaution every n episode or steps
@@ -54,6 +55,7 @@ class Trainer(ABC):
         """
 
         self.algo = algo
+        self.env = self.algo.env
         self.eval_env = self.algo.eval_env
 
         self.seed = set_seed(seed)
@@ -150,3 +152,32 @@ class Trainer(ABC):
 
         if self.log_wandb:
             self.wandb.log(result, step=step)
+
+    def log_episodes(self, infos: Dict[str, Any]) -> None:
+        """
+        Print episode results to console and Log episode results to tensorboard or/and wandb.
+
+        :param infos: Gymnasium info that contains episode results recorded by Gymnasium's RecordEpisodeStatistics wrapper.
+        :return:
+        """
+
+        for i, episode_done in enumerate(infos['_episode']):
+            if episode_done:
+                local_step = infos['episode']['l'][i]
+                episode_reward = infos['episode']['r'][i]
+
+                self.progress.console.print(
+                    f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
+                )
+
+                self.log_scalar(
+                    {
+                        "train/episode_reward": episode_reward,
+                        "train/local_step": local_step,
+                        "train/total_step": self.total_step,
+                        "train/training_count": self.algo.training_count,
+                    },
+                    self.total_step,
+                )
+
+                self.episode += 1

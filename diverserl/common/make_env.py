@@ -1,20 +1,15 @@
 import re
-from copy import deepcopy
-from typing import Dict, Optional, Type
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
+import ale_py
+import shimmy
 from gymnasium import Env
 
 import diverserl
 from diverserl.common.wrappers import *
 
-try:
-    import ale_py
-    import shimmy
-
-    gym.register_envs(ale_py)
-    gym.register_envs(shimmy)
-except:
-    pass
+gym.register_envs(ale_py)
+gym.register_envs(shimmy)
 
 
 def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
@@ -66,8 +61,8 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env
 
     if wrapper_kwargs is not None:
         for key, value in wrapper_kwargs.items():
-            # assert isinstance(value, Union[
-            #     int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
+            assert isinstance(value, Union[
+                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
                 wrapper_option[key] = eval(value)
             else:
@@ -79,7 +74,7 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env
 def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_option: Optional[Dict[str, Any]] = None,
               seed: int = 1234, num_envs: int = 1, vector_env: bool = True, render: bool = False, record: bool = False,
               ) -> \
-        Dict[str, Any]:
+        Tuple[Union[gym.Env, gym.vector.SyncVectorEnv], gym.Env]:
     """
     Creates gymnasium environments for training or evaluation.
 
@@ -151,4 +146,4 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
 
         eval_env = make_env(seed - 1, render, record)()
 
-    return {'env': env, 'eval_env': eval_env}
+    return env, eval_env

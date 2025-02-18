@@ -9,7 +9,7 @@ from torch import nn
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import fix_observation, get_optimizer
+from diverserl.common.utils import get_optimizer
 from diverserl.networks import (CategoricalActor, GaussianActor, PixelEncoder,
                                 VNetwork)
 from diverserl.networks.d2rl_networks import (D2RLCategoricalActor,
@@ -187,7 +187,7 @@ class PPO(PixelRL):
         layer_init(self.critic.layers[-1], std=1.0)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
 
@@ -197,7 +197,7 @@ class PPO(PixelRL):
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> Tuple[np.ndarray, np.ndarray]:
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.eval()
 

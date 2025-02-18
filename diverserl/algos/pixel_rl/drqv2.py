@@ -10,8 +10,7 @@ import torch.nn.functional as F
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import NstepReplayBuffer
 from diverserl.common.image_augmentation import random_shift_aug
-from diverserl.common.utils import (fix_observation, get_optimizer,
-                                    hard_update, soft_update)
+from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import DeterministicActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import (D2RLDeterministicActor,
                                               D2RLQNetwork)
@@ -170,7 +169,7 @@ class DrQv2(PixelRL):
         :return: The DrQ-v2 agent's action
         """
         self.update_noise_scale()
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
@@ -186,7 +185,7 @@ class DrQv2(PixelRL):
         :param observation: The input observation
         :return: The DrQ-v2 agent's action (in evaluation mode)
         """
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.eval()
 

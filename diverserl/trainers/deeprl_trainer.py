@@ -27,9 +27,10 @@ class DeepRLTrainer(Trainer):
     ) -> None:
 
         """
-        Trainer for Deep RL algorithms.
+        Trainer for Deep RL (Off policy) algorithms.
 
-        :param algo: Deep RL algorithm
+        :param algo: Deep RL algorithm (Off policy)
+        :param env: The environment for RL agent to learn from
         :param seed: Random seed
         :param training_start: In which total_step to start the training of the Deep RL algorithm
         :param training_freq: How frequently train the algorithm (in total_step)
@@ -60,9 +61,8 @@ class DeepRLTrainer(Trainer):
             save_freq=save_freq,
             configs=configs,
         )
-        self.env = self.algo.env
 
-        self.save_log_prob = self.algo.buffer.save_log_prob
+        assert not self.algo.buffer.save_log_prob, "On-policy algorithms must use on_policy trainer."
 
         self.training_start = training_start
         self.training_freq = training_freq
@@ -70,36 +70,6 @@ class DeepRLTrainer(Trainer):
         self.max_step = max_step
 
         self.num_envs = self.algo.num_envs
-
-    def log_episodes(self, infos: Dict[str, Any]) -> None:
-        """
-        Print episode results to console and Log episode results to tensorboard or/and wandb.
-
-        :param infos: Gymnasium info that contains episode results recorded by Gymnasium's RecordEpisodeStatistics wrapper.
-        :return:
-        """
-
-        for i, episode_done in enumerate(infos['_episode']):
-            if episode_done:
-                local_step = infos['episode']['l'][i]
-                episode_reward = infos['episode']['r'][i]
-
-                self.progress.console.print(
-                    f"Episode: {self.episode:06d} -> Local_step: {local_step:04d}, Total_step: {self.total_step:08d}, Episode_reward: {episode_reward:04.4f}",
-                )
-
-                self.log_scalar(
-                    {
-                        "train/episode_reward": episode_reward,
-                        "train/local_step": local_step,
-                        "train/total_step": self.total_step,
-                        "train/training_count": self.algo.training_count,
-                    },
-                    self.total_step,
-                )
-
-                self.episode += 1
-
 
     def evaluate(self) -> None:
         """
@@ -113,10 +83,8 @@ class DeepRLTrainer(Trainer):
             terminated, truncated = False, False
 
             while not (terminated or truncated):
-                if self.save_log_prob:
-                    action, _ = self.algo.eval_action(observation)
-                else:
-                    action = self.algo.eval_action(observation)
+                action = self.algo.eval_action(observation)
+
                 (
                     next_observation,
                     reward,
@@ -158,11 +126,7 @@ class DeepRLTrainer(Trainer):
                     action = self.env.action_space.sample()
 
                 else:
-                    if self.save_log_prob:
-                        action, log_prob = self.algo.get_action(observation)
-                    else:
-                        action = self.algo.get_action(observation)
-                        log_prob = None
+                    action = self.algo.get_action(observation)
 
                 (
                     next_observation,
@@ -173,10 +137,10 @@ class DeepRLTrainer(Trainer):
                 ) = self.env.step(action)
 
                 # add buffer
-                self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
+                self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated)
 
                 # train algorithm
-                if self.total_step > self.training_start and (self.total_step % self.training_freq == 0):
+                if self.total_step >= self.training_start and (self.total_step % self.training_freq == 0):
                     for _ in range(int(self.training_num)):
                         result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
                         self.log_scalar(result, self.total_step)

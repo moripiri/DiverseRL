@@ -1,10 +1,6 @@
-# DeepRLTrainer configuration file for on-policy RL algorithms.
-_target_: diverserl.trainers.DeepRLTrainer
+_target_: diverserl.trainers.on_policy_trainer.OnPolicyTrainer
 seed: 1
-training_start: 0
-training_freq: ${algo.horizon}
-training_num: 1
-max_step: 2000000
+max_step: 1000000
 do_eval: true
 eval_every: 10000
 eval_ep: 1

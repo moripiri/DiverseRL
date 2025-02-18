@@ -1,11 +1,8 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import torch
-from minari import MinariDataset
 from torch import Tensor
-
-from diverserl.common.utils import find_action_space, find_observation_space
 
 
 class ReplayBuffer:
@@ -201,6 +198,7 @@ class NstepReplayBuffer(ReplayBuffer):
         self.discount = discount
         self.n_step = n_step
 
+
     def __len__(self) -> int:
         return self.idx - self.n_step
 
@@ -259,66 +257,3 @@ class NstepReplayBuffer(ReplayBuffer):
             return states, actions, rewards, next_states, dones, terminates, log_probs, discounts
 
         return states, actions, rewards, next_states, dones, terminates, discounts
-
-
-class DatasetBuffer:
-    def __init__(self, dataset: MinariDataset, device: str = "cpu") -> None:
-        self.state_dim = find_observation_space(dataset.spec.observation_space)
-        self.action_dim, _, _, _ = find_action_space(dataset.spec.action_space)
-
-        self.dataset = self.load_dataset(dataset)
-        self.dataset_metadata = dataset.storage.metadata
-        self.device = device
-
-    def __len__(self) -> int:
-        return len(self.s)
-
-    @property
-    def size(self) -> int:
-        """
-        Size of the stored transitions. Not equal to the buffer's length.
-        :return: Current ReplayBuffer size.
-        """
-        return len(self.s)
-
-    def load_dataset(self, dataset: MinariDataset) -> Dict[str, List[Any]]:
-        temp_dataset = {'id': [], 'observations': [], 'actions': [], 'rewards': [], 'next_observations': [], 'terminations': [],
-                        'truncations': [], }
-        for episode in dataset:
-            temp_dataset['id'].append(episode.id)
-            temp_dataset['observations'].append(episode.observations[:-1])
-            temp_dataset['actions'].append(episode.actions)
-            temp_dataset['rewards'].append(episode.rewards.reshape(-1, 1))
-            temp_dataset['next_observations'].append(episode.observations[1:])
-            temp_dataset['terminations'].append(episode.terminations.reshape(-1, 1))
-            temp_dataset['truncations'].append(episode.truncations.reshape(-1, 1))
-
-        return temp_dataset
-
-    def filter_episodes(self, ids: List[int]) -> None:
-        for id in ids:
-            list_id = self.dataset['id'].index(id)
-            for key in self.dataset.keys():
-                del self.dataset[key][list_id]
-
-    def init_buffer(self):
-        self.s = np.concatenate(self.dataset['observations'], axis=0, dtype=np.float32)
-        self.a = np.concatenate(self.dataset['actions'], axis=0, dtype=np.float32)
-        self.r = np.concatenate(self.dataset['rewards'], axis=0, dtype=np.float32)
-        self.ns = np.concatenate(self.dataset['next_observations'], axis=0, dtype=np.float32)
-        self.d = np.concatenate(self.dataset['terminations'], axis=0, dtype=np.float32)
-        self.t = np.concatenate(self.dataset['truncations'], axis=0, dtype=np.float32)
-
-        del self.dataset
-
-    def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
-        batch_ids = np.random.randint(0, self.size, size=batch_size)
-
-        states = torch.from_numpy(self.s[batch_ids,:]).to(self.device)
-        actions = torch.from_numpy(self.a[batch_ids,:]).to(self.device)
-        rewards = torch.from_numpy(self.r[batch_ids,:]).to(self.device)
-        next_states = torch.from_numpy(self.ns[batch_ids,:]).to(self.device)
-        dones = torch.from_numpy(self.d[batch_ids,:]).to(self.device)
-        terminates = torch.from_numpy(self.t[batch_ids,:]).to(self.device)
-
-        return states, actions, rewards, next_states, dones, terminates

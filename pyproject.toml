@@ -14,7 +14,7 @@ torch = [
     {platform='linux', version='^2.1.0', source = "pypi"}
 ]
 
-#jax = {extras = ["cpu"], version = "^0.4.18"}
+jax = {extras = ["cpu"], version = "^0.4.18"}
 
 gymnasium = {version="^1.0.0", extras=['all']}
 AutoROM = {version = ">=0.4.2,<0.5.0", extras = ["accept-rom-license"]}
@@ -38,7 +38,6 @@ optional = true
 [tool.poetry.group.envs.dependencies]
 #shimmy version restricted due to gymnasium 0.29.1
 shimmy = {version=">=2.0.0", extras=['dm-control']}
-minari = {version="^0.5.1", extras=['all']}
 
 [[tool.poetry.source]]
 name = "pytorch-gpu-src"

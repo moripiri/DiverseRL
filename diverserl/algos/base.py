@@ -1,20 +1,24 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Union
 
 import gymnasium as gym
 import numpy as np
 import torch
 
-from diverserl.common.utils import (find_action_space, find_observation_space,
-                                    set_network_configs)
-
 
 class BaseRL(ABC):
-    def __init__(self) -> None:
+    def __init__(self, env: Union[gym.Env, gym.vector.VectorEnv], eval_env: Union[gym.Env, gym.vector.VectorEnv]) -> None:
         """
         Base class for all algorithms in DiverseRL.
+
+        :param env: Gymnasium environment to train the algorithm.
         """
+        self.env = env
+        self.eval_env = eval_env
+
+        self._find_env_space(env)
+        self._type_assertion()
 
     @abstractmethod
     def __repr__(self) -> str:
@@ -35,13 +39,44 @@ class BaseRL(ABC):
         except:
             self.action_space = env.action_space
 
-        self.state_dim = find_observation_space(self.observation_space)
-        self.action_dim, self.discrete_action, self.action_scale, self.action_bias = find_action_space(self.action_space)
+        # state_dim
+        if isinstance(self.observation_space, gym.spaces.Box):
+            # why use shape? -> Atari Ram envs have uint8 dtype and (256, ) observation_space.shape
+            self.state_dim = int(self.observation_space.shape[0]) if len(
+                self.observation_space.shape) == 1 else self.observation_space.shape
+
+        elif isinstance(self.observation_space, gym.spaces.Discrete):
+            self.state_dim = int(self.observation_space.n)
+
+        elif isinstance(self.observation_space, gym.spaces.Tuple):
+            # currently only supports tuple observation_space that consist of discrete spaces (toy_text environment)
+            self.state_dim = tuple(map(lambda x: int(x.n), self.observation_space))
+
+        else:
+            raise TypeError(f"{self.observation_space} observation_space is currently not supported.")
+
+        # action_dim
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            self.action_dim = int(self.action_space.n)
+            self.discrete_action = True
+
+        elif isinstance(self.action_space, gym.spaces.Box):
+            self.action_dim = int(self.action_space.shape[0])
+
+            if self.action_space.high[0] == np.inf:
+                self.action_scale = 1.#(env.unwrapped.envs[0].action_space.high[0] - env.unwrapped.envs[0].action_space.low[0]) / 2
+                self.action_bias = 0.#(env.unwrapped.envs[0].action_space.high[0] + env.unwrapped.envs[0].action_space.low[0]) / 2
+            else:
+                self.action_scale = (self.action_space.high[0] - self.action_space.low[0]) / 2
+                self.action_bias = (self.action_space.high[0] + self.action_space.low[0]) / 2
+
+            self.discrete_action = False
+        else:
+            raise TypeError(f"{self.action_space} action_space is currently not supported.")
 
     @abstractmethod
     def _type_assertion(self):
         pass
-
 
 class DeepRL(BaseRL, ABC):
     """
@@ -49,8 +84,7 @@ class DeepRL(BaseRL, ABC):
     """
 
     def __init__(
-            self, env: Optional[gym.vector.VectorEnv], eval_env: gym.vector.VectorEnv, network_type: str,
-            network_list: Dict[str, Any],
+            self, env: gym.vector.VectorEnv, eval_env: gym.vector.VectorEnv, network_type: str, network_list: Dict[str, Any],
             network_config: Dict[str, Any],
             device: str = "cpu"
     ) -> None:
@@ -64,22 +98,11 @@ class DeepRL(BaseRL, ABC):
         :param network_config: Configurations of the DeepRL algorithm networks.
         :param device: Device (cpu, cuda, ...) on which the code should be run
         """
-        super().__init__()
-        self.env = env
-        self.eval_env = eval_env
+        super().__init__(env, eval_env)
 
-        if env is not None:
-            self._find_env_space(env)
-            self.num_envs = env.num_envs
+        self._set_network_configs(network_type, network_list, network_config)
 
-        else:
-            self._find_env_space(eval_env)
-            self.num_envs = eval_env.num_envs
-
-        self._type_assertion()
-
-        self.network_type, self.network_config = set_network_configs(network_type, network_list, network_config)
-
+        self.num_envs = env.num_envs
         self.device = device
         self.training_count = 0
 
@@ -104,6 +127,39 @@ class DeepRL(BaseRL, ABC):
         :return:
         """
         pass
+
+    def _set_network_configs(self, network_type: str, network_list: Dict[str, Any],
+                             network_config: Dict[str, Any], ) -> None:
+        assert network_type in network_list.keys()
+        if network_config is None:
+            network_config = dict()
+
+        assert set(network_config.keys()).issubset(network_list[network_type].keys())
+        for network in network_list[network_type].keys():
+            if network not in network_config.keys():
+                network_config[network] = dict()
+
+        self.network_type = network_type
+        self.network_config = network_config
+
+    def _fix_observation(self, observation: Union[np.ndarray, torch.Tensor]) -> torch.tensor:
+        """
+        Fix observation appropriate to torch neural network module.
+
+        :param observation: The input observation
+        :return: The input observation in the form of two dimension tensor
+        """
+
+        if isinstance(observation, torch.Tensor):
+            observation = observation.to(dtype=torch.float32)
+
+        else:
+            observation = np.asarray(observation).astype(np.float32)
+            observation = torch.from_numpy(observation)
+
+        observation = observation.to(self.device)
+
+        return observation
 
     @abstractmethod
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:

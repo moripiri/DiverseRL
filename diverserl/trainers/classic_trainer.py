@@ -48,7 +48,6 @@ class ClassicTrainer(Trainer):
             record=record,
             configs=configs,
         )
-        self.env = self.algo.env
 
         self.max_episode = max_episode
         assert not isinstance(self.env, gym.vector.SyncVectorEnv), "For Classic RL, Env must not be vectorized."

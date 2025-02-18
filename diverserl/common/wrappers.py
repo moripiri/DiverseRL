@@ -1,7 +1,9 @@
-from typing import Any, SupportsFloat, TypeVar
+from copy import deepcopy
+from typing import Any, Dict, Optional, SupportsFloat, Tuple, TypeVar
 
 import gymnasium as gym
 import numpy as np
+from gymnasium.wrappers import AddRenderObservation
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
@@ -31,7 +33,6 @@ class FrameSkipWrapper(gym.ActionWrapper):
 
     def step(self, action: WrapperActType) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """Runs the :attr:`env` :meth:`env.step` using the modified ``action`` from :meth:`self.action`."""
-        observation = None
         total_reward, terminated, truncated, info = 0.0, False, False, {}
 
         for t in range(self.frame_skip):

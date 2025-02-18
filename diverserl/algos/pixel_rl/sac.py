@@ -10,8 +10,7 @@ import torch.nn.functional as F
 
 from diverserl.algos.pixel_rl.base import PixelRL
 from diverserl.common.buffer import ReplayBuffer
-from diverserl.common.utils import (fix_observation, get_optimizer,
-                                    hard_update, soft_update)
+from diverserl.common.utils import get_optimizer, hard_update, soft_update
 from diverserl.networks import GaussianActor, PixelEncoder, QNetwork
 from diverserl.networks.d2rl_networks import D2RLGaussianActor, D2RLQNetwork
 
@@ -164,7 +163,7 @@ class SAC(PixelRL):
         :param observation: The input observation
         :return: The SAC agent's action
         """
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.train()
         with torch.no_grad():
@@ -179,7 +178,7 @@ class SAC(PixelRL):
         :param observation: The input observation
         :return: The SAC agent's action (in evaluation mode)
         """
-        observation = fix_observation(observation, self.device)
+        observation = self._fix_observation(observation)
 
         self.actor.eval()
         with torch.no_grad():

@@ -1,4 +1,4 @@
-_target_: diverserl.trainers.ClassicTrainer
+_target_: diverserl.trainers.classic_trainer.ClassicTrainer
 seed: 1
 max_episode: 1000
 do_eval: true
