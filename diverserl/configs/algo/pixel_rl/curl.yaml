@@ -31,7 +31,7 @@ network_config:
     layer_norm: true
   Buffer:
     optimize_memory_usage: true
-pre_image_size: ${env.env_option.render_width}
+pre_image_size: ${env.env_option.render_kwargs.width}
 image_size: 84
 gamma: 0.99
 alpha: 0.1

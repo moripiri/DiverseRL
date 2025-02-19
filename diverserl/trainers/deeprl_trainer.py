@@ -152,17 +152,15 @@ class DeepRLTrainer(Trainer):
 
             while self.total_step <= self.max_step:
                 progress.advance(self.task, advance=1)
-
+                log_prob = None
                 # take action
                 if self.total_step < self.training_start:
                     action = self.env.action_space.sample()
-
                 else:
                     if self.save_log_prob:
                         action, log_prob = self.algo.get_action(observation)
                     else:
                         action = self.algo.get_action(observation)
-                        log_prob = None
 
                 (
                     next_observation,
