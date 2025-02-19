@@ -6,10 +6,13 @@
 This repo aims to implement algorithms of various sub-topics in RL (e.g. model-based RL, offline RL), in wide variety of environments.
 
 ## Features
-
-
-- Wandb logging
-- Tensorboard
+- **Training loop in a single function**
+  - Each algorithm's training procedure is written in a single function for readers' convenience.
+- **Single-file configuration file**
+  - With the use of [Hydra](https://hydra.cc/), you can manage settings of your experiment in a single yaml file.
+- **Logging**
+  - WandB
+  - Tensorboard
 
 ## Installation
 
