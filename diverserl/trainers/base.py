@@ -127,7 +127,10 @@ class Trainer(ABC):
             os.makedirs(self.ckpt_folder, exist_ok=True)
 
         if record:
-            self.eval_env.envs[0] = RecordVideo(self.eval_env.envs[0], video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+            try:
+                self.eval_env.envs[0] = RecordVideo(self.eval_env.envs[0], video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+            except:
+                self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
 
     @abstractmethod
     def evaluate(self):
