@@ -91,3 +91,11 @@ Or you use [hydra](https://hydra.cc/) by running `run.py`.
 ```bash
 python run.py env=gym_classic_control algo=dqn trainer=deeprl_trainer algo.device=cuda trainer.max_step=10000
 ```
+
+```bash
+python run.py --config-name ppo_gym_atari algo.device=cuda trainer.log_wandb=true
+```
+
+```bash
+python run.py --config-name dqn_gym_atari algo.device=cuda trainer.log_wandb=true
+```
