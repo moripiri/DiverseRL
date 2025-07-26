@@ -24,6 +24,7 @@ tensorboard = "^2.15.1"
 wandb = "^0.18.5"
 hydra-core = ">=1.3"
 
+
 [tool.poetry.group.dev]
 optional = true
 
@@ -39,7 +40,7 @@ optional = true
 #shimmy version restricted due to gymnasium 0.29.1
 shimmy = {version=">=2.0.0", extras=['dm-control']} # use pip install "shimmy[dm-control]"
 minari = {version="^0.5.1", extras=['all', 'hdf5']}
-z
+
 [[tool.poetry.source]]
 name = "pytorch-gpu-src"
 url = "https://download.pytorch.org/whl/cu118"

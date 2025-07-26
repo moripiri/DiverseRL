@@ -1,12 +1,18 @@
-_target_: diverserl.algos.offline_rl.BC
+_target_: diverserl.algos.offline_rl.CQL
 network_type: Default
 network_config:
   Actor:
     hidden_units: [256, 256]
-dataset_frac: 0.7
 gamma: 0.99
+alpha: 0.1
+cql_alpha: 0.1
+train_alpha: true
+with_lagrange: true
+tau: 0.05
+target_critic_update: 2
+num_random: 10
+temp: 1.0
+min_q_weihgt: 1.0
+target_action_gap: 0.0
 batch_size: 256
-learning_rate: 0.001
-optimizer: Adam
-optimizer_kwargs: {}
 device: cpu
