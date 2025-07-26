@@ -14,7 +14,7 @@ learning_rate: 0.00025
 optimizer: Adam
 optimizer_kwargs: {}
 anneal_lr: false
-target_copy_freq: 10
+target_copy_freq: 100
 training_start: ${trainer.training_start}
 max_step: ${trainer.max_step}
 device: cpu

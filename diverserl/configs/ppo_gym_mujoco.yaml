@@ -52,7 +52,7 @@ algo:
   anneal_lr: true
   device: cpu
 trainer:
-  seed: 1
+  seed: 1234
   max_step: 1000000
   do_eval: true
   eval_every: 10000

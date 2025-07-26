@@ -151,13 +151,12 @@ class DeepRLTrainer(Trainer):
             observation, info = self.env.reset()
 
             while self.total_step <= self.max_step:
-                progress.advance(self.task, advance=self.num_envs)
-
+                progress.advance(self.task, advance=1)
+                log_prob = None
                 # take action
                 log_prob = None
                 if self.total_step < self.training_start:
                     action = self.env.action_space.sample()
-
                 else:
                     if self.save_log_prob:
                         action, log_prob = self.algo.get_action(observation)
@@ -175,14 +174,16 @@ class DeepRLTrainer(Trainer):
                 # add buffer
                 self.algo.buffer.add(observation, action, reward, next_observation, terminated, truncated, log_prob)
 
+                observation = next_observation
+                self.total_step += 1
+
                 # train algorithm
                 if self.total_step > self.training_start and (self.total_step % self.training_freq == 0):
                     for _ in range(int(self.training_num)):
                         result = self.algo.train(total_step=self.total_step, max_step=self.max_step)
                         self.log_scalar(result, self.total_step)
 
-                observation = next_observation
-                self.total_step += self.num_envs
+
 
                 # evaluate
                 if self.do_eval and self.total_step % self.eval_every == 0:

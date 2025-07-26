@@ -138,7 +138,7 @@ class TD3(DeepRL):
 
         self.actor.train()
         with torch.no_grad():
-            action = self.actor(observation).cpu().numpy()[0]
+            action = self.actor(observation).cpu().numpy()
             noise = np.random.normal(loc=0, scale=self.noise_scale, size=(action.shape[0], self.action_dim))
 
         return np.clip(action + noise, -self.action_scale + self.action_bias, self.action_scale + self.action_bias)
