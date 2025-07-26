@@ -154,6 +154,7 @@ class DeepRLTrainer(Trainer):
                 progress.advance(self.task, advance=1)
                 log_prob = None
                 # take action
+                log_prob = None
                 if self.total_step < self.training_start:
                     action = self.env.action_space.sample()
                 else:
