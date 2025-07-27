@@ -56,6 +56,12 @@ Pixel RL contains set of algorithms that are set to train environments with high
 - [DrQ (Data-Regularized Q)](https://arxiv.org/abs/2004.13649) (for dm-control)
 - [DrQ-v2 (Data-Regularized Q v2)](https://arxiv.org/abs/2107.09645) (for dm-control)
 
+#### Offline RL
+Offline RL algorithms are set of algorithms that can learn from set of environment trajectories.
+
+- Any Percent BC (Behavior Cloning)
+- [CQL (Conservative Q-learning)](https://arxiv.org/pdf/2006.04779)
+
 #### Classic RL
 Classic RL algorithms that are mostly known by Sutton's [Reinforcement Learning: An Introduction](http://incompleteideas.net/book/RLbook2020.pdf).
 Can be trained in Gymnasium's toy text environments.
