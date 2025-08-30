@@ -1,0 +1,9 @@
+_target_: diverserl.algos.offline_rl.DT
+network_type: Default
+network_config:
+gamma: 0.99
+batch_size: 128
+learning_rate: 0.001
+optimizer: Adam
+optimizer_kwargs: {}
+device: cpu

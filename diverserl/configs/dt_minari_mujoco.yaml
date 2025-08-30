@@ -1,16 +1,13 @@
 defaults:
   - env: minari_mujoco
-  - algo: offline_rl/bc
-  - trainer: offline_trainer
+  - algo: offline_rl/dt
+  - trainer: sequence_offline_trainer
 
 env:
   dataset_id: mujoco/ant/expert-v0
   filter_option:
-    filter_reward:
-      dataset_frac: ${algo.dataset_frac}
-      gamma: ${algo.gamma}
     normalize_observation: {}
-  buffer_name: DatasetBuffer
+  buffer_name: SequenceDatasetBuffer
 
 hydra:
   run:

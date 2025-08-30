@@ -283,30 +283,30 @@ class DatasetBuffer:
         return len(self.s)
 
     def load_dataset(self, dataset: MinariDataset) -> Dict[str, List[Any]]:
-        temp_dataset = {'id': [], 'observations': [], 'actions': [], 'rewards': [], 'next_observations': [], 'terminations': [],
-                        'truncations': [], }
+        temp_dataset = {'id': [], 'observations': [], 'actions': [], 'rewards': [], 'terminations': [], 'truncations': [], 'infos': [] }
         for episode in dataset:
             temp_dataset['id'].append(episode.id)
-            temp_dataset['observations'].append(episode.observations[:-1])
+            temp_dataset['observations'].append(episode.observations)
             temp_dataset['actions'].append(episode.actions)
             temp_dataset['rewards'].append(episode.rewards.reshape(-1, 1))
-            temp_dataset['next_observations'].append(episode.observations[1:])
             temp_dataset['terminations'].append(episode.terminations.reshape(-1, 1))
             temp_dataset['truncations'].append(episode.truncations.reshape(-1, 1))
+            temp_dataset['infos'].append(episode.infos)
 
         return temp_dataset
 
     def filter_episodes(self, ids: List[int]) -> None:
-        for id in ids:
-            list_id = self.dataset['id'].index(id)
-            for key in self.dataset.keys():
-                del self.dataset[key][list_id]
+        dataset_ids = [self.dataset['id'].index(id) for id in ids]
+        for key in self.dataset.keys():
+            self.dataset[key] = [item for i, item in enumerate(self.dataset[key]) if i not in [dataset_ids]]
+
 
     def init_buffer(self):
-        self.s = np.concatenate(self.dataset['observations'], axis=0, dtype=np.float32)
+        print(self.dataset['observations'])
+        self.s = np.concatenate(list(map(lambda x: x[:-1], self.dataset['observations'])), axis=0, dtype=np.float32)
         self.a = np.concatenate(self.dataset['actions'], axis=0, dtype=np.float32)
         self.r = np.concatenate(self.dataset['rewards'], axis=0, dtype=np.float32)
-        self.ns = np.concatenate(self.dataset['next_observations'], axis=0, dtype=np.float32)
+        self.ns = np.concatenate(list(map(lambda x: x[1:], self.dataset['observations'])), axis=0, dtype=np.float32)
         self.d = np.concatenate(self.dataset['terminations'], axis=0, dtype=np.float32)
         self.t = np.concatenate(self.dataset['truncations'], axis=0, dtype=np.float32)
 
@@ -323,3 +323,63 @@ class DatasetBuffer:
         terminates = torch.from_numpy(self.t[batch_ids,:]).to(self.device)
 
         return states, actions, rewards, next_states, dones, terminates
+
+
+class SequenceDatasetBuffer(DatasetBuffer):
+    def __init__(self, dataset: MinariDataset, sequence_length: int = 10, gamma: float = 0.99, device: str = "cpu") -> None:
+        super().__init__(dataset, device)
+        self.sequence_length = sequence_length
+        self.gamma = gamma
+
+    def __len__(self) -> int:
+        return len(self.s)
+
+    def init_buffer(self):
+        self.sample_prob = np.array([len(obs) for obs in self.dataset['observations']], dtype=np.float64)
+        self.sample_prob /= sum(self.sample_prob)
+        self.s = self.dataset['observations']
+        self.a = self.dataset['actions']
+        self.r = list(map(lambda x: self.discounted_cumsum(x, self.gamma), self.dataset['rewards']))
+        self.d = self.dataset['terminations']
+        self.t = self.dataset['truncations']
+
+        del self.dataset
+
+    def discounted_cumsum(self, x: np.ndarray, gamma: float) -> np.ndarray:
+        cumsum = np.zeros_like(x)
+        cumsum[-1] = x[-1]
+        for t in reversed(range(x.shape[0] - 1)):
+            cumsum[t] = x[t] + gamma * cumsum[t + 1]
+        return cumsum
+
+    def pad_along_axis(
+            self, arr: np.ndarray, pad_to: int, axis: int = 0, fill_value: float = 0.0) -> np.ndarray:
+        pad_size = pad_to - arr.shape[axis]
+        if pad_size <= 0:
+            return arr
+
+        npad = [(0, 0)] * arr.ndim
+        npad[axis] = (0, pad_size)
+        return np.pad(arr, pad_width=npad, mode="constant", constant_values=fill_value)
+
+    def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
+
+        traj_idx = np.random.choice(len(self), size=batch_size, p=self.sample_prob)
+        start_idx = np.random.randint(0, list(map(lambda x: self.r[x].shape[0] - 1, traj_idx)) , batch_size)
+
+        states = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.s[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        actions = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.a[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        returns = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.r[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        time_steps = np.asarray(list(map(lambda x: np.arange(x, x + self.sequence_length), start_idx)))
+
+        states_lengths = list(map(lambda x, y: len(self.s[x][y:y + self.sequence_length]), traj_idx, start_idx))
+
+        mask = np.vstack(list(map(lambda x: np.hstack([np.ones(x), np.zeros(self.sequence_length - x)]), states_lengths)))
+
+        states = torch.from_numpy(states).to(self.device, torch.float32)
+        actions = torch.from_numpy(actions).to(self.device, torch.float32)
+        returns = torch.from_numpy(returns).to(self.device, torch.float32)
+        time_steps = torch.from_numpy(time_steps).to(self.device)
+        mask = torch.from_numpy(mask).to(self.device)
+
+        return states, actions, returns, time_steps, mask

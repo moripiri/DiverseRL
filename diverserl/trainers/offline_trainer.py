@@ -151,3 +151,109 @@ class OfflineTrainer(Trainer):
                     self.wandb.save(f"{self.ckpt_folder}/*.pt")
 
             progress.console.print("=" * 100, style="bold")
+
+
+
+class SequenceOfflineTrainer(OfflineTrainer):
+    def __init__(
+            self,
+            algo: OfflineRL,
+            seed: int = 1234,
+            max_step: int = 100000,
+            do_eval: bool = True,
+            eval_every: int = 1000,
+            eval_ep: int = 1,
+            log_tensorboard: bool = False,
+            log_wandb: bool = False,
+            record: bool = False,
+            save_model: bool = False,
+            save_freq: int = 10 ** 6,
+            configs: Optional[Union[str, Dict[str, Any]]] = None,
+    ) -> None:
+        super().__init__(
+            algo=algo,
+            seed=seed,
+            max_step=max_step,
+            do_eval=do_eval,
+            eval_every=eval_every,
+            eval_ep=eval_ep,
+            log_tensorboard=log_tensorboard,
+            log_wandb=log_wandb,
+            record=record,
+            save_model=save_model,
+            save_freq=save_freq,
+            configs=configs,
+        )
+        print(self.eval_env.get_attr('spec')[0])
+
+        self.max_episode_length = self.eval_env.get_attr('spec')[0].max_episode_steps
+
+    def evaluate(self) -> None:
+        """
+        Evaluate Offline RL algorithm performance.
+        """
+        ep_reward_list = []
+        local_step_list = []
+        target_return = self.eval_env.get_attr('spec')[0].reward_threshold # maximum reward in eval_env
+
+        for episode in range(self.eval_ep):
+            states = np.zeros((1, self.max_episode_length + 1, self.algo.state_dim), dtype=np.float32)
+            actions = np.zeros((1, self.max_episode_length, self.algo.action_dim), dtype=np.float32)
+            returns = np.zeros((1, self.max_episode_length + 1, 1), dtype=np.float32)
+            time_steps = np.arange(self.max_episode_length, dtype=np.int32)
+
+            observation, info = self.eval_env.reset()
+            states[:, 0] = observation[0]
+            returns[:, 0] = target_return
+
+            episode_return, episode_len = 0., 0
+
+            terminated, truncated = False, False
+
+            while not (terminated or truncated):
+                predicted_action = self.algo.predict_action(  # fix this noqa!!!
+                    states[:, :episode_len + 1],
+                    actions[:, :episode_len + 1],
+                    returns[:, :episode_len + 1],
+                    time_steps[:episode_len + 1],
+                )
+
+                (
+                    next_observation,
+                    reward,
+                    terminated,
+                    truncated,
+                    info,
+                ) = self.eval_env.step(np.expand_dims(predicted_action, axis=0))
+
+                # at step t, we predict a_t, get s_{t + 1}, r_{t + 1}
+                actions[:, episode_len] = predicted_action
+                states[:, episode_len + 1] = next_observation[0]
+                returns[:, episode_len + 1] = returns[:, episode_len] - reward[0]
+
+                episode_return += reward
+                episode_len += 1
+
+            ep_reward_list.append(info['episode']['r'][0])
+            local_step_list.append(info['episode']['l'][0])
+
+        avg_ep_reward = np.mean(ep_reward_list)
+        avg_local_step = np.mean(local_step_list)
+
+        self.log_scalar(
+            {"eval/avg_episode_reward": avg_ep_reward,
+             "eval/avg_local_step": avg_local_step}, self.total_step
+        )
+        result = f"Evaluation Average-> Local_step: {avg_local_step:04.2f}, avg_ep_reward: {avg_ep_reward:04.2f}"
+
+        if isinstance(self.algo.buffer.ref_min_score, Union[float, int]) and isinstance(self.algo.buffer.ref_max_score, Union[float, int]):
+            normalized_avg_ep_reward = ((avg_ep_reward - self.algo.buffer.ref_min_score)
+                                        / (self.algo.buffer.ref_max_score - self.algo.buffer.ref_min_score))
+            self.log_scalar(
+                {"eval/normalized_avg_episode_reward": normalized_avg_ep_reward}, self.total_step
+            )
+            result += f", normalized_avg_ep_reward: {normalized_avg_ep_reward:04.2f}"
+
+        self.progress.console.print("=" * 100, style="bold")
+        self.progress.console.print(result)
+        self.progress.console.print("=" * 100, style="bold")

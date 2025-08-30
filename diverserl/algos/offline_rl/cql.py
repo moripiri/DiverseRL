@@ -140,7 +140,6 @@ class CQL(OfflineRL):
 
         self.gamma = gamma
         self.tau = tau
-        self.threshold = threshold
         self.batch_size = batch_size
         self.num_random = num_random
         self.temp = temp
