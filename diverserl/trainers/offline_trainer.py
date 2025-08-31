@@ -153,7 +153,6 @@ class OfflineTrainer(Trainer):
             progress.console.print("=" * 100, style="bold")
 
 
-
 class SequenceOfflineTrainer(OfflineTrainer):
     def __init__(
             self,
@@ -184,7 +183,6 @@ class SequenceOfflineTrainer(OfflineTrainer):
             save_freq=save_freq,
             configs=configs,
         )
-        print(self.eval_env.get_attr('spec')[0])
 
         self.max_episode_length = self.eval_env.get_attr('spec')[0].max_episode_steps
 
@@ -194,7 +192,7 @@ class SequenceOfflineTrainer(OfflineTrainer):
         """
         ep_reward_list = []
         local_step_list = []
-        target_return = self.eval_env.get_attr('spec')[0].reward_threshold # maximum reward in eval_env
+        target_return = self.eval_env.get_attr('spec')[0].reward_threshold * 0.001# maximum reward in eval_env
 
         for episode in range(self.eval_ep):
             states = np.zeros((1, self.max_episode_length + 1, self.algo.state_dim), dtype=np.float32)
@@ -206,16 +204,16 @@ class SequenceOfflineTrainer(OfflineTrainer):
             states[:, 0] = observation[0]
             returns[:, 0] = target_return
 
-            episode_return, episode_len = 0., 0
+            episode_return, step = 0., 0
 
             terminated, truncated = False, False
 
             while not (terminated or truncated):
                 predicted_action = self.algo.predict_action(  # fix this noqa!!!
-                    states[:, :episode_len + 1],
-                    actions[:, :episode_len + 1],
-                    returns[:, :episode_len + 1],
-                    time_steps[:episode_len + 1],
+                    states[:, :step + 1],
+                    actions[:, :step + 1],
+                    returns[:, :step + 1],
+                    time_steps[:step + 1],
                 )
 
                 (
@@ -227,12 +225,12 @@ class SequenceOfflineTrainer(OfflineTrainer):
                 ) = self.eval_env.step(np.expand_dims(predicted_action, axis=0))
 
                 # at step t, we predict a_t, get s_{t + 1}, r_{t + 1}
-                actions[:, episode_len] = predicted_action
-                states[:, episode_len + 1] = next_observation[0]
-                returns[:, episode_len + 1] = returns[:, episode_len] - reward[0]
+                actions[:, step] = predicted_action
+                states[:, step + 1] = next_observation[0]
+                returns[:, step + 1] = returns[:, step] - reward[0]
 
                 episode_return += reward
-                episode_len += 1
+                step += 1
 
             ep_reward_list.append(info['episode']['r'][0])
             local_step_list.append(info['episode']['l'][0])

@@ -13,7 +13,7 @@ class DecisionTransformer(nn.Module):
                  action_dim: int,
                  embedding_dim: int = 128,
                  episode_len: int = 1000,
-                 seq_len: int = 10,
+                 sequence_length: int = 10,
                  layer_num: int = 3,
                  heads_num: int = 1,
                  dropout: float = 0.1,
@@ -35,7 +35,7 @@ class DecisionTransformer(nn.Module):
         self.action_dim = action_dim
         self.embedding_dim = embedding_dim
         self.episode_len = episode_len
-        self.seq_len = seq_len
+        self.sequence_length = sequence_length
         self.layer_num = layer_num
         self.heads_num = heads_num
         self.dropout = dropout
@@ -63,7 +63,7 @@ class DecisionTransformer(nn.Module):
         self.state_emb = nn.Linear(state_dim, embedding_dim)
         self.action_emb = nn.Linear(action_dim, embedding_dim)
         self.return_emb = nn.Linear(1, embedding_dim)
-        self.timestep_emb = nn.Embedding(episode_len + seq_len, embedding_dim)
+        self.timestep_emb = nn.Embedding(episode_len + sequence_length, embedding_dim)
 
         self.blocks = nn.TransformerEncoder(
             nn.TransformerEncoderLayer(d_model=embedding_dim, nhead=heads_num, batch_first=True),
@@ -75,6 +75,8 @@ class DecisionTransformer(nn.Module):
             nn.Linear(embedding_dim, action_dim),
             nn.Tanh()
         )
+
+        self.to(torch.device(device))
 
     def _init_weights(self, m: nn.Module) -> None:
         """
@@ -94,13 +96,13 @@ class DecisionTransformer(nn.Module):
 
     def forward(
             self,
-            states: torch.Tensor,  # [batch_size, seq_len, state_dim]
-            actions: torch.Tensor,  # [batch_size, seq_len, action_dim]
-            returns: torch.Tensor,  # [batch_size, seq_len]
-            timesteps: torch.Tensor,  # [batch_size, seq_len]
-            padding_mask: Optional[torch.Tensor] = None,  # [batch_size, seq_len]
+            states: torch.Tensor,  # [batch_size, sequence_length, state_dim]
+            actions: torch.Tensor,  # [batch_size, sequence_length, action_dim]
+            returns: torch.Tensor,  # [batch_size, sequence_length]
+            timesteps: torch.Tensor,  # [batch_size, sequence_length]
+            padding_mask: Optional[torch.Tensor] = None,  # [batch_size, sequence_length]
     ) -> torch.FloatTensor:
-        batch_size, seq_len = states.shape[0], states.shape[1]
+        batch_size, sequence_length = states.shape[0], states.shape[1]
 
         t_emb = self.timestep_emb(timesteps)
         s_emb = self.state_emb(states) + t_emb
@@ -110,14 +112,14 @@ class DecisionTransformer(nn.Module):
         sequence = (
             torch.stack([returns_emb, s_emb, a_emb], dim=1)
             .permute(0, 2, 1, 3)
-            .reshape(batch_size, 3 * seq_len, self.embedding_dim)
+            .reshape(batch_size, 3 * sequence_length, self.embedding_dim)
         )
         if padding_mask is not None:
-            # [batch_size, seq_len * 3], stack mask identically to fit the sequence
+            # [batch_size, sequence_length * 3], stack mask identically to fit the sequence
             padding_mask = (
                 torch.stack([padding_mask, padding_mask, padding_mask], dim=1)
                 .permute(0, 2, 1)
-                .reshape(batch_size, 3 * seq_len)
+                .reshape(batch_size, 3 * sequence_length)
             )
         out = self.embedding_norm(sequence)
         out = self.embedding_dropout(out)

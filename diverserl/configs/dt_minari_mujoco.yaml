@@ -7,6 +7,8 @@ env:
   dataset_id: mujoco/ant/expert-v0
   filter_option:
     normalize_observation: {}
+    scale_reward:
+      scale: 0.001
   buffer_name: SequenceDatasetBuffer
 
 hydra:

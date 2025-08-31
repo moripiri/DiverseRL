@@ -44,3 +44,13 @@ def normalize_observation(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[st
     buffer.dataset['observations'] = normalized_observation
 
     return buffer, {'TransformObservation': {'func': lambda obs: (obs-obs_mean)/(obs_std + 1e-8), "observation_space": "env.observation_space"}}
+
+
+def scale_reward(buffer: DatasetBuffer, scale: float = 0.001) -> Tuple[DatasetBuffer, Dict[str, Any]]:
+    scaled_rewards = []
+    for reward in buffer.dataset['rewards']:
+        scaled_rewards.append(reward * scale)
+
+    buffer.dataset['rewards'] = scaled_rewards
+
+    return buffer, {'TransformReward': {'func': lambda reward: reward * scale}}

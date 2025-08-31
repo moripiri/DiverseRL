@@ -19,9 +19,9 @@ class DT(OfflineRL):
                  eval_env: gym.vector.VectorEnv,
                  network_type: str = "Default",
                  network_config: Optional[Dict[str, Any]] = None,
-                 dataset_frac: float = 1.0,
+                 sequence_length: int = 20,
                  gamma: float = 0.99,
-                 batch_size: int = 256,
+                 batch_size: int = 64,
                  learning_rate: float = 0.001,
                  optimizer: Union[str, Type[torch.optim.Optimizer]] = torch.optim.Adam,
                  optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -49,51 +49,44 @@ class DT(OfflineRL):
                          network_config=network_config,
                          device=device)
 
-        self.dataset_frac = dataset_frac
         self.gamma = gamma
 
         self.batch_size = batch_size
         self.learning_rate = learning_rate
-        self.seq_len = self.buffer.sequence_length
+        self.sequence_length = sequence_length
 
         self._build_network()
 
         self.optimizer = get_optimizer(self.transformer.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
     def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
-        """
-        Get the DT action from an observation (in training mode)
-
-        :param observation: The input observation
-        :return: The DT agents' action (in training mode)
-        """
-        observation = fix_observation(observation, device=self.device)
-
-        self.transformer.train()
-        with torch.no_grad():
-            action = self.transformer(observation, device=self.device)
-            if self.discrete_action:
-                action = action.argmax(1)
-
-        return action.cpu().numpy()
+        pass
 
     def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
         pass
 
-    def predict_action(self, observation: Union[np.ndarray, torch.Tensor], action: Union[np.ndarray, torch.Tensor],
-                    returns: Union[np.ndarray, torch.Tensor], time_steps: Union[np.ndarray, torch.Tensor],
-                    ) -> np.ndarray:
+    def predict_action(
+            self,
+            observation: Union[np.ndarray, torch.Tensor],
+            action: Union[np.ndarray, torch.Tensor],
+            returns: Union[np.ndarray, torch.Tensor],
+            time_steps: Union[np.ndarray, torch.Tensor],
+    ) -> np.ndarray:
         """
-        Get the DT action from an observation (in evaluation mode)
+        Predict the DT action from an observation (in evaluation mode)
 
         :param observation: The input observation
+        :param action:
+        :param returns:
+        :param time_steps:
+
         :return: The DT agents' action (in evaluation mode)
         """
 
-        observation = fix_observation(observation, device=self.device)[:, -self.seq_len:]
-        action = fix_observation(action, device=self.device)[:, -self.seq_len:]
-        returns = fix_observation(returns, device=self.device)[:, -self.seq_len:]
-        time_steps = fix_observation(time_steps, device=self.device).to(torch.long)[-self.seq_len:]
+        observation = fix_observation(observation, device=self.device)[:, -self.sequence_length:]
+        action = fix_observation(action, device=self.device)[:, -self.sequence_length:]
+        returns = fix_observation(returns, device=self.device)[:, -self.sequence_length:]
+        time_steps = fix_observation(time_steps, device=self.device).to(torch.long)[-self.sequence_length:]
 
         self.transformer.eval()
         with torch.no_grad():
@@ -119,6 +112,7 @@ class DT(OfflineRL):
         self.transformer = transformer_class(
             state_dim=self.state_dim,
             action_dim=self.action_dim,
+            sequence_length=self.sequence_length,
             device=self.device,
             **transformer_config,
         ).train()

@@ -300,7 +300,6 @@ class DatasetBuffer:
         for key in self.dataset.keys():
             self.dataset[key] = [item for i, item in enumerate(self.dataset[key]) if i not in [dataset_ids]]
 
-
     def init_buffer(self):
         print(self.dataset['observations'])
         self.s = np.concatenate(list(map(lambda x: x[:-1], self.dataset['observations'])), axis=0, dtype=np.float32)
@@ -326,7 +325,7 @@ class DatasetBuffer:
 
 
 class SequenceDatasetBuffer(DatasetBuffer):
-    def __init__(self, dataset: MinariDataset, sequence_length: int = 10, gamma: float = 0.99, device: str = "cpu") -> None:
+    def __init__(self, dataset: MinariDataset, sequence_length: int = 20, gamma: float = 0.99, device: str = "cpu") -> None:
         super().__init__(dataset, device)
         self.sequence_length = sequence_length
         self.gamma = gamma
