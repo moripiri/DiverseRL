@@ -3,7 +3,7 @@ name = "diverserl"
 version = "0.0.1"
 description = "Diverse Reinforcement Learning algorithms that can be applied to wide variety of environments"
 authors = [{ name = "Yoonhee Gil", email = "moripiri1234@gmail.com" }]
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.11,<3.12"
 readme = "README.md"
 dependencies = [
     "torch",

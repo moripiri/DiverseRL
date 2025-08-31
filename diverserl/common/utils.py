@@ -93,7 +93,7 @@ def find_action_space(action_space: gym.spaces.Space) -> Tuple[int, bool, Option
     return action_dim, discrete_action, action_scale, action_bias
 
 
-def fix_observation(observation: Union[np.ndarray, torch.Tensor], device: Optional[Union[str, torch.device]] = None) -> torch.tensor:
+def fix_observation(observation: Union[np.ndarray, torch.Tensor], device: Optional[Union[str, torch.device]] = None) -> torch.Tensor:
     """
     Fix observation appropriate to torch neural network module.
 

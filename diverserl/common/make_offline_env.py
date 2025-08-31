@@ -6,12 +6,28 @@ import minari
 from gymnasium import Env
 
 import diverserl
-from diverserl.common.buffer import DatasetBuffer
+from diverserl.common.buffer import DatasetBuffer, SequenceDatasetBuffer
 from diverserl.common.filters import *
 from diverserl.common.make_env import get_wrapper
 
 
-def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]]) -> Tuple[
+def get_dataset_buffer(buffer_name: str,  buffer_kwargs: Optional[Dict[str, Any]] = None) -> Tuple[Type[DatasetBuffer], Dict[str, Any]] :
+    buffer_class = getattr(diverserl.common.buffer, buffer_name)
+    buffer_option = {}
+
+    if buffer_kwargs is not None:
+        for key, value in buffer_kwargs.items():
+            assert isinstance(value, Union[
+                int, float, bool, str]), "Value of buffer_kwargs must be set as int, float, boolean or string"
+            if isinstance(value, str):
+                buffer_option[key] = eval(value)
+            else:
+                buffer_option[key] = value
+
+    return buffer_class, buffer_option
+
+
+def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]] = None) -> Tuple[
     Type[gym.Wrapper], Dict[str, Any]]:
     """
     Return filter class and arguments for offline dataset.
@@ -36,7 +52,7 @@ def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]]) -> Tup
     return filter_class, filter_option
 
 
-def make_offline_envs(dataset_id: str, filter_option: Optional[Dict[str, Any]] = None,
+def make_offline_envs(dataset_id: str, buffer_name: str = "DatasetBuffer", filter_option: Optional[Dict[str, Any]] = None,
                       eval_env_option: Optional[Dict[str, Any]] = None,
                       eval_wrapper_option: Optional[Dict[str, Any]] = None,
                       seed: int = 1234, vector_env: bool = True, render: bool = False,
@@ -47,6 +63,7 @@ def make_offline_envs(dataset_id: str, filter_option: Optional[Dict[str, Any]] =
     Creates dataset and gymnasium environments for offline training or evaluation.
 
     :param dataset_id: name of the minari dataset.
+    :param buffer_type: Type of DatasetBuffer to use.
     :param filter_option: filter arguments to apply for offline dataset.
     :param eval_env_option: additional arguments for evaluation environment creation.
     :param eval_wrapper_option: additional arguments for evaluation environment wrapper creation.
@@ -106,7 +123,9 @@ def make_offline_envs(dataset_id: str, filter_option: Optional[Dict[str, Any]] =
         return thunk
 
     dataset = minari.load_dataset(dataset_id)
-    buffer = DatasetBuffer(dataset)
+
+    buffer_class, buffer_kwargs = get_dataset_buffer(buffer_name)
+    buffer = buffer_class(dataset, **buffer_kwargs)
 
     for filter_name, filter_option in filter_option.items():
         filter_class, filter_option = get_filter(filter_name, filter_option)

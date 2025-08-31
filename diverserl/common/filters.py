@@ -34,7 +34,7 @@ def filter_reward(dataset: DatasetBuffer, dataset_frac: float = 0.7, gamma: floa
     return dataset, {}
 
 
-def normalize_dataset(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[str, Any]]:
+def normalize_observation(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[str, Any]]:
     obs = np.vstack(buffer.dataset['observations'])
     obs_mean, obs_std = obs.mean(axis=0), obs.std(axis=0)
     normalized_observation = []
@@ -44,3 +44,13 @@ def normalize_dataset(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[str, A
     buffer.dataset['observations'] = normalized_observation
 
     return buffer, {'TransformObservation': {'func': lambda obs: (obs-obs_mean)/(obs_std + 1e-8), "observation_space": "env.observation_space"}}
+
+
+def scale_reward(buffer: DatasetBuffer, scale: float = 0.001) -> Tuple[DatasetBuffer, Dict[str, Any]]:
+    scaled_rewards = []
+    for reward in buffer.dataset['rewards']:
+        scaled_rewards.append(reward * scale)
+
+    buffer.dataset['rewards'] = scaled_rewards
+
+    return buffer, {'TransformReward': {'func': lambda reward: reward * scale}}
