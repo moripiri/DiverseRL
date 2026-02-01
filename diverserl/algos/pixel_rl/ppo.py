@@ -75,6 +75,7 @@ class PPO(PixelRL):
         )
         assert mode.lower() in ["clip", "adaptive_kl", "fixed_kl"]
         assert isinstance(self.observation_space, spaces.Box), f"{self} supports only Box type observation space."
+        assert isinstance(self.state_dim, tuple)
 
         self.mode = mode.lower()
 
@@ -207,6 +208,7 @@ class PPO(PixelRL):
         return action.cpu().numpy(), log_prob.cpu().numpy()
 
     def train(self, total_step: int, max_step: int) -> Dict[str, Any]:
+        assert isinstance(self.state_dim, tuple)
         self.training_count += 1
         result_dict = {}
 

@@ -101,7 +101,7 @@ class GaussianActor(MLP):
             torch.nn.init.constant_(logstd_layer.weight, val=self.logstd_init)
             self.layers['logstd'] = logstd_layer
 
-    def forward(self, state: Union[torch.Tensor], deterministic: bool = False) -> Tuple[
+    def forward(self, state: torch.Tensor, deterministic: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
         """
         Return action and its log_probability of the Gaussian actor for the given state.

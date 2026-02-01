@@ -79,6 +79,7 @@ class DrQv2(PixelRL):
 
         assert isinstance(
             self.action_space, gym.spaces.Box), f"{self} supports only Box type action space."
+        assert self.action_scale is not None and self.action_bias is not None
 
         self.image_pad = image_pad
 

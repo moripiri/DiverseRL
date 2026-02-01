@@ -79,6 +79,7 @@ class DrQ(PixelRL):
         )
 
         self.image_pad = tuple(image_pad for _ in range(4))
+        assert isinstance(self.state_dim, tuple)
         self.image_size = self.state_dim[-1]
 
         self.buffer_size = buffer_size

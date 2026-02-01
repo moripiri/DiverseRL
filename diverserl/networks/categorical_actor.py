@@ -67,7 +67,7 @@ class CategoricalActor(MLP):
         dist = self.compute_dist(state)
 
         if deterministic:
-            action = dist.logits.argmax(axis=-1)
+            action = dist.logits.argmax(dim=-1)
         else:
             action = dist.sample()
 

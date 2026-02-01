@@ -1,0 +1,22 @@
+{
+  "pythonVersion": "3.11",
+  "venvPath": ".",
+  "venv": ".venv",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownLambdaType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownParameterType": "none",
+  "reportUnknownVariableType": "none",
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    ".idea",
+    "logs",
+    "wandb",
+    "build",
+    "dist"
+  ]
+}

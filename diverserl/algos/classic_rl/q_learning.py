@@ -24,11 +24,12 @@ class QLearning(ClassicRL):
         self.gamma = gamma
         self.eps = eps
 
-        self.q = (
-            np.zeros([self.state_dim, self.action_dim])
-            if isinstance(env.observation_space, gym.spaces.Discrete)
-            else np.zeros([*self.state_dim, self.action_dim])
-        )
+        if isinstance(env.observation_space, gym.spaces.Discrete):
+            assert isinstance(self.state_dim, int)
+            self.q = np.zeros([self.state_dim, self.action_dim])
+        else:
+            assert isinstance(self.state_dim, tuple)
+            self.q = np.zeros([*self.state_dim, self.action_dim])
 
     def __repr__(self) -> str:
         return "Q-learning"

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 
 import numpy as np
 import torch
@@ -122,6 +122,7 @@ class ReplayBuffer:
         self.t[self.idx] = t.reshape((self.num_envs, 1))
 
         if self.save_log_prob:
+            assert log_prob is not None
             log_prob = log_prob.reshape((self.num_envs, 1))
             self.log_prob[self.idx] = log_prob
 
@@ -266,12 +267,21 @@ class DatasetBuffer:
         self.state_dim = find_observation_space(dataset.spec.observation_space)
         self.action_dim, _, _, _ = find_action_space(dataset.spec.action_space)
 
-        self.dataset = self.load_dataset(dataset)
-        self.dataset_metadata = dataset.storage.metadata
+        self.dataset: Dict[str, List[Any]] | None = self.load_dataset(dataset)
+        self.dataset_metadata: Dict[str, Any] = cast(Dict[str, Any], dataset.storage.metadata)
         self.ref_min_score, self.ref_max_score = self.dataset_metadata.get('ref_min_score'), self.dataset_metadata.get('ref_max_score')
         self.device = device
 
+        # Initialized by init_buffer()
+        self.s: Any | None = None
+        self.a: Any | None = None
+        self.r: Any | None = None
+        self.ns: Any | None = None
+        self.d: Any | None = None
+        self.t: Any | None = None
+
     def __len__(self) -> int:
+        assert self.s is not None, "DatasetBuffer.init_buffer() must be called before using the buffer."
         return len(self.s)
 
     @property
@@ -280,6 +290,7 @@ class DatasetBuffer:
         Size of the stored transitions. Not equal to the buffer's length.
         :return: Current ReplayBuffer size.
         """
+        assert self.s is not None, "DatasetBuffer.init_buffer() must be called before using the buffer."
         return len(self.s)
 
     def load_dataset(self, dataset: MinariDataset) -> Dict[str, List[Any]]:
@@ -296,11 +307,13 @@ class DatasetBuffer:
         return temp_dataset
 
     def filter_episodes(self, ids: List[int]) -> None:
+        assert self.dataset is not None, "Cannot filter episodes after DatasetBuffer.init_buffer()."
         dataset_ids = [self.dataset['id'].index(id) for id in ids]
         for key in self.dataset.keys():
             self.dataset[key] = [item for i, item in enumerate(self.dataset[key]) if i not in [dataset_ids]]
 
     def init_buffer(self):
+        assert self.dataset is not None, "DatasetBuffer.init_buffer() was already called."
         print(self.dataset['observations'])
         self.s = np.concatenate(list(map(lambda x: x[:-1], self.dataset['observations'])), axis=0, dtype=np.float32)
         self.a = np.concatenate(self.dataset['actions'], axis=0, dtype=np.float32)
@@ -309,17 +322,26 @@ class DatasetBuffer:
         self.d = np.concatenate(self.dataset['terminations'], axis=0, dtype=np.float32)
         self.t = np.concatenate(self.dataset['truncations'], axis=0, dtype=np.float32)
 
-        del self.dataset
+        self.dataset = None
 
     def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
+        assert self.s is not None and self.a is not None and self.r is not None
+        assert self.ns is not None and self.d is not None and self.t is not None
         batch_ids = np.random.randint(0, self.size, size=batch_size)
 
-        states = torch.from_numpy(self.s[batch_ids,:]).to(self.device)
-        actions = torch.from_numpy(self.a[batch_ids,:]).to(self.device)
-        rewards = torch.from_numpy(self.r[batch_ids,:]).to(self.device)
-        next_states = torch.from_numpy(self.ns[batch_ids,:]).to(self.device)
-        dones = torch.from_numpy(self.d[batch_ids,:]).to(self.device)
-        terminates = torch.from_numpy(self.t[batch_ids,:]).to(self.device)
+        s = cast(np.ndarray, self.s)
+        a = cast(np.ndarray, self.a)
+        r = cast(np.ndarray, self.r)
+        ns = cast(np.ndarray, self.ns)
+        d = cast(np.ndarray, self.d)
+        t = cast(np.ndarray, self.t)
+
+        states = torch.from_numpy(s[batch_ids, :]).to(self.device)
+        actions = torch.from_numpy(a[batch_ids, :]).to(self.device)
+        rewards = torch.from_numpy(r[batch_ids, :]).to(self.device)
+        next_states = torch.from_numpy(ns[batch_ids, :]).to(self.device)
+        dones = torch.from_numpy(d[batch_ids, :]).to(self.device)
+        terminates = torch.from_numpy(t[batch_ids, :]).to(self.device)
 
         return states, actions, rewards, next_states, dones, terminates
 
@@ -329,20 +351,28 @@ class SequenceDatasetBuffer(DatasetBuffer):
         super().__init__(dataset, device)
         self.sequence_length = sequence_length
         self.gamma = gamma
+        self.sample_prob: np.ndarray | None = None
+        self.s: List[np.ndarray] | None = None
+        self.a: List[np.ndarray] | None = None
+        self.r: List[np.ndarray] | None = None
+        self.d: List[np.ndarray] | None = None
+        self.t: List[np.ndarray] | None = None
 
     def __len__(self) -> int:
+        assert self.s is not None, "SequenceDatasetBuffer.init_buffer() must be called before using the buffer."
         return len(self.s)
 
     def init_buffer(self):
+        assert self.dataset is not None, "SequenceDatasetBuffer.init_buffer() was already called."
         self.sample_prob = np.array([len(obs) for obs in self.dataset['observations']], dtype=np.float64)
         self.sample_prob /= sum(self.sample_prob)
-        self.s = self.dataset['observations']
-        self.a = self.dataset['actions']
-        self.r = list(map(lambda x: self.discounted_cumsum(x, self.gamma), self.dataset['rewards']))
-        self.d = self.dataset['terminations']
-        self.t = self.dataset['truncations']
+        self.s = cast(List[np.ndarray], self.dataset['observations'])
+        self.a = cast(List[np.ndarray], self.dataset['actions'])
+        self.r = list(map(lambda x: self.discounted_cumsum(x, self.gamma), cast(List[np.ndarray], self.dataset['rewards'])))
+        self.d = cast(List[np.ndarray], self.dataset['terminations'])
+        self.t = cast(List[np.ndarray], self.dataset['truncations'])
 
-        del self.dataset
+        self.dataset = None
 
     def discounted_cumsum(self, x: np.ndarray, gamma: float) -> np.ndarray:
         cumsum = np.zeros_like(x)
@@ -362,16 +392,22 @@ class SequenceDatasetBuffer(DatasetBuffer):
         return np.pad(arr, pad_width=npad, mode="constant", constant_values=fill_value)
 
     def sample(self, batch_size: int) -> Tuple[Tensor, ...]:
+        assert self.s is not None and self.a is not None and self.r is not None
+        assert self.d is not None and self.t is not None and self.sample_prob is not None
+        s = cast(List[np.ndarray], self.s)
+        a = cast(List[np.ndarray], self.a)
+        r = cast(List[np.ndarray], self.r)
 
-        traj_idx = np.random.choice(len(self), size=batch_size, p=self.sample_prob)
-        start_idx = np.random.randint(0, list(map(lambda x: self.r[x].shape[0] - 1, traj_idx)) , batch_size)
+        traj_idx = np.random.choice(len(self), size=batch_size, p=cast(np.ndarray, self.sample_prob))
+        highs = [int(r[idx].shape[0] - 1) for idx in traj_idx]
+        start_idx = np.asarray([np.random.randint(0, high) for high in highs], dtype=np.int64)
 
-        states = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.s[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
-        actions = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.a[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
-        returns = np.asarray(list(map(lambda x, y: self.pad_along_axis(self.r[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        states = np.asarray(list(map(lambda x, y: self.pad_along_axis(s[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        actions = np.asarray(list(map(lambda x, y: self.pad_along_axis(a[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
+        returns = np.asarray(list(map(lambda x, y: self.pad_along_axis(r[x][y:y + self.sequence_length], self.sequence_length), traj_idx, start_idx)))
         time_steps = np.asarray(list(map(lambda x: np.arange(x, x + self.sequence_length), start_idx)))
 
-        states_lengths = list(map(lambda x, y: len(self.s[x][y:y + self.sequence_length]), traj_idx, start_idx))
+        states_lengths = list(map(lambda x, y: len(s[x][y:y + self.sequence_length]), traj_idx, start_idx))
 
         mask = np.vstack(list(map(lambda x: np.hstack([np.ones(x), np.zeros(self.sequence_length - x)]), states_lengths)))
 

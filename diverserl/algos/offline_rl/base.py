@@ -12,7 +12,7 @@ from diverserl.common.buffer import DatasetBuffer
 class OfflineRL(DeepRL):
     def __init__(self, buffer: DatasetBuffer, env: Optional[gym.vector.VectorEnv], eval_env: gym.vector.VectorEnv,
                  network_type: str, network_list: Dict[str, Any],
-                 network_config: Dict[str, Any],
+                 network_config: Optional[Dict[str, Any]],
                  device: str = "cpu"
                  ) -> None:
         super().__init__(env=env, eval_env=eval_env, network_type=network_type, network_list=network_list,

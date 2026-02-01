@@ -1,11 +1,13 @@
 import re
 from copy import deepcopy
-from typing import Dict, Optional, Tuple, Type
+from typing import Any, Dict, Optional, Tuple, Type, cast
 
+import gymnasium as gym
 from gymnasium import Env
+from gymnasium.envs.registration import EnvSpec
 
 import diverserl
-from diverserl.common.wrappers import *
+import diverserl.common.wrappers as wrappers_module
 
 try:
     import ale_py
@@ -17,7 +19,7 @@ except:
     pass
 
 
-def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
+def env_namespace(env_spec: EnvSpec) -> str:
     """
     Return namespace (classic_control, mujoco, atari_env, etc..) of an environment.
 
@@ -27,7 +29,7 @@ def env_namespace(env_spec: gym.envs.registration.EnvSpec) -> str:
     :return: namespace
     """
     if env_spec.namespace is None:  #pure gymnasium env
-        env_entry_point = re.sub(r":\w+", "", env_spec.entry_point)
+        env_entry_point = re.sub(r":\w+", "", cast(str, env_spec.entry_point))
         split_entry_point = env_entry_point.split(".")
 
         if len(split_entry_point) >= 3:
@@ -60,7 +62,7 @@ def get_wrapper(wrapper_name: str, wrapper_kwargs: Optional[Dict[str, Any]], env
     try:
         wrapper_class = getattr(gym.wrappers, wrapper_name)
     except:
-        wrapper_class = getattr(diverserl.common.wrappers, wrapper_name)
+        wrapper_class = getattr(wrappers_module, wrapper_name)
 
     wrapper_option = {}
 
@@ -119,19 +121,20 @@ def make_envs(env_id: str, env_option: Optional[Dict[str, Any]] = None, wrapper_
             nonlocal env_option
             nonlocal wrapper_option
 
-            env_option = deepcopy(env_option)
-            wrapper_option = deepcopy(wrapper_option)
+            assert env_option is not None and wrapper_option is not None
+            local_env_option: Dict[str, Any] = deepcopy(env_option)
+            local_wrapper_option: Dict[str, Any] = deepcopy(wrapper_option)
 
             assert not (render_env and record_env), ValueError("Cannot specify both render_env and record")
             if render_env and not record_env:
-                env_option['render_mode'] = 'human'
+                local_env_option['render_mode'] = 'human'
             elif not render_env and record_env:
-                env_option['render_mode'] = 'rgb_array'
+                local_env_option['render_mode'] = 'rgb_array'
 
-            env = gym.make(env_id, **env_option)
+            env = gym.make(env_id, **local_env_option)
             env = gym.wrappers.RecordEpisodeStatistics(env)
 
-            for wrapper_name, wrapper_kwargs in wrapper_option.items():
+            for wrapper_name, wrapper_kwargs in local_wrapper_option.items():
                 wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs, env)
                 env = wrapper_class(env, **wrapper_kwargs)
 

@@ -105,11 +105,12 @@ class PixelDecoder(nn.Module):
         :param m: a single torch layer
         """
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
-            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
-            if m.bias is not None:
+            if self.kernel_initializer is not None:
+                self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
+            if m.bias is not None and self.bias_initializer is not None:
                 self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
 
-    def forward(self, input: torch.tensor) -> torch.tensor:
+    def forward(self, input: torch.Tensor) -> torch.Tensor:
         """
         Return feature of the given input.
 

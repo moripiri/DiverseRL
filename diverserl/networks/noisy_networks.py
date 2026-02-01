@@ -1,6 +1,6 @@
 import math
 from collections import OrderedDict
-from typing import Optional, Sequence, Tuple, Union
+from typing import Any, Optional, Sequence, Tuple, Union
 
 import torch
 from torch import nn
@@ -267,6 +267,8 @@ class NoisyLinear(nn.Linear):
         self.out_features = int(out_features)
         self.std_init = std_init
         self.noise_type = noise_type
+        self.weight_epsilon: torch.Tensor
+        self.bias_epsilon: torch.Tensor
 
         assert noise_type in ['factorized', 'independent'], "Noise type must be either 'factorized' or 'independent'."
 
@@ -365,25 +367,27 @@ class NoisyLinear(nn.Linear):
             return x
 
     @property
-    def weight(self) -> torch.Tensor:
+    def weight(self) -> torch.Tensor:  # type: ignore[override]
         """
         Returns the weight of the noisy layer.
         :return: weight
         """
         if self.training:
-            return self.weight_mu + self.weight_sigma * self.weight_epsilon
+            weight_eps: torch.Tensor = self.weight_epsilon
+            return self.weight_mu + self.weight_sigma * weight_eps
         else:
             return self.weight_mu
 
     @property
-    def bias(self) -> Optional[torch.Tensor]:
+    def bias(self) -> Optional[torch.Tensor]:  # type: ignore[override]
         """
         Returns the bias of the noisy layer.
         :return: bias
         """
         if self.bias_mu is not None:
             if self.training:
-                return self.bias_mu + self.bias_sigma * self.bias_epsilon
+                bias_eps: torch.Tensor = self.bias_epsilon
+                return self.bias_mu + self.bias_sigma * bias_eps
             else:
                 return self.bias_mu
         else:

@@ -16,7 +16,7 @@ class MLP(nn.Module):
             output_dim: int,
             hidden_units: Tuple[int, ...] = (64, 64),
             mid_activation: Optional[_activation] = nn.ReLU,
-            mid_activation_kwargs: Optional[Union[_kwargs]] = None,
+            mid_activation_kwargs: Optional[_kwargs] = None,
             last_activation: Optional[_activation] = None,
             last_activation_kwargs: Optional[_kwargs] = None,
             kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
@@ -89,8 +89,9 @@ class MLP(nn.Module):
         :param m: a single torch layer
         """
         if isinstance(m, nn.Linear):
-            self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
-            if m.bias is not None:
+            if self.kernel_initializer is not None:
+                self.kernel_initializer(m.weight, **self.kernel_initializer_kwargs)
+            if m.bias is not None and self.bias_initializer is not None:
                 self.bias_initializer(m.bias, **self.bias_initializer_kwargs)
 
     def forward(self, input: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]) -> torch.Tensor:

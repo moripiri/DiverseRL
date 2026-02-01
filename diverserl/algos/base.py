@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import gymnasium as gym
 import numpy as np
@@ -26,16 +26,10 @@ class BaseRL(ABC):
         :param env:
         :return:
         """
-        try:
-            self.observation_space = env.single_observation_space
-        except:
-            self.observation_space = env.observation_space
-        try:
-            self.action_space = env.single_action_space
-        except:
-            self.action_space = env.action_space
+        self.observation_space = getattr(env, "single_observation_space", env.observation_space)
+        self.action_space = getattr(env, "single_action_space", env.action_space)
 
-        self.state_dim = find_observation_space(self.observation_space)
+        self.state_dim: Union[int, Tuple[int, ...]] = find_observation_space(self.observation_space)
         self.action_dim, self.discrete_action, self.action_scale, self.action_bias = find_action_space(self.action_space)
 
     @abstractmethod
@@ -51,7 +45,7 @@ class DeepRL(BaseRL, ABC):
     def __init__(
             self, env: Optional[gym.vector.VectorEnv], eval_env: gym.vector.VectorEnv, network_type: str,
             network_list: Dict[str, Any],
-            network_config: Dict[str, Any],
+            network_config: Optional[Dict[str, Any]],
             device: str = "cpu"
     ) -> None:
         """

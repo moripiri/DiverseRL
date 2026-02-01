@@ -20,7 +20,7 @@ class D2RLMLP(MLP):
             output_dim: int,
             hidden_units: Tuple[int, ...] = (64, 64, 64, 64),
             mid_activation: Optional[_activation] = nn.ReLU,
-            mid_activation_kwargs: Optional[Union[_kwargs]] = None,
+            mid_activation_kwargs: Optional[_kwargs] = None,
             last_activation: Optional[_activation] = None,
             last_activation_kwargs: Optional[_kwargs] = None,
             kernel_initializer: Optional[_initializer] = nn.init.orthogonal_,
@@ -57,7 +57,7 @@ class D2RLMLP(MLP):
 
         for i in range(len(layer_units) - 1):
             layers[f'linear{i}'] = nn.Linear(
-                layer_units[i] + np.where(i > 0 and i < len(layer_units) - 2, self.input_dim, 0), layer_units[i + 1],
+                layer_units[i] + int(np.where(i > 0 and i < len(layer_units) - 2, self.input_dim, 0)), layer_units[i + 1],
                 bias=self.use_bias, device=self.device)
 
             if self.mid_activation is not None and i < len(layer_units) - 2:
@@ -331,7 +331,7 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
         trunk_units = [self.input_dim, *self.hidden_units]
 
         for i in range(len(trunk_units) - 1):
-            trunks[f'linear{i}'] = nn.Linear(trunk_units[i] + np.where(i > 0 and i < len(trunk_units) - 1, self.input_dim, 0),
+            trunks[f'linear{i}'] = nn.Linear(trunk_units[i] + int(np.where(i > 0 and i < len(trunk_units) - 1, self.input_dim, 0)),
                                              trunk_units[i + 1], bias=self.use_bias, device=self.device)
 
             if self.mid_activation is not None and i < len(trunk_units) - 2:
@@ -348,7 +348,7 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
             self.layers['logstd'] = logstd_layer
 
 
-    def forward(self, state: Union[torch.Tensor], deterministic: bool = False) -> Tuple[
+    def forward(self, state: torch.Tensor, deterministic: bool = False) -> Tuple[
         torch.Tensor, torch.Tensor]:
 
         return GaussianActor.forward(self, state, deterministic)
@@ -367,7 +367,9 @@ class D2RLGaussianActor(D2RLMLP, GaussianActor):
         trunk_output = state.to(self.device)
         concat_names = [f'linear{i}' for i in range(1, len(self.hidden_units))]
 
-        for name, layer in self.layers['trunk'].items():
+        trunk = self.layers['trunk']
+        assert isinstance(trunk, nn.ModuleDict)
+        for name, layer in trunk.items():
             if name in concat_names:
                 trunk_output = torch.cat([trunk_output, state.to(self.device)], dim=-1)
             trunk_output = layer(trunk_output)

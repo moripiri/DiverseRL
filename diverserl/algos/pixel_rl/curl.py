@@ -90,6 +90,7 @@ class CURL(PixelRL):
         self.pre_image_size = pre_image_size
         self.image_size = image_size
 
+        assert isinstance(self.state_dim, tuple)
         assert self.state_dim[1:] == (self.pre_image_size, self.pre_image_size)
 
         self.pre_state_dim = self.state_dim

@@ -184,7 +184,7 @@ class SequenceOfflineTrainer(OfflineTrainer):
             configs=configs,
         )
 
-        self.max_episode_length = self.eval_env.get_attr('spec')[0].max_episode_steps
+        self.max_episode_length = self.eval_env.get_attr('spec')[0].max_episode_steps # type: ignore
 
     def evaluate(self) -> None:
         """
@@ -192,7 +192,7 @@ class SequenceOfflineTrainer(OfflineTrainer):
         """
         ep_reward_list = []
         local_step_list = []
-        target_return = self.eval_env.get_attr('spec')[0].reward_threshold * 0.001# maximum reward in eval_env
+        target_return = self.eval_env.get_attr('spec')[0].reward_threshold * 0.001# type: ignore
 
         for episode in range(self.eval_ep):
             states = np.zeros((1, self.max_episode_length + 1, self.algo.state_dim), dtype=np.float32)
@@ -227,9 +227,9 @@ class SequenceOfflineTrainer(OfflineTrainer):
                 # at step t, we predict a_t, get s_{t + 1}, r_{t + 1}
                 actions[:, step] = predicted_action
                 states[:, step + 1] = next_observation[0]
-                returns[:, step + 1] = returns[:, step] - reward[0]
+                returns[:, step + 1] = returns[:, step] - float(reward[0])  # type: ignore[index]
 
-                episode_return += reward
+                episode_return += float(reward)
                 step += 1
 
             ep_reward_list.append(info['episode']['r'][0])

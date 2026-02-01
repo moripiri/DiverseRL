@@ -68,6 +68,7 @@ class DDPG(DeepRL):
         assert isinstance(self.observation_space, spaces.Box) and isinstance(
             self.action_space, spaces.Box
         ), f"{self} supports only Box type observation space and action space."
+        assert self.action_scale is not None and self.action_bias is not None
 
         self.buffer_size = buffer_size
 

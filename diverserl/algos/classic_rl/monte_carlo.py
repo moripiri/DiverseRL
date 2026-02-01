@@ -24,19 +24,21 @@ class MonteCarlo(ClassicRL):
         self.gamma = gamma
         self.eps = eps
 
-        self.trajectory = []
+        self.trajectory: list[dict[str, Any]] = []
         if isinstance(env.observation_space, gym.spaces.Discrete):
+            assert isinstance(self.state_dim, int)
             self.pi = np.ones([self.state_dim, self.action_dim]) / self.action_dim
             self.q = np.zeros([self.state_dim, self.action_dim])
             self.returns = [[[] for _ in range(self.action_dim)] for _ in range(self.state_dim)]
 
         else:
             # Needs improvement
+            assert isinstance(self.state_dim, tuple)
             self.pi = np.ones([*self.state_dim, self.action_dim]) / self.action_dim
             self.q = np.zeros([*self.state_dim, self.action_dim])
 
             return_list = lambda x, y: [x for _ in range(y)]
-            self.returns = list(reduce(return_list, reversed(self.state_dim), [[] for _ in range(self.action_dim)]))
+            self.returns = list(reduce(return_list, reversed(self.state_dim), [[] for _ in range(self.action_dim)]))  # type: ignore[arg-type]
             self.state_index = product(*[range(i) for i in self.state_dim])
 
     def __repr__(self) -> str:
@@ -88,6 +90,7 @@ class MonteCarlo(ClassicRL):
 
                 if [cur_s, cur_a] not in traj_sa_list[i + 1:]:
                     if isinstance(self.observation_space, gym.spaces.Discrete):
+                        assert isinstance(self.state_dim, int)
                         self.returns[cur_s][cur_a].append(G)
                         self.q[cur_s][cur_a] = sum(self.returns[cur_s][cur_a]) / len(self.returns[cur_s][cur_a])
                         optimal_action = np.argmax(self.q, axis=-1)

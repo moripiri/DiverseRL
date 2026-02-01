@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Type, Union
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.functional import F
+import torch.nn.functional as F
 
 from diverserl.algos.offline_rl.base import OfflineRL
 from diverserl.common.buffer import DatasetBuffer

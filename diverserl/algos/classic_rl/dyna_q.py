@@ -27,11 +27,12 @@ class DynaQ(ClassicRL):
         self.model_n = model_n
         self.eps = eps
 
-        self.q = (
-            np.zeros([self.state_dim, self.action_dim])
-            if isinstance(env.observation_space, gym.spaces.Discrete)
-            else np.zeros([*self.state_dim, self.action_dim])
-        )
+        if isinstance(env.observation_space, gym.spaces.Discrete):
+            assert isinstance(self.state_dim, int)
+            self.q = np.zeros([self.state_dim, self.action_dim])
+        else:
+            assert isinstance(self.state_dim, tuple)
+            self.q = np.zeros([*self.state_dim, self.action_dim])
         self.model_r = np.zeros_like(self.q)
         self.model_ns = np.zeros_like(self.q)
 
@@ -41,7 +42,7 @@ class DynaQ(ClassicRL):
     def __repr__(self) -> str:
         return "Dyna-Q"
 
-    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> np.ndarray:
+    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:  # type: ignore[override]
         """
         Get the Dyna-Q action in probability 1-self.eps from an observation (in training mode)
 

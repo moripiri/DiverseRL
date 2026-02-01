@@ -23,16 +23,17 @@ class SARSA(ClassicRL):
         self.gamma = gamma
         self.eps = eps
 
-        self.q = (
-            np.zeros([self.state_dim, self.action_dim])
-            if isinstance(env.observation_space, gym.spaces.Discrete)
-            else np.zeros([*self.state_dim, self.action_dim])
-        )
+        if isinstance(env.observation_space, gym.spaces.Discrete):
+            assert isinstance(self.state_dim, int)
+            self.q = np.zeros([self.state_dim, self.action_dim])
+        else:
+            assert isinstance(self.state_dim, tuple)
+            self.q = np.zeros([*self.state_dim, self.action_dim])
 
     def __repr__(self) -> str:
         return "SARSA"
 
-    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> np.ndarray:
+    def get_action(self, observation: Union[int, Tuple[int, ...]]) -> int:  # type: ignore[override]
         """
         Get the SARSA action in probability 1-self.eps from an observation (in training mode)
 

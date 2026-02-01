@@ -14,7 +14,7 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent  #./DiverseRL
 
 
-def find_observation_space(observation_space: gym.spaces.Space) -> Union[int, Tuple[int]]:
+def find_observation_space(observation_space: gym.spaces.Space) -> Union[int, Tuple[int, ...]]:
     """
     Determine the shape or size of the observation space used in a Gymnasium environment.
 
@@ -54,7 +54,7 @@ def find_observation_space(observation_space: gym.spaces.Space) -> Union[int, Tu
     return state_dim
 
 
-def find_action_space(action_space: gym.spaces.Space) -> Tuple[int, bool, Optional[float], Optional[float]]:
+def find_action_space(action_space: gym.spaces.Space) -> Tuple[int, bool, float, float]:
     """
     Determine the action space dimensions and properties from a Gymnasium action space.
 
@@ -64,8 +64,8 @@ def find_action_space(action_space: gym.spaces.Space) -> Tuple[int, bool, Option
     :return: A tuple containing:
         - int: The dimensionality of the actions.
         - bool: Whether the action space is discrete (`True`) or continuous (`False`).
-        - Optional[float]: Scale factor for the action values (only for Box spaces).
-        - Optional[float]: Bias for the action values (only for Box spaces).
+        - float: Scale factor for the action values (1.0 for Discrete spaces).
+        - float: Bias for the action values (0.0 for Discrete spaces).
 
     :raises TypeError: If the action space type is not supported.
     """
@@ -74,7 +74,7 @@ def find_action_space(action_space: gym.spaces.Space) -> Tuple[int, bool, Option
         action_dim = int(action_space.n)
         discrete_action = True
 
-        action_scale, action_bias = None, None
+        action_scale, action_bias = 1.0, 0.0
 
     elif isinstance(action_space, gym.spaces.Box):
         action_dim = int(action_space.shape[0])
@@ -154,19 +154,20 @@ def get_optimizer(
 
     :return: An optimizer with wanted network, learning rate, optimizer class, and optimizer kwargs.
     """
-    optimizer_class = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
-    optimizer_option = {}
+    resolved_class: Any = getattr(torch.optim, optimizer_class) if isinstance(optimizer_class, str) else optimizer_class
+    optimizer_option: Dict[str, Any] = {}
 
     if optimizer_kwargs is not None:
         for key, value in optimizer_kwargs.items():
-            assert isinstance(value, Union[
-                int, float, bool, str]), "Value of optimizer_kwargs must be set as int, float, boolean or string"
+            assert isinstance(
+                value, (int, float, bool, str)
+            ), "Value of optimizer_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
                 optimizer_option[key] = eval(value)
             else:
                 optimizer_option[key] = value
 
-    optimizer = optimizer_class(optimizer_network, lr=optimizer_lr, **optimizer_option)
+    optimizer = resolved_class(optimizer_network, lr=optimizer_lr, **optimizer_option)
 
     return optimizer
 
@@ -185,7 +186,7 @@ def set_seed(seed: int) -> int:
     return seed
 
 
-def pprint_config(config: Dict[str, Any]) -> bool:
+def pprint_config(config: Any) -> bool:
     """
     Prettily print the configuration.
 
@@ -203,7 +204,7 @@ def pprint_config(config: Dict[str, Any]) -> bool:
 
 
 def set_network_configs(network_type: str, network_list: Dict[str, Any],
-                        network_config: Dict[str, Any], ) -> Tuple[str, Dict[str, Any]]:
+                        network_config: Optional[Dict[str, Any]], ) -> Tuple[str, Dict[str, Any]]:
     assert network_type in network_list.keys()
     if network_config is None:
         network_config = dict()

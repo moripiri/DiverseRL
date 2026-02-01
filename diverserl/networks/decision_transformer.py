@@ -18,7 +18,7 @@ class DecisionTransformer(nn.Module):
                  heads_num: int = 1,
                  dropout: float = 0.1,
                  activation: Optional[_activation] = nn.ReLU,
-                 activation_kwargs: Optional[Union[_kwargs]] = None,
+                 activation_kwargs: Optional[_kwargs] = None,
                  embedding_weight_initializer: Optional[_initializer] = nn.init.normal_,
                  embedding_weight_initializer_kwargs: Optional[_kwargs] = None,
                  embedding_bias_initializer: Optional[_initializer] = nn.init.zeros_,
@@ -85,13 +85,15 @@ class DecisionTransformer(nn.Module):
         :param m: a single torch layer
         """
         if isinstance(m, (nn.Linear, nn.Embedding)):
-            self.embedding_initializer(m.weight, **self.embedding_initializer_kwargs)
-            if m.bias is not None:
-                self.bias_initializer(m.bias, **self.embedding_bias_initializer_kwargs)
+            if self.embedding_weight_initializer is not None:
+                self.embedding_weight_initializer(m.weight, **self.embedding_weight_initializer_kwargs)
+            if m.bias is not None and self.embedding_bias_initializer is not None:
+                self.embedding_bias_initializer(m.bias, **self.embedding_bias_initializer_kwargs)
         elif isinstance(m, nn.LayerNorm):
-            self.layer_norm_weight_initializer(m.weight,
-                                               **self.layer_norm_weight_initializer_kwargs)
-            if m.bias is not None:
+            if self.layer_norm_weight_initializer is not None:
+                self.layer_norm_weight_initializer(m.weight,
+                                                   **self.layer_norm_weight_initializer_kwargs)
+            if m.bias is not None and self.layer_norm_bias_initializer is not None:
                 self.layer_norm_bias_initializer(m.bias, **self.layer_norm_bias_initializer_kwargs)
 
     def forward(

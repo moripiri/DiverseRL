@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 import gymnasium as gym
 
@@ -9,7 +9,7 @@ from diverserl.algos.base import DeepRL
 class PixelRL(DeepRL, ABC):
     def __init__(
             self, env: gym.vector.VectorEnv, eval_env: gym.vector.VectorEnv, network_type: str, network_list: Dict[str, Any],
-            network_config: Dict[str, Any],
+            network_config: Optional[Dict[str, Any]],
             device: str = "cpu"
     ) -> None:
         """

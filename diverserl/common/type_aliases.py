@@ -15,5 +15,5 @@ _layers_size_any_int = _t_or_tuple_any_t[_int_or_tuple_2_int]
 _layers_size_any_si = _t_or_tuple_any_t[Union[str, _int_or_tuple_2_int]]
 
 _activation = Union[str, Type[nn.Module]]
-_initializer = Union[str, Callable[[torch.Tensor, Any], torch.Tensor]]
+_initializer = Union[str, Callable[..., torch.Tensor]]
 _kwargs = Dict[str, Any]
