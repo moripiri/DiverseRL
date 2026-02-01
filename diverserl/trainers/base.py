@@ -80,7 +80,7 @@ class Trainer(ABC):
         )
 
         if isinstance(self.eval_env, gym.vector.VectorEnv):
-            env_spec = self.eval_env.envs[0].spec
+            env_spec = self.eval_env.envs[0].spec # type: ignore
         else:
             env_spec = self.eval_env.spec
 
@@ -128,9 +128,9 @@ class Trainer(ABC):
 
         if record:
             try:
-                self.eval_env.envs[0] = RecordVideo(self.eval_env.envs[0], video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+                self.eval_env.envs[0] = RecordVideo(self.eval_env.envs[0], video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep') # type: ignore
             except:
-                self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep')
+                self.eval_env = RecordVideo(self.eval_env, video_folder=f"{LOG_PATH}/{self.run_name}/video", name_prefix='eval_ep') # type: ignore
 
     @abstractmethod
     def evaluate(self):

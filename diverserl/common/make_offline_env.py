@@ -1,24 +1,29 @@
+from collections.abc import Callable
 from copy import deepcopy
-from typing import Optional, Type, Union
+from typing import Any, Dict, Optional, Tuple, Type, cast
 
 import gymnasium as gym
 import minari
 from gymnasium import Env
 
 import diverserl
+import diverserl.common.buffer as buffer_module
+import diverserl.common.filters as filters_module
 from diverserl.common.buffer import DatasetBuffer, SequenceDatasetBuffer
-from diverserl.common.filters import *
 from diverserl.common.make_env import get_wrapper
 
 
-def get_dataset_buffer(buffer_name: str,  buffer_kwargs: Optional[Dict[str, Any]] = None) -> Tuple[Type[DatasetBuffer], Dict[str, Any]] :
-    buffer_class = getattr(diverserl.common.buffer, buffer_name)
+def get_dataset_buffer(
+    buffer_name: str, buffer_kwargs: Optional[Dict[str, Any]] = None
+) -> Tuple[Type[DatasetBuffer], Dict[str, Any]]:
+    buffer_class = getattr(buffer_module, buffer_name)
     buffer_option = {}
 
     if buffer_kwargs is not None:
         for key, value in buffer_kwargs.items():
-            assert isinstance(value, Union[
-                int, float, bool, str]), "Value of buffer_kwargs must be set as int, float, boolean or string"
+            assert isinstance(
+                value, (int, float, bool, str)
+            ), "Value of buffer_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
                 buffer_option[key] = eval(value)
             else:
@@ -28,7 +33,7 @@ def get_dataset_buffer(buffer_name: str,  buffer_kwargs: Optional[Dict[str, Any]
 
 
 def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]] = None) -> Tuple[
-    Type[gym.Wrapper], Dict[str, Any]]:
+    Callable[..., Tuple[DatasetBuffer, Dict[str, Any]]], Dict[str, Any]]:
     """
     Return filter class and arguments for offline dataset.
 
@@ -37,13 +42,14 @@ def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]] = None)
 
     :return: filter class and arguments.
     """
-    filter_class = getattr(diverserl.common.filters, filter_name)
+    filter_class = getattr(filters_module, filter_name)
     filter_option = {}
 
     if filter_kwargs is not None:
         for key, value in filter_kwargs.items():
-            assert isinstance(value, Union[
-                int, float, bool, str]), "Value of wrapper_kwargs must be set as int, float, boolean or string"
+            assert isinstance(
+                value, (int, float, bool, str)
+            ), "Value of wrapper_kwargs must be set as int, float, boolean or string"
             if isinstance(value, str):
                 filter_option[key] = eval(value)
             else:
@@ -52,13 +58,17 @@ def get_filter(filter_name: str, filter_kwargs: Optional[Dict[str, Any]] = None)
     return filter_class, filter_option
 
 
-def make_offline_envs(dataset_id: str, buffer_name: str = "DatasetBuffer", filter_option: Optional[Dict[str, Any]] = None,
-                      eval_env_option: Optional[Dict[str, Any]] = None,
-                      eval_wrapper_option: Optional[Dict[str, Any]] = None,
-                      seed: int = 1234, vector_env: bool = True, render: bool = False,
-                      record: bool = False,
-                      ) -> \
-        Dict[str, Any]:
+def make_offline_envs(
+    dataset_id: str,
+    buffer_name: str = "DatasetBuffer",
+    filter_option: Optional[Dict[str, Any]] = None,
+    eval_env_option: Optional[Dict[str, Any]] = None,
+    eval_wrapper_option: Optional[Dict[str, Any]] = None,
+    seed: int = 1234,
+    vector_env: bool = True,
+    render: bool = False,
+    record: bool = False,
+) -> Dict[str, Any]:
     """
     Creates dataset and gymnasium environments for offline training or evaluation.
 
@@ -75,9 +85,9 @@ def make_offline_envs(dataset_id: str, buffer_name: str = "DatasetBuffer", filte
     :return: generated gymnasium environment
     """
 
-    filter_option = filter_option or {}
-    eval_env_option = eval_env_option or {}
-    eval_wrapper_option = eval_wrapper_option or {}
+    filter_option_dict_raw: Dict[str, Any] = {} if filter_option is None else dict(filter_option)
+    base_eval_env_option: Dict[str, Any] = {} if eval_env_option is None else dict(eval_env_option)
+    eval_wrapper_option_dict: Dict[str, Any] = {} if eval_wrapper_option is None else dict(eval_wrapper_option)
 
     def make_env(random_seed: int = 0, render_env: bool = False, record_env: bool = False):
         """
@@ -96,23 +106,19 @@ def make_offline_envs(dataset_id: str, buffer_name: str = "DatasetBuffer", filte
 
             :return: Gymnasium environment.
             """
-            nonlocal dataset_id
-            nonlocal eval_env_option
-            nonlocal eval_wrapper_option
-
-            eval_env_option = deepcopy(eval_env_option)
-            eval_wrapper_option = deepcopy(eval_wrapper_option)
+            eval_env_option_local = deepcopy(base_eval_env_option)
+            eval_wrapper_option_local = deepcopy(eval_wrapper_option_dict)
 
             assert not (render_env and record_env), ValueError("Cannot specify both render_env and record")
             if render_env and not record_env:
-                eval_env_option['render_mode'] = 'human'
+                eval_env_option_local['render_mode'] = 'human'
             elif not render_env and record_env:
-                eval_env_option['render_mode'] = 'rgb_array'
+                eval_env_option_local['render_mode'] = 'rgb_array'
 
-            env = dataset.recover_environment(**eval_env_option)
+            env = dataset.recover_environment(**eval_env_option_local)
             env = gym.wrappers.RecordEpisodeStatistics(env)
 
-            for wrapper_name, wrapper_kwargs in eval_wrapper_option.items():
+            for wrapper_name, wrapper_kwargs in eval_wrapper_option_local.items():
                 wrapper_class, wrapper_kwargs = get_wrapper(wrapper_name, wrapper_kwargs, env)
                 env = wrapper_class(env, **wrapper_kwargs)
 
@@ -127,12 +133,13 @@ def make_offline_envs(dataset_id: str, buffer_name: str = "DatasetBuffer", filte
     buffer_class, buffer_kwargs = get_dataset_buffer(buffer_name)
     buffer = buffer_class(dataset, **buffer_kwargs)
 
-    for filter_name, filter_option in filter_option.items():
-        filter_class, filter_option = get_filter(filter_name, filter_option)
-        buffer, filters_eval_env_option = filter_class(buffer, **filter_option)
+    for filter_name, filter_kwargs_any in filter_option_dict_raw.items():
+        filter_kwargs = {} if filter_kwargs_any is None else cast(Dict[str, Any], filter_kwargs_any)
+        filter_func, filter_kwargs = get_filter(filter_name, filter_kwargs)
+        buffer, filters_eval_env_option = filter_func(buffer, **filter_kwargs)
 
         for key, value in filters_eval_env_option.items():
-            eval_wrapper_option[key] = value
+            eval_wrapper_option_dict[key] = value
 
     buffer.init_buffer()
 

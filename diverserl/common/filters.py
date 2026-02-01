@@ -21,6 +21,8 @@ def filter_reward(dataset: DatasetBuffer, dataset_frac: float = 0.7, gamma: floa
     :return: A tuple where the first element is the filtered MinariDataset.
     """
 
+    assert dataset.dataset is not None, "Filters must be applied before DatasetBuffer.init_buffer()."
+
     reward_dict = dict(zip(list(map(lambda x: int(x), dataset.dataset['id'])), list(map(lambda x: reduce(
         lambda x, y: (x[0] + y * x[1], x[1] * gamma),
         x,
@@ -35,6 +37,7 @@ def filter_reward(dataset: DatasetBuffer, dataset_frac: float = 0.7, gamma: floa
 
 
 def normalize_observation(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[str, Any]]:
+    assert buffer.dataset is not None, "Filters must be applied before DatasetBuffer.init_buffer()."
     obs = np.vstack(buffer.dataset['observations'])
     obs_mean, obs_std = obs.mean(axis=0), obs.std(axis=0)
     normalized_observation = []
@@ -47,6 +50,7 @@ def normalize_observation(buffer: DatasetBuffer) -> Tuple[DatasetBuffer, Dict[st
 
 
 def scale_reward(buffer: DatasetBuffer, scale: float = 0.001) -> Tuple[DatasetBuffer, Dict[str, Any]]:
+    assert buffer.dataset is not None, "Filters must be applied before DatasetBuffer.init_buffer()."
     scaled_rewards = []
     for reward in buffer.dataset['rewards']:
         scaled_rewards.append(reward * scale)

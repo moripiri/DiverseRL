@@ -80,13 +80,13 @@ class ClassicTrainer(Trainer):
                 ) = self.eval_env.step(action)
 
                 observation = next_observation
-                episode_reward += env_reward
+                episode_reward += float(env_reward)
 
                 success = self.distinguish_success(float(env_reward), next_observation)
 
                 local_step += 1
 
-            success_list.append(int(success))
+            success_list.append(int(success) if success is not None else 0)
             ep_reward_list.append(episode_reward)
             local_step_list.append(local_step)
 
@@ -148,12 +148,12 @@ class ClassicTrainer(Trainer):
                     self.algo.train(step_result)
 
                     observation = next_observation
-                    episode_reward += env_reward
+                    episode_reward += float(env_reward)
 
                     success = self.distinguish_success(float(env_reward), next_observation)
                     local_step += 1
 
-                success_num += int(success)
+                success_num += int(success) if success is not None else 0
                 progress.console.print(
                     f"Episode: {episode:06d} -> Step: {local_step:04d}, Episode_reward: {episode_reward:.4f}, success: {success}",
                 )
@@ -162,7 +162,7 @@ class ClassicTrainer(Trainer):
                     {
                         "train/episode_reward": episode_reward,
                         "train/local_step": local_step,
-                        "train/success": int(success),
+                        "train/success": int(success) if success is not None else 0,
                     },
                     self.current_episode,
                 )

@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Type, Union
 import gymnasium as gym
 import numpy as np
 import torch
-from torch.functional import F
+import torch.nn.functional as F
 
 from diverserl.algos.offline_rl.base import OfflineRL
 from diverserl.common.buffer import SequenceDatasetBuffer
@@ -18,7 +18,7 @@ class DT(OfflineRL):
                  buffer: SequenceDatasetBuffer,
                  eval_env: gym.vector.VectorEnv,
                  network_type: str = "Default",
-                 network_config: Optional[Dict[str, Any]] = None,
+                 network_config: Dict[str, Any] = {},
                  sequence_length: int = 20,
                  gamma: float = 0.99,
                  batch_size: int = 64,
@@ -59,10 +59,10 @@ class DT(OfflineRL):
 
         self.optimizer = get_optimizer(self.transformer.parameters(), learning_rate, optimizer, optimizer_kwargs)
 
-    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    def get_action(self, observation: Union[np.ndarray, torch.Tensor]) -> None:
         pass
 
-    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> np.ndarray:
+    def eval_action(self, observation: Union[np.ndarray, torch.Tensor]) -> None:
         pass
 
     def predict_action(
